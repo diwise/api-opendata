@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	db "github.com/iot-for-tillgenglighet/api-opendata/internal/pkg/infrastructure/repositories/database"
+	db "github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
 	log "github.com/sirupsen/logrus"
 )
 

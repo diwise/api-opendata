@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/iot-for-tillgenglighet/api-opendata/internal/pkg/application"
-	"github.com/iot-for-tillgenglighet/api-opendata/internal/pkg/infrastructure/logging"
-	"github.com/iot-for-tillgenglighet/api-opendata/internal/pkg/infrastructure/repositories/database"
+	"github.com/diwise/api-opendata/internal/pkg/application"
+	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
+	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
 )
 
 func main() {

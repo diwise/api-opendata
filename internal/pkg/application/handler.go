@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
+	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/iot-for-tillgenglighet/api-opendata/internal/pkg/infrastructure/logging"
-	"github.com/iot-for-tillgenglighet/api-opendata/internal/pkg/infrastructure/repositories/database"
 
 	"github.com/rs/cors"
 )

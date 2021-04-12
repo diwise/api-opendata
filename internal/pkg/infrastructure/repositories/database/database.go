@@ -1,8 +1,8 @@
 package database
 
 import (
-	"github.com/iot-for-tillgenglighet/api-opendata/internal/pkg/infrastructure/logging"
-	"github.com/iot-for-tillgenglighet/api-opendata/internal/pkg/infrastructure/repositories/persistence"
+	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
+	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/persistence"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

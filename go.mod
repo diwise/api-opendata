@@ -1,4 +1,4 @@
-module github.com/iot-for-tillgenglighet/api-opendata
+module github.com/diwise/api-opendata
 
 go 1.15
 
