@@ -7,16 +7,18 @@ import (
 //Catalog ...
 type Catalog struct {
 	gorm.Model
+	CatalogID   string
 	Title       string
 	Description string
 	Publisher   string
 	License     string
-	Dataset     string
+	Dataset     []Dataset
 }
 
 //Dataset ...
 type Dataset struct {
 	gorm.Model
+	CatalogID   uint
 	Title       string
 	Description string
 	Publisher   string

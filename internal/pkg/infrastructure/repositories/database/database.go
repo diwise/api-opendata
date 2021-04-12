@@ -10,7 +10,9 @@ import (
 
 //Datastore is an interface that is used to inject the database into different handlers to improve testability
 type Datastore interface {
-	CreateCatalog() error
+	CreateCatalog() (*persistence.Catalog, error)
+	GetAllCatalogs() ([]persistence.Catalog, error)
+	GetDatasetFromPrimaryKey(id uint) (*persistence.Dataset, error)
 }
 
 type myDB struct {
@@ -46,10 +48,61 @@ func NewDatabaseConnection(connect ConnectorFunc, log logging.Logger) (Datastore
 		impl: impl.Debug(),
 	}
 
-	db.impl.AutoMigrate(&persistence.Catalog{}, &persistence.Dataset{}, &persistence.Distribution{}, &persistence.DataService{}, &persistence.Agent{})
+	db.impl.AutoMigrate(
+		&persistence.Catalog{},
+		&persistence.Dataset{},
+		&persistence.Distribution{},
+		&persistence.DataService{},
+		&persistence.Agent{},
+	)
+
+	db.impl.Model(&persistence.Catalog{}).Association("Dataset")
+
 	return db, nil
 }
 
-func (db *myDB) CreateCatalog() error {
-	return nil
+func (db *myDB) CreateCatalog() (*persistence.Catalog, error) {
+
+	dataset := persistence.Dataset{
+		Title:       "dataset",
+		Description: "description",
+		Publisher:   "publisher",
+	}
+
+	catalog := &persistence.Catalog{
+		CatalogID:   "BadTemperatur01",
+		Title:       "BadTemperaturer",
+		Description: "En katalog med badtemperaturer",
+		Publisher:   "srcPublisher",
+		License:     "srcLicense",
+		Dataset:     []persistence.Dataset{dataset},
+	}
+
+	result := db.impl.Create(catalog)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return nil, nil
+}
+
+func (db *myDB) GetAllCatalogs() ([]persistence.Catalog, error) {
+	catalogs := []persistence.Catalog{}
+	result := db.impl.Find(&catalogs)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return catalogs, nil
+}
+
+func (db *myDB) GetDatasetFromPrimaryKey(id uint) (*persistence.Dataset, error) {
+
+	dataset := &persistence.Dataset{}
+	result := db.impl.Find(&dataset, id)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return dataset, nil
 }
