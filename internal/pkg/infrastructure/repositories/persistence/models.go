@@ -7,32 +7,37 @@ import (
 //Catalog ...
 type Catalog struct {
 	gorm.Model
-	CatalogID   string
+	About       string
 	Title       string
 	Description string
 	Publisher   string
 	License     string
-	Dataset     []Dataset
+	Dataset     string
 }
 
 //Dataset ...
 type Dataset struct {
 	gorm.Model
-	CatalogID   uint
-	Title       string
-	Description string
-	Publisher   string
+	About        string
+	Title        string
+	Description  string
+	Publisher    string
+	Distribution string
+	ContactPoint string
 }
 
 //Distribution ...
 type Distribution struct {
 	gorm.Model
-	WebAddress string
+	About         string
+	AccessUrl     string
+	AccessService string
 }
 
 //DataService ...
 type DataService struct {
 	gorm.Model
+	About       string
 	Title       string
 	EndpointURL string
 }
@@ -40,13 +45,13 @@ type DataService struct {
 //Agent ...
 type Agent struct {
 	gorm.Model
-	Name string
+	About string
+	Name  string
 }
 
-//ContactPoint ...
-type ContactPoint struct {
+type Organization struct {
 	gorm.Model
-	Kind          string
-	FormattedName string
-	Email         string
+	About    string
+	Fn       string
+	HasEmail string
 }
