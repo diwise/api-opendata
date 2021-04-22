@@ -2,6 +2,7 @@ package application
 
 import (
 	"compress/flate"
+	"encoding/xml"
 	"net/http"
 	"os"
 
@@ -16,6 +17,10 @@ import (
 //RequestRouter needs a comment
 type RequestRouter struct {
 	impl *chi.Mux
+}
+
+func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.Datastore) {
+	router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db)) //create a context registry and a function that returns an http.HandlerFunc (remember bridge pattern, closure function)
 }
 
 //Get accepts a pattern that should be routed to the handlerFn on a GET request
@@ -49,6 +54,8 @@ func CreateRouterAndStartServing(log logging.Logger, db database.Datastore) {
 	router.impl.Use(compressor.Handler)
 	router.impl.Use(middleware.Logger)
 
+	router.addDiwiseHandlers(log, db)
+
 	port := os.Getenv("SERVICE_PORT")
 	if port == "" {
 		port = "8880"
@@ -56,8 +63,6 @@ func CreateRouterAndStartServing(log logging.Logger, db database.Datastore) {
 
 	log.Infof("Starting api-opendata on port %s.\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, router.impl))
-
-	router.RetrieveCatalogs(log, db)
 
 }
 
@@ -68,13 +73,89 @@ func (router *RequestRouter) CreateNewCatalog() {
 func (router *RequestRouter) RetrieveCatalogs(log logging.Logger, db database.Datastore) error {
 	var err error
 
-	//get request should get all catalogs from database and return in rdf/xml format.
-
-	// create empty array of rdfCatalogs
-	// create a for loop to fill up the array - for each catalog in catalogs (decode into rdfCatalog)
-	// fetch persistence.Catalogs from database to populate empty array of rdfCatalog
-	// encode?
-	// return xml?
-
 	return err
+}
+
+func NewRetrieveCatalogsHandler(log logging.Logger, db database.Datastore) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		catalogs, err := db.GetAllCatalogs()
+		if err != nil {
+			log.Errorf("something went wrong when trying to get all Catalogs: %s", err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		for _, catalog := range catalogs {
+
+			dataService, _ := db.GetDataServiceFromPrimaryKey(catalog.ID)
+			dcatDataService := RdfDataService{
+				Attr_rdf_about: dataService.About,
+			}
+			dcatDataService.Dcterms_title.XMLLang = "sv"
+			dcatDataService.Dcterms_title.Title = dataService.Title
+			dcatDataService.Dcat_endpointURL.Attr_rdf_resource = dataService.EndpointURL
+
+			agent, _ := db.GetAgentFromPrimaryKey(catalog.ID)
+			foafAbout := RdfAgent{
+				Attr_rdf_about: agent.About,
+				Foaf_name:      agent.Name,
+			}
+
+			distribution, _ := db.GetDistributionFromPrimaryKey(catalog.ID)
+			dcatDist := RdfDistribution{
+				Attr_rdf_about: distribution.About,
+			}
+			dcatDist.Dcat_accessURL.Attr_rdf_resource = dcatDataService.Dcat_endpointURL.Attr_rdf_resource
+			//dcatDist.Dcat_accessService.Attr_rdf_resource = distribution.AccessService
+
+			org, _ := db.GetOrganizationFromPrimaryKey(catalog.ID)
+			rdfOrg := RdfOrganization{
+				Attr_rdf_about: org.About,
+				Vcard_Fn:       org.Fn,
+			}
+			rdfOrg.Vcard_hasEmail.Attr_rdf_resource = org.HasEmail
+
+			dataset, _ := db.GetDatasetFromPrimaryKey(catalog.ID)
+			rdfDataset := RdfDataset{
+				Attr_rdf_about: dataset.About,
+			}
+			rdfDataset.Dcterms_title.Title = dataset.Title
+			rdfDataset.Dcterms_title.XMLLang = "sv"
+			rdfDataset.Dcterms_description.Description = dataset.Description
+			rdfDataset.Dcterms_publisher.Attr_rdf_resource = agent.About
+			rdfDataset.Dcat_distribution.Attr_rdf_resource = dcatDist.Attr_rdf_about
+			rdfDataset.Dcat_contactPoint.Attr_rdf_resource = org.About
+
+			rdfCatalog := RdfCatalog{
+				Attr_rdf_about: catalog.About,
+			}
+
+			rdfCatalog.Dcterms_title.XMLLang = "sv"
+			rdfCatalog.Dcterms_title.Title = catalog.Title
+			rdfCatalog.Dcterms_description.XMLLang = "sv"
+			rdfCatalog.Dcterms_description.Description = catalog.Description
+			rdfCatalog.Dcterms_publisher.Attr_rdf_resource = agent.About
+			rdfCatalog.Dcat_dataset.Attr_rdf_resource = dataset.About
+
+			rdf := Rdf_RDF{
+				Rdf_Catalog:      &rdfCatalog,
+				Rdf_Dataset:      &rdfDataset,
+				Rdf_Agent:        &foafAbout,
+				Rdf_Distribution: &dcatDist,
+				Rdf_Organization: &rdfOrg,
+				Rdf_DataService:  &dcatDataService,
+				Attr_rdf:         "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+				Attr_dcterms:     "http://purl.org/dc/terms/",
+				Attr_vcard:       "http://www.w3.org/2006/vcard/ns#",
+				Attr_dcat:        "http://www.w3.org/ns/dcat#",
+				Attr_foaf:        "http://xmlns.com/foaf/0.1/",
+			}
+
+			data, _ := xml.MarshalIndent(rdf, " ", "	")
+			w.Write(data)
+		}
+
+		w.WriteHeader(http.StatusOK)
+
+	})
 }

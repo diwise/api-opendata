@@ -10,20 +10,26 @@ type Catalog struct {
 	About       string
 	Title       string
 	Description string
-	Publisher   string
+	AgentID     uint
+	Agent       Agent `gorm:"association_foreignkey:ID"`
 	License     string
-	Dataset     string
+	DatasetID   uint
+	Dataset     Dataset `gorm:"association_foreignkey:ID"`
 }
 
 //Dataset ...
 type Dataset struct {
 	gorm.Model
-	About        string
-	Title        string
-	Description  string
-	Publisher    string
-	Distribution string
-	ContactPoint string
+	CatalogID      uint
+	About          string
+	Title          string
+	Description    string
+	AgentID        uint
+	Agent          Agent `gorm:"association_foreignkey:ID"`
+	DistributionID uint
+	Distribution   string //Distribution `gorm:"association_foreignkey:ID"`
+	OrganizationID uint
+	Organization   string //Organization `gorm:"association_foreignkey:ID"`
 }
 
 //Distribution ...
@@ -31,7 +37,8 @@ type Distribution struct {
 	gorm.Model
 	About         string
 	AccessUrl     string
-	AccessService string
+	DataServiceID uint   `gorm:"association_foreignkey:ID"`
+	DataService   string //DataService
 }
 
 //DataService ...

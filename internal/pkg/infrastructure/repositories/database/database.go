@@ -1,6 +1,7 @@
 package database
 
 import (
+	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/persistence"
 	"gorm.io/driver/sqlite"
@@ -10,10 +11,10 @@ import (
 
 //Datastore is an interface that is used to inject the database into different handlers to improve testability
 type Datastore interface {
-	CreateCatalog() (*persistence.Catalog, error)
+	CreateCatalog(catalog domain.Catalog) (*persistence.Catalog, error)
 	CreateAgent() (*persistence.Agent, error)
 	CreateDataService() (*persistence.DataService, error)
-	CreateDataset() (*persistence.Dataset, error)
+	CreateDataset(catalog persistence.Catalog) (*persistence.Dataset, error)
 	CreateDistribution() (*persistence.Distribution, error)
 	CreateOrganization() (*persistence.Organization, error)
 	GetAllCatalogs() ([]persistence.Catalog, error)
@@ -66,36 +67,55 @@ func NewDatabaseConnection(connect ConnectorFunc, log logging.Logger) (Datastore
 		&persistence.Organization{},
 	)
 
-	db.impl.Model(&persistence.Catalog{}).Association("Dataset")
+	err = db.impl.Model(&persistence.Catalog{}).Association("Dataset").Error
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.impl.Model(&persistence.Catalog{}).Association("Agent").Error
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.impl.Model(&persistence.Dataset{}).Association("Agent").Error
+	if err != nil {
+		return nil, err
+	}
+
+	/* err = db.impl.Model(&persistence.Dataset{}).Association("Distribution").Error
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.impl.Model(&persistence.Dataset{}).Association("Organization").Error
+	if err != nil {
+		return nil, err
+	} */
 
 	return db, nil
 }
 
-func (db *myDB) CreateCatalog() (*persistence.Catalog, error) {
+func (db *myDB) CreateCatalog(catalog domain.Catalog) (*persistence.Catalog, error) {
 
-	dataService, _ := db.CreateDataService()
-
-	distribution, _ := db.CreateDistribution()
-	distribution.AccessUrl = dataService.EndpointURL
-
-	agent, _ := db.CreateAgent()
-
-	organization, _ := db.CreateOrganization()
-
-	dataset, _ := db.CreateDataset()
-	dataset.Distribution = distribution.About
-	dataset.ContactPoint = organization.About
-
-	catalog := &persistence.Catalog{
-		About:       "http://diwise.io/catalog1",
-		Title:       "BadTemperaturer",
-		Description: "En katalog med badtemperaturer",
-		Publisher:   agent.About,
-		License:     "srcLicense",
-		Dataset:     dataset.Title,
+	agent := persistence.Agent{
+		About: "aboutAgent",
+		Name:  "nameAgent",
 	}
 
-	result := db.impl.Create(catalog)
+	dataset := persistence.Dataset{
+		About: "",
+	}
+
+	newCatalog := &persistence.Catalog{
+		About:       catalog.About,
+		Title:       catalog.Title,
+		Description: catalog.Description,
+		Agent:       agent,
+		License:     catalog.License,
+		Dataset:     dataset,
+	}
+
+	result := db.impl.Create(newCatalog)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -132,12 +152,13 @@ func (db *myDB) CreateDataService() (*persistence.DataService, error) {
 	return dataservice, nil
 }
 
-func (db *myDB) CreateDataset() (*persistence.Dataset, error) {
+func (db *myDB) CreateDataset(catalog persistence.Catalog) (*persistence.Dataset, error) {
 	dataset := &persistence.Dataset{
+		CatalogID:   catalog.ID,
 		About:       "http://diwise.io/dataset1",
 		Title:       "Dataset",
 		Description: "dataset description",
-		Publisher:   "publisher1",
+		// Publisher:   "publisher1",
 	}
 
 	result := db.impl.Create(dataset)
@@ -150,9 +171,9 @@ func (db *myDB) CreateDataset() (*persistence.Dataset, error) {
 
 func (db *myDB) CreateDistribution() (*persistence.Distribution, error) {
 	distribution := &persistence.Distribution{
-		About:         "http://diwise.io/distribution1",
-		AccessUrl:     "",
-		AccessService: "http://diwise.io/dataservice",
+		About:       "http://diwise.io/distribution1",
+		AccessUrl:   "",
+		DataService: "http://diwise.io/dataservice",
 	}
 
 	result := db.impl.Create(distribution)
