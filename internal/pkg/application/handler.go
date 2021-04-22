@@ -1,6 +1,7 @@
 package application
 
 import (
+	"bytes"
 	"compress/flate"
 	"encoding/xml"
 	"net/http"
@@ -23,6 +24,12 @@ func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.D
 	router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db)) //create a context registry and a function that returns an http.HandlerFunc (remember bridge pattern, closure function)
 }
 
+func (router *RequestRouter) addProbeHandlers() {
+	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+}
+
 //Get accepts a pattern that should be routed to the handlerFn on a GET request
 func (router *RequestRouter) Get(pattern string, handlerFn http.HandlerFunc) {
 	router.impl.Get(pattern, handlerFn)
@@ -39,7 +46,7 @@ func (router *RequestRouter) Post(pattern string, handlerFn http.HandlerFunc) {
 }
 
 //CreateRouterAndStartServing sets up therouter and starts serving incoming requests
-func CreateRouterAndStartServing(log logging.Logger, db database.Datastore) {
+func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcatResponse *bytes.Buffer) {
 
 	router := &RequestRouter{impl: chi.NewRouter()}
 
@@ -55,6 +62,9 @@ func CreateRouterAndStartServing(log logging.Logger, db database.Datastore) {
 	router.impl.Use(middleware.Logger)
 
 	router.addDiwiseHandlers(log, db)
+	router.addProbeHandlers()
+
+	router.Get("/datasets/dcat", NewRetrieveDatasetsHandler(log, dcatResponse))
 
 	port := os.Getenv("SERVICE_PORT")
 	if port == "" {
@@ -63,17 +73,6 @@ func CreateRouterAndStartServing(log logging.Logger, db database.Datastore) {
 
 	log.Infof("Starting api-opendata on port %s.\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, router.impl))
-
-}
-
-func (router *RequestRouter) CreateNewCatalog() {
-	//post request that should create new catalog to database.
-}
-
-func (router *RequestRouter) RetrieveCatalogs(log logging.Logger, db database.Datastore) error {
-	var err error
-
-	return err
 }
 
 func NewRetrieveCatalogsHandler(log logging.Logger, db database.Datastore) http.HandlerFunc {
@@ -157,5 +156,12 @@ func NewRetrieveCatalogsHandler(log logging.Logger, db database.Datastore) http.
 
 		w.WriteHeader(http.StatusOK)
 
+	})
+}
+
+func NewRetrieveDatasetsHandler(log logging.Logger, dcatResponse *bytes.Buffer) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/rdf+xml")
+		w.Write(dcatResponse.Bytes())
 	})
 }
