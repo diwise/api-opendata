@@ -21,7 +21,11 @@ type RequestRouter struct {
 }
 
 func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.Datastore) {
-	router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db)) //create a context registry and a function that returns an http.HandlerFunc (remember bridge pattern, closure function)
+	router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db))
+}
+
+func (router *RequestRouter) addBeachHandlers(log logging.Logger, beachesCsv *bytes.Buffer) {
+	router.Get("/api/beaches/", GetBeaches(log, beachesCsv))
 }
 
 func (router *RequestRouter) addProbeHandlers() {
@@ -45,8 +49,8 @@ func (router *RequestRouter) Post(pattern string, handlerFn http.HandlerFunc) {
 	router.impl.Post(pattern, handlerFn)
 }
 
-//CreateRouterAndStartServing sets up therouter and starts serving incoming requests
-func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcatResponse *bytes.Buffer) {
+//CreateRouterAndStartServing sets up the router and starts serving incoming requests
+func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcatResponse *bytes.Buffer, beaches *bytes.Buffer) {
 
 	router := &RequestRouter{impl: chi.NewRouter()}
 
@@ -62,6 +66,7 @@ func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcat
 	router.impl.Use(middleware.Logger)
 
 	router.addDiwiseHandlers(log, db)
+	router.addBeachHandlers(log, beaches)
 	router.addProbeHandlers()
 
 	router.Get("/datasets/dcat", NewRetrieveDatasetsHandler(log, dcatResponse))
@@ -164,4 +169,12 @@ func NewRetrieveDatasetsHandler(log logging.Logger, dcatResponse *bytes.Buffer) 
 		w.Header().Add("Content-Type", "application/rdf+xml")
 		w.Write(dcatResponse.Bytes())
 	})
+}
+
+func GetBeaches(log logging.Logger, beachesCsv *bytes.Buffer) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "text/csv")
+		w.Write(beachesCsv.Bytes())
+	})
+
 }

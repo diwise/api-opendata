@@ -43,7 +43,7 @@ func main() {
 			log.Infof("Copied %d bytes from %s into response buffer.", written, datasetFileName)
 
 			db, _ := database.NewDatabaseConnection(database.NewSQLiteConnector(), log)
-			application.CreateRouterAndStartServing(log, db, datasetResponseBuffer)
+			application.CreateRouterAndStartServing(log, db, datasetResponseBuffer, datasetResponseBuffer)
 		}
 	}
 }
