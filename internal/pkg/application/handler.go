@@ -22,10 +22,7 @@ type RequestRouter struct {
 
 func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.Datastore) {
 	router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db))
-}
-
-func (router *RequestRouter) addBeachHandlers(log logging.Logger, beachesCsv *bytes.Buffer) {
-	router.Get("/api/beaches/", GetBeaches(log, beachesCsv))
+	router.Get("/api/beaches/", NewRetrieveBeachesHandler(log))
 }
 
 func (router *RequestRouter) addProbeHandlers() {
@@ -50,7 +47,7 @@ func (router *RequestRouter) Post(pattern string, handlerFn http.HandlerFunc) {
 }
 
 //CreateRouterAndStartServing sets up the router and starts serving incoming requests
-func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcatResponse *bytes.Buffer, beaches *bytes.Buffer) {
+func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcatResponse *bytes.Buffer) {
 
 	router := &RequestRouter{impl: chi.NewRouter()}
 
@@ -66,7 +63,6 @@ func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcat
 	router.impl.Use(middleware.Logger)
 
 	router.addDiwiseHandlers(log, db)
-	router.addBeachHandlers(log, beaches)
 	router.addProbeHandlers()
 
 	router.Get("/datasets/dcat", NewRetrieveDatasetsHandler(log, dcatResponse))
@@ -171,9 +167,11 @@ func NewRetrieveDatasetsHandler(log logging.Logger, dcatResponse *bytes.Buffer) 
 	})
 }
 
-func GetBeaches(log logging.Logger, beachesCsv *bytes.Buffer) http.HandlerFunc {
+func NewRetrieveBeachesHandler(log logging.Logger) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "text/csv")
+		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;description;address;postalcode;city;facilities;wc;shower;changing_room;lifeguard;lifebuoy;trash;firstaid;grilling_area;bathing_jetty;bathing_ladder;diving_tower;td_url;accessibility;wheelchair;public_transit;public_transit_distance;cycle_track;parking;parking_cost;water;beach_sand;beach_stone;beach_rock;beach_concrete;beach_grass;pet_bath;camping;temp_url;extra_url;visit_url;owner;phone;email\nSE0441273000000001;Vesljungasjön;56.4212500165633;13.7674095026078;Vesljungasjön, mellan Visseltofta och Emmaljunga, är en riktigt pärla. Här finns en vacker sandstrand på över hundra meter och en lång, fin brygga. Även här är det långgrunt.;;28022;Osby;;N;;;;Y;Y;;Y;Y;Y;N;;Gångavstånd från parkering cirka 50 meter.;;;;;Y;N;Lake;Y;N;N;N;N;N;N;;https://www.havochvatten.se/badplatser-och-badvatten/kommuner-och-badplatser/kommuner/badplatser-i-osby-kommun.html;https://www.osby.se/se--gora/upplev-osby-kommun/bada.html;K;0479123456;samhallsbyggnad@osby.se")
+
 		w.Write(beachesCsv.Bytes())
 	})
 
