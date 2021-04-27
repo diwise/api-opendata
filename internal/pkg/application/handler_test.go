@@ -1,6 +1,7 @@
 package application
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -36,8 +37,10 @@ func TestGetBeaches(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "http://localhost:8080/api/beaches", nil)
 
-	NewRetrieveBeachesHandler(log).ServeHTTP(w, req)
+	NewRetrieveBeachesHandler(log, "diwise.io").ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Errorf("Request failed, status code not OK: %d", w.Code)
 	}
+
+	fmt.Println(w.Body.String())
 }
