@@ -24,7 +24,7 @@ type RequestRouter struct {
 }
 
 func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.Datastore) {
-	router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db))
+	//router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db))
 	router.Get("/api/beaches/", NewRetrieveBeachesHandler(log, "diwise.io"))
 }
 
@@ -68,7 +68,7 @@ func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcat
 	router.addDiwiseHandlers(log, db)
 	router.addProbeHandlers()
 
-	router.Get("/datasets/dcat", NewRetrieveDatasetsHandler(log, dcatResponse))
+	router.Get("/api/datasets/dcat", NewRetrieveDatasetsHandler(log, dcatResponse))
 
 	port := os.Getenv("SERVICE_PORT")
 	if port == "" {
@@ -172,7 +172,7 @@ func NewRetrieveDatasetsHandler(log logging.Logger, dcatResponse *bytes.Buffer) 
 
 func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;description;address;postalcode;city;facilities;wc;shower;changing_room;lifeguard;lifebuoy;trash;firstaid;grilling_area;bathing_jetty;bathing_ladder;diving_tower;td_url;accessibility;wheelchair;public_transit;public_transit_distance;cycle_track;parking;parking_cost;water;beach_sand;beach_stone;beach_rock;beach_concrete;beach_grass;pet_bath;camping;temp_url;extra_url;visit_url;owner;phone;email")
+		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;updated;nuts_code;wikidata_ref;description")
 
 		beaches, err := getBeachesFromContextBroker(contextBroker)
 		if err != nil {
@@ -182,8 +182,11 @@ func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.Ha
 		}
 
 		for _, beach := range beaches {
-			beachInfo := fmt.Sprintf("\n%s;%s;%f;%f;%s;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;",
+			beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;%s",
 				beach.ID, beach.Name.Value, 65.2, 17.1,
+				"2021-04-28",
+				"nuts-kod",
+				"Q16498519",
 				beach.Description.Value,
 			)
 			beachesCsv.Write([]byte(beachInfo))
