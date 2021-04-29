@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/datasets"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
 )
@@ -37,7 +38,7 @@ func TestGetBeaches(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "http://localhost:8080/api/beaches", nil)
 
-	NewRetrieveBeachesHandler(log, "diwise.io").ServeHTTP(w, req)
+	datasets.NewRetrieveBeachesHandler(log, "diwise.io").ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Errorf("Request failed, status code not OK: %d", w.Code)
 	}
