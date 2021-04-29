@@ -3,7 +3,9 @@ package application
 import (
 	"bytes"
 	"compress/flate"
+	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/iot-for-tillgenglighet/ngsi-ld-golang/pkg/datamodels/fiware"
 
 	"github.com/rs/cors"
 )
@@ -21,8 +24,8 @@ type RequestRouter struct {
 }
 
 func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.Datastore) {
-	router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db))
-	router.Get("/api/beaches/", NewRetrieveBeachesHandler(log))
+	//router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db))
+	router.Get("/api/beaches/", NewRetrieveBeachesHandler(log, "diwise.io"))
 }
 
 func (router *RequestRouter) addProbeHandlers() {
@@ -65,7 +68,7 @@ func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcat
 	router.addDiwiseHandlers(log, db)
 	router.addProbeHandlers()
 
-	router.Get("/datasets/dcat", NewRetrieveDatasetsHandler(log, dcatResponse))
+	router.Get("/api/datasets/dcat", NewRetrieveDatasetsHandler(log, dcatResponse))
 
 	port := os.Getenv("SERVICE_PORT")
 	if port == "" {
@@ -167,12 +170,44 @@ func NewRetrieveDatasetsHandler(log logging.Logger, dcatResponse *bytes.Buffer) 
 	})
 }
 
-func NewRetrieveBeachesHandler(log logging.Logger) http.HandlerFunc {
+func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "text/csv")
-		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;description;address;postalcode;city;facilities;wc;shower;changing_room;lifeguard;lifebuoy;trash;firstaid;grilling_area;bathing_jetty;bathing_ladder;diving_tower;td_url;accessibility;wheelchair;public_transit;public_transit_distance;cycle_track;parking;parking_cost;water;beach_sand;beach_stone;beach_rock;beach_concrete;beach_grass;pet_bath;camping;temp_url;extra_url;visit_url;owner;phone;email\nSE0441273000000001;Vesljungasjön;56.4212500165633;13.7674095026078;Vesljungasjön, mellan Visseltofta och Emmaljunga, är en riktigt pärla. Här finns en vacker sandstrand på över hundra meter och en lång, fin brygga. Även här är det långgrunt.;;28022;Osby;;N;;;;Y;Y;;Y;Y;Y;N;;Gångavstånd från parkering cirka 50 meter.;;;;;Y;N;Lake;Y;N;N;N;N;N;N;;https://www.havochvatten.se/badplatser-och-badvatten/kommuner-och-badplatser/kommuner/badplatser-i-osby-kommun.html;https://www.osby.se/se--gora/upplev-osby-kommun/bada.html;K;0479123456;samhallsbyggnad@osby.se")
+		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;updated;nuts_code;wikidata_ref;description")
 
+		beaches, err := getBeachesFromContextBroker(contextBroker)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Errorf("Failed to get beaches from %s: %s", contextBroker, err.Error())
+			return
+		}
+
+		for _, beach := range beaches {
+			beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;%s",
+				beach.ID, beach.Name.Value, 65.2, 17.1,
+				"2021-04-28",
+				"nuts-kod",
+				"Q16498519",
+				beach.Description.Value,
+			)
+			beachesCsv.Write([]byte(beachInfo))
+		}
+
+		w.Header().Add("Content-Type", "text/csv")
 		w.Write(beachesCsv.Bytes())
 	})
 
+}
+
+func getBeachesFromContextBroker(host string) ([]*fiware.Beach, error) {
+	response, err := http.Get(fmt.Sprintf("http://%s/ngsi-ld/v1/entities?type=Beach", host))
+	if response.StatusCode != http.StatusOK {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	beaches := []*fiware.Beach{}
+
+	json.NewDecoder(response.Body).Decode(&beaches)
+
+	return beaches, err
 }
