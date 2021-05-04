@@ -12,9 +12,15 @@ import (
 	"github.com/iot-for-tillgenglighet/ngsi-ld-golang/pkg/datamodels/fiware"
 )
 
+const (
+	NUTSCodePrefix      string = "https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/"
+	WikidataPrefix      string = "https://www.wikidata.org/wiki/"
+	YearMonthDayISO8601 string = "2006-01-02"
+)
+
 func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;updated;nuts_code;wikidata_ref;description")
+		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;updated;nuts_code;ref_wikidata;description")
 
 		beaches, err := getBeachesFromContextBroker(contextBroker)
 		if err != nil {
@@ -26,16 +32,18 @@ func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.Ha
 		for _, beach := range beaches {
 			lonLat := beach.Location.GetAsPoint()
 			time := getDateModifiedFromBeach(beach)
-			nutskod := getNutsCodeFromBeach(beach)
+			nutsCode := getNutsCodeFromBeach(beach)
 			wiki := getWikiRefFromBeach(beach)
 			beachID := strings.TrimPrefix(beach.ID, fiware.BeachIDPrefix)
+
 			beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;\"%s\"",
-				beachID, beach.Name.Value, lonLat.Coordinates[0], lonLat.Coordinates[1],
+				beachID, beach.Name.Value, lonLat.Coordinates[1], lonLat.Coordinates[0],
 				time,
-				nutskod,
+				nutsCode,
 				wiki,
 				strings.ReplaceAll(beach.Description.Value, "\"", "\"\""),
 			)
+
 			beachesCsv.Write([]byte(beachInfo))
 		}
 
@@ -43,8 +51,6 @@ func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.Ha
 		w.Write(beachesCsv.Bytes())
 	})
 }
-
-const hovPrefix string = "https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/"
 
 func getNutsCodeFromBeach(beach *fiware.Beach) string {
 	refSeeAlso := beach.RefSeeAlso
@@ -54,15 +60,13 @@ func getNutsCodeFromBeach(beach *fiware.Beach) string {
 
 	for _, ref := range refSeeAlso.Object {
 
-		if strings.HasPrefix(ref, hovPrefix) {
-			return strings.TrimPrefix(ref, hovPrefix)
+		if strings.HasPrefix(ref, NUTSCodePrefix) {
+			return strings.TrimPrefix(ref, NUTSCodePrefix)
 		}
 	}
 
 	return ""
 }
-
-const dateFormat string = "2006-01-02"
 
 func getDateModifiedFromBeach(beach *fiware.Beach) string {
 	dateModified := beach.DateModified
@@ -75,12 +79,10 @@ func getDateModifiedFromBeach(beach *fiware.Beach) string {
 		return ""
 	}
 
-	date := timestamp.Format(dateFormat)
+	date := timestamp.Format(YearMonthDayISO8601)
 
 	return date
 }
-
-const wikiPrefix string = "https://www.wikidata.org/wiki/"
 
 func getWikiRefFromBeach(beach *fiware.Beach) string {
 	refSeeAlso := beach.RefSeeAlso
@@ -90,8 +92,8 @@ func getWikiRefFromBeach(beach *fiware.Beach) string {
 
 	for _, ref := range refSeeAlso.Object {
 
-		if strings.HasPrefix(ref, wikiPrefix) {
-			return strings.TrimPrefix(ref, wikiPrefix)
+		if strings.HasPrefix(ref, WikidataPrefix) {
+			return strings.TrimPrefix(ref, WikidataPrefix)
 		}
 	}
 
@@ -107,7 +109,7 @@ func getBeachesFromContextBroker(host string) ([]*fiware.Beach, error) {
 
 	beaches := []*fiware.Beach{}
 
-	json.NewDecoder(response.Body).Decode(&beaches)
+	err = json.NewDecoder(response.Body).Decode(&beaches)
 
 	return beaches, err
 }
