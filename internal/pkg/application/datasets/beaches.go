@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/iot-for-tillgenglighet/ngsi-ld-golang/pkg/datamodels/fiware"
@@ -24,15 +25,16 @@ func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.Ha
 
 		for _, beach := range beaches {
 			lonLat := beach.Location.GetAsPoint()
-			time, _ := getTimestampFromBeaches(beach)
-			nutskod, _ := getNutskodFromBeaches(beach)
-			wiki, _ := getWikiRefFromBeaches(beach)
-			beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;%s",
-				beach.ID, beach.Name.Value, lonLat.Coordinates[0], lonLat.Coordinates[1],
+			time := getDateModifiedFromBeach(beach)
+			nutskod := getNutsCodeFromBeach(beach)
+			wiki := getWikiRefFromBeach(beach)
+			beachID := strings.TrimPrefix(beach.ID, fiware.BeachIDPrefix)
+			beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;\"%s\"",
+				beachID, beach.Name.Value, lonLat.Coordinates[0], lonLat.Coordinates[1],
 				time,
 				nutskod,
 				wiki,
-				beach.Description.Value,
+				strings.ReplaceAll(beach.Description.Value, "\"", "\"\""),
 			)
 			beachesCsv.Write([]byte(beachInfo))
 		}
@@ -42,44 +44,58 @@ func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.Ha
 	})
 }
 
-func getNutskodFromBeaches(beach *fiware.Beach) (string, error) {
+const hovPrefix string = "https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/"
+
+func getNutsCodeFromBeach(beach *fiware.Beach) string {
 	refSeeAlso := beach.RefSeeAlso
 	if refSeeAlso == nil {
-		return "", fmt.Errorf("no references found in RefSeeAlso")
+		return ""
 	}
 
 	for _, ref := range refSeeAlso.Object {
-		hovPrefix := "https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/"
-		if strings.Contains(ref, hovPrefix) {
-			return strings.TrimPrefix(ref, hovPrefix), nil
+
+		if strings.HasPrefix(ref, hovPrefix) {
+			return strings.TrimPrefix(ref, hovPrefix)
 		}
 	}
 
-	return "", fmt.Errorf("no nutskod found")
+	return ""
 }
 
-func getTimestampFromBeaches(beach *fiware.Beach) (string, error) {
+const dateFormat string = "2006-01-02"
+
+func getDateModifiedFromBeach(beach *fiware.Beach) string {
 	dateModified := beach.DateModified
 	if dateModified == nil {
-		return "", fmt.Errorf("dateModified is empty")
+		return ""
 	}
-	return dateModified.Value.Value, nil
+
+	timestamp, err := time.Parse(time.RFC3339, dateModified.Value.Value)
+	if err != nil {
+		return ""
+	}
+
+	date := timestamp.Format(dateFormat)
+
+	return date
 }
 
-func getWikiRefFromBeaches(beach *fiware.Beach) (string, error) {
+const wikiPrefix string = "https://www.wikidata.org/wiki/"
+
+func getWikiRefFromBeach(beach *fiware.Beach) string {
 	refSeeAlso := beach.RefSeeAlso
 	if refSeeAlso == nil {
-		return "", fmt.Errorf("no references found in RefSeeAlso")
+		return ""
 	}
 
 	for _, ref := range refSeeAlso.Object {
-		wikiPrefix := "https://www.wikidata.org/wiki/"
-		if strings.Contains(ref, wikiPrefix) {
-			return strings.TrimPrefix(ref, wikiPrefix), nil
+
+		if strings.HasPrefix(ref, wikiPrefix) {
+			return strings.TrimPrefix(ref, wikiPrefix)
 		}
 	}
 
-	return "", fmt.Errorf("no wikidata_ref found")
+	return ""
 }
 
 func getBeachesFromContextBroker(host string) ([]*fiware.Beach, error) {
