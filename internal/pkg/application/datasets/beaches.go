@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/iot-for-tillgenglighet/ngsi-ld-golang/pkg/datamodels/fiware"
@@ -22,11 +23,15 @@ func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.Ha
 		}
 
 		for _, beach := range beaches {
+			lonLat := beach.Location.GetAsPoint()
+			time, _ := getTimestampFromBeaches(beach)
+			nutskod, _ := getNutskodFromBeaches(beach)
+			wiki, _ := getWikiRefFromBeaches(beach)
 			beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;%s",
-				beach.ID, beach.Name.Value, 65.2, 17.1,
-				"2021-04-28",
-				"nuts-kod",
-				"Q16498519",
+				beach.ID, beach.Name.Value, lonLat.Coordinates[0], lonLat.Coordinates[1],
+				time,
+				nutskod,
+				wiki,
 				beach.Description.Value,
 			)
 			beachesCsv.Write([]byte(beachInfo))
@@ -35,7 +40,46 @@ func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.Ha
 		w.Header().Add("Content-Type", "text/csv")
 		w.Write(beachesCsv.Bytes())
 	})
+}
 
+func getNutskodFromBeaches(beach *fiware.Beach) (string, error) {
+	refSeeAlso := beach.RefSeeAlso
+	if refSeeAlso == nil {
+		return "", fmt.Errorf("no references found in RefSeeAlso")
+	}
+
+	for _, ref := range refSeeAlso.Object {
+		hovPrefix := "https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/"
+		if strings.Contains(ref, hovPrefix) {
+			return strings.TrimPrefix(ref, hovPrefix), nil
+		}
+	}
+
+	return "", fmt.Errorf("no nutskod found")
+}
+
+func getTimestampFromBeaches(beach *fiware.Beach) (string, error) {
+	dateModified := beach.DateModified
+	if dateModified == nil {
+		return "", fmt.Errorf("dateModified is empty")
+	}
+	return dateModified.Value.Value, nil
+}
+
+func getWikiRefFromBeaches(beach *fiware.Beach) (string, error) {
+	refSeeAlso := beach.RefSeeAlso
+	if refSeeAlso == nil {
+		return "", fmt.Errorf("no references found in RefSeeAlso")
+	}
+
+	for _, ref := range refSeeAlso.Object {
+		wikiPrefix := "https://www.wikidata.org/wiki/"
+		if strings.Contains(ref, wikiPrefix) {
+			return strings.TrimPrefix(ref, wikiPrefix), nil
+		}
+	}
+
+	return "", fmt.Errorf("no wikidata_ref found")
 }
 
 func getBeachesFromContextBroker(host string) ([]*fiware.Beach, error) {
