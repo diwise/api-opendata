@@ -12,6 +12,8 @@ services:
     links:
       - pointofinterest
       - rabbitmq
+    environment: 
+      DIWISE_CONTEXT_BROKER_URL: $DIWISE_CONTEXT_BROKER_URL
     
     ports:
       - '8282'
