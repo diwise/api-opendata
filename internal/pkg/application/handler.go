@@ -24,6 +24,7 @@ type RequestRouter struct {
 func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.Datastore) {
 	//router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db))
 	router.Get("/api/beaches/", datasets.NewRetrieveBeachesHandler(log, "diwise.io"))
+	router.Get("/api/waterquality", datasets.NewRetrieveWaterQualityHandler(log, "diwise.io"))
 }
 
 func (router *RequestRouter) addProbeHandlers() {

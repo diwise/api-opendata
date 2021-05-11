@@ -45,3 +45,14 @@ func TestGetBeaches(t *testing.T) {
 
 	fmt.Println(w.Body.String())
 }
+func TestGetWaterQuality(t *testing.T) {
+	log := logging.NewLogger()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "http://localhost:8080/api/waterquality", nil)
+
+	datasets.NewRetrieveWaterQualityHandler(log, "diwise.io").ServeHTTP(w, req)
+
+	fmt.Println(w.Body.String())
+
+}
