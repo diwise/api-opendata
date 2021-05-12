@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
@@ -13,7 +14,7 @@ import (
 
 func NewRetrieveWaterQualityHandler(log logging.Logger, contextBroker string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		waterQualityCsv := bytes.NewBufferString("updated;latitude;longitude;temperature;sensor")
+		waterQualityCsv := bytes.NewBufferString("timestamp;latitude;longitude;temperature;sensor")
 
 		waterquality, err := getWaterQualityFromContextBroker(contextBroker)
 		if err != nil {
@@ -25,15 +26,15 @@ func NewRetrieveWaterQualityHandler(log logging.Logger, contextBroker string) ht
 		for _, wq := range waterquality {
 			lonLat := wq.Location.GetAsPoint()
 			timestamp := wq.DateObserved.Value.Value
-			temp := wq.Temperature.Value
+			temp := strconv.FormatFloat(wq.Temperature.Value, 'f', -1, 64)
 
 			var sensor string
 			if wq.RefDevice != nil {
 				sensor = strings.TrimPrefix(wq.RefDevice.Object, fiware.DeviceIDPrefix)
 			}
 
-			wqInfo := fmt.Sprintf("\r\n%s;%f;%f;%f;%s",
-				timestamp, lonLat.Coordinates[0], lonLat.Coordinates[1],
+			wqInfo := fmt.Sprintf("\r\n%s;%f;%f;%s;%s",
+				timestamp, lonLat.Coordinates[1], lonLat.Coordinates[0],
 				temp,
 				sensor,
 			)
@@ -48,7 +49,7 @@ func NewRetrieveWaterQualityHandler(log logging.Logger, contextBroker string) ht
 }
 
 func getWaterQualityFromContextBroker(host string) ([]*fiware.WaterQualityObserved, error) {
-	response, err := http.Get(fmt.Sprintf("https://%s/ngsi-ld/v1/entities?type=WaterQualityObserved", host))
+	response, err := http.Get(fmt.Sprintf("https://%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near;maxDistance==50000&geometry=Point&coordinates=%%5B17.2742640,62.37492958%%5D", host))
 	if response.StatusCode != http.StatusOK {
 		return nil, err
 	}
