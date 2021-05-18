@@ -14,6 +14,7 @@ services:
       - rabbitmq
     environment: 
       DIWISE_CONTEXT_BROKER_URL: $DIWISE_CONTEXT_BROKER_URL
+      WATER_QUALITY_QUERY_PARAMS: $WATER_QUALITY_QUERY_PARAMS
     
     ports:
       - '8282'

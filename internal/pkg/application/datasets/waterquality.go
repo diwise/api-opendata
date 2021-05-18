@@ -12,11 +12,11 @@ import (
 	"github.com/iot-for-tillgenglighet/ngsi-ld-golang/pkg/datamodels/fiware"
 )
 
-func NewRetrieveWaterQualityHandler(log logging.Logger, contextBroker string) http.HandlerFunc {
+func NewRetrieveWaterQualityHandler(log logging.Logger, contextBroker string, waterQualityQueryParams string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		waterQualityCsv := bytes.NewBufferString("timestamp;latitude;longitude;temperature;sensor")
 
-		waterquality, err := getWaterQualityFromContextBroker(contextBroker)
+		waterquality, err := getWaterQualityFromContextBroker(contextBroker, waterQualityQueryParams)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Errorf("Failed to get waterquality from %s: %s", contextBroker, err.Error())
@@ -48,8 +48,13 @@ func NewRetrieveWaterQualityHandler(log logging.Logger, contextBroker string) ht
 	})
 }
 
-func getWaterQualityFromContextBroker(host string) ([]*fiware.WaterQualityObserved, error) {
-	response, err := http.Get(fmt.Sprintf("https://%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near;maxDistance==50000&geometry=Point&coordinates=%%5B17.2742640,62.37492958%%5D", host))
+func getWaterQualityFromContextBroker(host string, queryParams string) ([]*fiware.WaterQualityObserved, error) {
+	url := host + "/ngsi-ld/v1/entities?type=WaterQualityObserved"
+	if len(queryParams) > 0 {
+		url = url + "&" + queryParams
+	}
+
+	response, err := http.Get(url)
 	if response.StatusCode != http.StatusOK {
 		return nil, err
 	}
