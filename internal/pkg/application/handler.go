@@ -22,8 +22,12 @@ type RequestRouter struct {
 }
 
 func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.Datastore) {
+	contextBrokerURL := os.Getenv("DIWISE_CONTEXT_BROKER_URL")
+	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
+
 	//router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db))
-	router.Get("/api/beaches/", datasets.NewRetrieveBeachesHandler(log, "diwise.io"))
+	router.Get("/api/waterquality", datasets.NewRetrieveWaterQualityHandler(log, contextBrokerURL, waterQualityQueryParams))
+	router.Get("/api/beaches", datasets.NewRetrieveBeachesHandler(log, contextBrokerURL))
 }
 
 func (router *RequestRouter) addProbeHandlers() {

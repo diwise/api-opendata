@@ -101,7 +101,7 @@ func getWikiRefFromBeach(beach *fiware.Beach) string {
 }
 
 func getBeachesFromContextBroker(host string) ([]*fiware.Beach, error) {
-	response, err := http.Get(fmt.Sprintf("http://%s/ngsi-ld/v1/entities?type=Beach", host))
+	response, err := http.Get(fmt.Sprintf("%s/ngsi-ld/v1/entities?type=Beach", host))
 	if response.StatusCode != http.StatusOK {
 		return nil, err
 	}
