@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
-	"github.com/iot-for-tillgenglighet/ngsi-ld-golang/pkg/datamodels/fiware"
+	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
 )
 
 const (
