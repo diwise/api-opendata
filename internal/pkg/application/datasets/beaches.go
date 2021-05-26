@@ -39,7 +39,7 @@ func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.Ha
 			wiki := getWikiRefFromBeach(beach)
 			beachID := strings.TrimPrefix(beach.ID, fiware.BeachIDPrefix)
 
-			tempURL := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near\\;maxDistance==1000&geometry=Point&coordinates=[%f,%f]", contextBroker, longitude, latitude)
+			tempURL := fmt.Sprintf("\"%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near;maxDistance==1000&geometry=Point&coordinates=[%f,%f]\"", contextBroker, longitude, latitude)
 
 			beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;%s;%s;\"%s\"",
 				beachID, beach.Name.Value, latitude, longitude,
