@@ -20,7 +20,7 @@ const (
 
 func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;updated;nuts_code;ref_wikidata;description")
+		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;kommunkod;updated;nutscode;wikidata;temp_url;description")
 
 		beaches, err := getBeachesFromContextBroker(contextBroker)
 		if err != nil {
@@ -31,16 +31,23 @@ func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.Ha
 
 		for _, beach := range beaches {
 			lonLat := beach.Location.GetAsPoint()
+			longitude := lonLat.Coordinates[0]
+			latitude := lonLat.Coordinates[1]
+
 			time := getDateModifiedFromBeach(beach)
 			nutsCode := getNutsCodeFromBeach(beach)
 			wiki := getWikiRefFromBeach(beach)
 			beachID := strings.TrimPrefix(beach.ID, fiware.BeachIDPrefix)
 
-			beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;\"%s\"",
-				beachID, beach.Name.Value, lonLat.Coordinates[1], lonLat.Coordinates[0],
+			tempURL := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near;maxDistance==1000&geometry=Point&coordinates=[%f,%f]", contextBroker, longitude, latitude)
+
+			beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;%s;%s;\"%s\"",
+				beachID, beach.Name.Value, latitude, longitude,
+				"2281",
 				time,
 				nutsCode,
 				wiki,
+				tempURL,
 				strings.ReplaceAll(beach.Description.Value, "\"", "\"\""),
 			)
 
