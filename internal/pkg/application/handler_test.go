@@ -61,6 +61,22 @@ func TestGetWaterQuality(t *testing.T) {
 	}
 }
 
+func TestGetTrafficFlows(t *testing.T) {
+	log := logging.NewLogger()
+
+	server := setupMockService(http.StatusOK, trafficFlowJson)
+
+	nr := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "http://localhost:8080/api/trafficflow", nil)
+
+	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
+	if nr.Code != http.StatusOK {
+		t.Errorf("Request failed, status code not OK: %d", nr.Code)
+	}
+
+	log.Infof(nr.Body.String())
+}
+
 func setupMockService(responseCode int, responseBody string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/ld+json")
@@ -68,6 +84,45 @@ func setupMockService(responseCode int, responseBody string) *httptest.Server {
 		w.Write([]byte(responseBody))
 	}))
 }
+
+const trafficFlowJson string = `[{
+    "@context": [
+      "https://schema.lab.fiware.org/ld/context",
+      "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
+    ],
+    "id": "urn:ngsi-ld:TrafficFlowObserved:sn-tcr-01:test",
+    "type": "TrafficFlowObserved",
+		"location": {
+			"type": "GeoProperty",
+			"value": {
+				"coordinates": [
+					17.0,
+					62.2
+				],
+			"type": "Point"
+			}
+		},
+		"dateObserved": {
+			"type": "Property",
+			"value": "2016-12-07T11:10:00Z"
+		},
+		"laneID": {
+			"type": "Property",
+			"value": 1
+		},
+		"averageVehicleSpeed": {
+			"type": "Property",
+			"value": 17.3
+		},
+		"intensity": {
+			"type": "Property",
+			"value": 8
+		},
+		"refRoadSegment": {
+			"type": "Relationship",
+			"object": ""
+		}
+}]`
 
 const waterqualityJson string = `[{
 	"@context": [

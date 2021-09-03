@@ -3,7 +3,7 @@ module github.com/diwise/api-opendata
 go 1.15
 
 require (
-	github.com/diwise/ngsi-ld-golang v0.0.0-20210519125641-0cb62633de46
+	github.com/diwise/ngsi-ld-golang v0.0.0-20210831145316-7634fd293238
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/kr/text v0.2.0 // indirect
 	github.com/rs/cors v1.7.0
