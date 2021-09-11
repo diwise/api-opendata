@@ -6,6 +6,7 @@ require (
 	github.com/diwise/ngsi-ld-golang v0.0.0-20210831145316-7634fd293238
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/kr/text v0.2.0 // indirect
+	github.com/matryer/is v1.4.0
 	github.com/rs/cors v1.7.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stretchr/testify v1.6.1 // indirect

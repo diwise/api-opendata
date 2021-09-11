@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
@@ -12,7 +13,7 @@ import (
 
 func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tfosCsv := bytes.NewBufferString("id;date_observed;lane_id;intensity;latitude;longitude")
+		tfosCsv := bytes.NewBufferString("road_segment;date_observed;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;")
 
 		tfos, err := getTrafficFlowsFromContextBroker(contextBroker)
 		if err != nil {
@@ -21,20 +22,54 @@ func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) ht
 			return
 		}
 
-		for _, tfo := range tfos {
+		w.Header().Add("Content-Type", "text/csv")
 
-			tfoInfo := fmt.Sprintf("\r\n%s;%s;%d;%d;",
-				tfo.ID,
-				tfo.DateObserved.Value,
-				int(tfo.LaneID.Value),
-				int(tfo.Intensity.Value),
-			)
-
-			tfosCsv.Write([]byte(tfoInfo))
+		if len(tfos) == 0 {
+			w.Write(tfosCsv.Bytes())
+			return
 		}
 
-		w.Header().Add("Content-Type", "text/csv")
+		sameDateIntensity := [8]int{}
+		sameDateAvgSpeed := [8]float64{}
+
+		tfoDateObserved := tfos[0].DateObserved.Value
+		tfoLaneId := int(tfos[0].LaneID.Value)
+		sameDateAvgSpeed[tfoLaneId] = tfos[0].AverageVehicleSpeed.Value
+		sameDateIntensity[tfoLaneId] = int(tfos[0].Intensity.Value)
+
+		for i := 1; i < len(tfos); i++ {
+			if strings.Compare(tfos[i-1].DateObserved.Value, tfos[i].DateObserved.Value) == 0 {
+				laneId := int(tfos[i].LaneID.Value)
+				sameDateIntensity[laneId] = int(tfos[i].Intensity.Value)
+				sameDateAvgSpeed[laneId] = tfos[i].AverageVehicleSpeed.Value
+			}
+		}
+
+		tfoInfo := fmt.Sprintf("\r\n%s;%s;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;",
+			"roadsegment",
+			tfoDateObserved,
+			sameDateIntensity[0],
+			sameDateAvgSpeed[0],
+			sameDateIntensity[1],
+			sameDateAvgSpeed[1],
+			sameDateIntensity[2],
+			sameDateAvgSpeed[2],
+			sameDateIntensity[3],
+			sameDateAvgSpeed[3],
+			sameDateIntensity[4],
+			sameDateAvgSpeed[4],
+			sameDateIntensity[5],
+			sameDateAvgSpeed[5],
+			sameDateIntensity[6],
+			sameDateAvgSpeed[6],
+			sameDateIntensity[7],
+			sameDateAvgSpeed[7],
+		)
+
+		tfosCsv.Write([]byte(tfoInfo))
+
 		w.Write(tfosCsv.Bytes())
+
 	})
 }
 
