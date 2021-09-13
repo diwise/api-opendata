@@ -152,82 +152,7 @@ func TestGetTrafficFlowsHandlesDifferentDateObservations(t *testing.T) {
 	is := is.New(t)
 	log := logging.NewLogger()
 
-	server := setupMockService(http.StatusOK, `[{
-		"@context": [
-		  "https://schema.lab.fiware.org/ld/context",
-		  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
-		],
-		"id": "urn:ngsi-ld:TrafficFlowObserved:sn-tcr-01:test",
-		"type": "TrafficFlowObserved",
-			"location": {
-				"type": "GeoProperty",
-				"value": {
-					"coordinates": [
-						17.0,
-						62.2
-					],
-				"type": "Point"
-				}
-			},
-			"dateObserved": {
-				"type": "Property",
-				"value": "2016-12-07T11:10:00Z"
-			},
-			"laneID": {
-				"type": "Property",
-				"value": 0
-			},
-			"averageVehicleSpeed": {
-				"type": "Property",
-				"value": 17.3
-			},
-			"intensity": {
-				"type": "Property",
-				"value": 8
-			},
-			"refRoadSegment": {
-				"type": "Relationship",
-				"object": ""
-			}
-	},
-	{
-		"@context": [
-		  "https://schema.lab.fiware.org/ld/context",
-		  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
-		],
-		"id": "urn:ngsi-ld:TrafficFlowObserved:sn-tcr-01:test",
-		"type": "TrafficFlowObserved",
-			"location": {
-				"type": "GeoProperty",
-				"value": {
-					"coordinates": [
-						17.0,
-						62.2
-					],
-				"type": "Point"
-				}
-			},
-			"dateObserved": {
-				"type": "Property",
-				"value": "2016-12-07T13:10:00Z"
-			},
-			"laneID": {
-				"type": "Property",
-				"value": 3
-			},
-			"averageVehicleSpeed": {
-				"type": "Property",
-				"value": 25.4
-			},
-			"intensity": {
-				"type": "Property",
-				"value": 3
-			},
-			"refRoadSegment": {
-				"type": "Relationship",
-				"object": ""
-			}
-	}]`)
+	server := setupMockService(http.StatusOK, differentDateTfos)
 
 	nr := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "https://localhost:8080/api/trafficflow", nil)
@@ -236,7 +161,26 @@ func TestGetTrafficFlowsHandlesDifferentDateObservations(t *testing.T) {
 
 	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
 
-	is.Equal(nr.Body.String(), "road_segment;date_observed;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;\r\nroadsegment;2016-12-07T11:10:00Z;8;17.3;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;\r\nroadsegment;2016-12-07T13:10:00Z;0;0.0;0;0.0;0;0.0;3;25.4;0;0.0;0;0.0;0;0.0;0;0.0;") // expected body to return values for intensity and average speed for two different date observations
+	is.Equal(nr.Body.String(), "road_segment;date_observed;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;\r\nroadsegment;2016-12-07T11:10:00Z;8;17.3;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;\r\nroadsegment;2016-12-07T13:10:00Z;0;0.0;0;0.0;0;0.0;3;25.4;0;0.0;0;0.0;0;0.0;0;0.0;\r\nroadsegment;2016-12-07T18:10:00Z;0;0.0;0;0.0;0;0.0;3;25.4;0;0.0;0;0.0;0;0.0;0;0.0;") // expected body to return values for intensity and average speed for two different date observations
+}
+
+func TestGetTrafficFlowsHandlesDateObservationsFromTimeSpan(t *testing.T) {
+	is := is.New(t)
+	log := logging.NewLogger()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		is.Equal(r.URL.RequestURI(), "/ngsi-ld/v1/entities?type=TrafficFlowObserved&timerel=between&timeAt=2016-12-07T11:10:00Z&endTimeAt=2016-12-07T13:10:00Z")
+
+		w.Header().Add("Content-Type", "application/ld+json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("[]"))
+	}))
+
+	nr := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", server.URL+"/api/trafficflows?from=2016-12-07T11:10:00Z&to=2016-12-07T13:10:00Z", nil)
+
+	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
+
 }
 
 func setupMockService(responseCode int, responseBody string) *httptest.Server {
@@ -246,6 +190,121 @@ func setupMockService(responseCode int, responseBody string) *httptest.Server {
 		w.Write([]byte(responseBody))
 	}))
 }
+
+const differentDateTfos string = `[{
+	"@context": [
+	  "https://schema.lab.fiware.org/ld/context",
+	  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
+	],
+	"id": "urn:ngsi-ld:TrafficFlowObserved:sn-tcr-01:test",
+	"type": "TrafficFlowObserved",
+		"location": {
+			"type": "GeoProperty",
+			"value": {
+				"coordinates": [
+					17.0,
+					62.2
+				],
+			"type": "Point"
+			}
+		},
+		"dateObserved": {
+			"type": "Property",
+			"value": "2016-12-07T11:10:00Z"
+		},
+		"laneID": {
+			"type": "Property",
+			"value": 0
+		},
+		"averageVehicleSpeed": {
+			"type": "Property",
+			"value": 17.3
+		},
+		"intensity": {
+			"type": "Property",
+			"value": 8
+		},
+		"refRoadSegment": {
+			"type": "Relationship",
+			"object": ""
+		}
+},
+{
+	"@context": [
+	  "https://schema.lab.fiware.org/ld/context",
+	  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
+	],
+	"id": "urn:ngsi-ld:TrafficFlowObserved:sn-tcr-01:test",
+	"type": "TrafficFlowObserved",
+		"location": {
+			"type": "GeoProperty",
+			"value": {
+				"coordinates": [
+					17.0,
+					62.2
+				],
+			"type": "Point"
+			}
+		},
+		"dateObserved": {
+			"type": "Property",
+			"value": "2016-12-07T13:10:00Z"
+		},
+		"laneID": {
+			"type": "Property",
+			"value": 3
+		},
+		"averageVehicleSpeed": {
+			"type": "Property",
+			"value": 25.4
+		},
+		"intensity": {
+			"type": "Property",
+			"value": 3
+		},
+		"refRoadSegment": {
+			"type": "Relationship",
+			"object": ""
+		}
+},
+{
+	"@context": [
+	  "https://schema.lab.fiware.org/ld/context",
+	  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
+	],
+	"id": "urn:ngsi-ld:TrafficFlowObserved:sn-tcr-01:test",
+	"type": "TrafficFlowObserved",
+		"location": {
+			"type": "GeoProperty",
+			"value": {
+				"coordinates": [
+					17.0,
+					62.2
+				],
+			"type": "Point"
+			}
+		},
+		"dateObserved": {
+			"type": "Property",
+			"value": "2016-12-07T18:10:00Z"
+		},
+		"laneID": {
+			"type": "Property",
+			"value": 3
+		},
+		"averageVehicleSpeed": {
+			"type": "Property",
+			"value": 25.4
+		},
+		"intensity": {
+			"type": "Property",
+			"value": 3
+		},
+		"refRoadSegment": {
+			"type": "Relationship",
+			"object": ""
+		}
+}]`
 
 const trafficFlowJson string = `[{
     "@context": [

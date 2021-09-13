@@ -15,7 +15,10 @@ func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) ht
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tfosCsv := bytes.NewBufferString("road_segment;date_observed;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;")
 
-		tfos, err := getTrafficFlowsFromContextBroker(contextBroker)
+		from := r.URL.Query().Get("from")
+		to := r.URL.Query().Get("to")
+
+		tfos, err := getTrafficFlowsFromContextBroker(contextBroker, from, to)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Errorf("Failed to get trafficFlows from %s: %s", contextBroker, err.Error())
@@ -76,9 +79,16 @@ func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) ht
 	})
 }
 
-func getTrafficFlowsFromContextBroker(host string) ([]*fiware.TrafficFlowObserved, error) {
-	response, err := http.Get(fmt.Sprintf("%s/ngsi-ld/v1/entities?type=TrafficFlowObserved", host))
-	if response.StatusCode != http.StatusOK {
+func getTrafficFlowsFromContextBroker(host, from, to string) ([]*fiware.TrafficFlowObserved, error) {
+
+	url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=TrafficFlowObserved", host)
+
+	if from != "" && to != "" {
+		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, from, to)
+	}
+
+	response, err := http.Get(url)
+	if err != nil || response.StatusCode != http.StatusOK {
 		return nil, err
 	}
 	defer response.Body.Close()
