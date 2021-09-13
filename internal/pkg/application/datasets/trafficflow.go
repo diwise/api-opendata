@@ -80,6 +80,7 @@ func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) ht
 }
 
 func getTrafficFlowsFromContextBroker(host, from, to string) ([]*fiware.TrafficFlowObserved, error) {
+	var err error
 
 	url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=TrafficFlowObserved", host)
 
@@ -88,8 +89,11 @@ func getTrafficFlowsFromContextBroker(host, from, to string) ([]*fiware.TrafficF
 	}
 
 	response, err := http.Get(url)
-	if err != nil || response.StatusCode != http.StatusOK {
+	if err != nil {
 		return nil, err
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed, status code not ok: %s", err)
 	}
 	defer response.Body.Close()
 
