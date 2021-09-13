@@ -32,48 +32,70 @@ func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) ht
 		sameDateIntensity := [8]int{}
 		sameDateAvgSpeed := [8]float64{}
 
-		for j, m := 0, 1; j < len(tfos); {
+		currentDate := tfos[0].DateObserved.Value
 
-			tfoDateObserved := tfos[j].DateObserved.Value
-			tfoLaneId := int(tfos[j].LaneID.Value)
-			sameDateAvgSpeed[tfoLaneId] = tfos[j].AverageVehicleSpeed.Value
-			sameDateIntensity[tfoLaneId] = int(tfos[j].Intensity.Value)
+		for _, tfo := range tfos {
 
-			for i := 1; i < len(tfos); i++ {
-				if strings.Compare(tfoDateObserved, tfos[i].DateObserved.Value) == 0 {
-					laneId := int(tfos[i].LaneID.Value)
-					sameDateIntensity[laneId] = int(tfos[i].Intensity.Value)
-					sameDateAvgSpeed[laneId] = tfos[i].AverageVehicleSpeed.Value
-					m++
-				}
+			tfoDateObserved := tfo.DateObserved.Value
+
+			if strings.Compare(currentDate, tfoDateObserved) != 0 {
+				tfoInfo := fmt.Sprintf("\r\n%s;%s;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;",
+					"roadsegment",
+					currentDate,
+					sameDateIntensity[0],
+					sameDateAvgSpeed[0],
+					sameDateIntensity[1],
+					sameDateAvgSpeed[1],
+					sameDateIntensity[2],
+					sameDateAvgSpeed[2],
+					sameDateIntensity[3],
+					sameDateAvgSpeed[3],
+					sameDateIntensity[4],
+					sameDateAvgSpeed[4],
+					sameDateIntensity[5],
+					sameDateAvgSpeed[5],
+					sameDateIntensity[6],
+					sameDateAvgSpeed[6],
+					sameDateIntensity[7],
+					sameDateAvgSpeed[7],
+				)
+
+				sameDateIntensity = [8]int{}
+				sameDateAvgSpeed = [8]float64{}
+
+				currentDate = tfoDateObserved
+
+				tfosCsv.Write([]byte(tfoInfo))
 			}
 
-			j = j + m
-
-			tfoInfo := fmt.Sprintf("\r\n%s;%s;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;",
-				"roadsegment",
-				tfoDateObserved,
-				sameDateIntensity[0],
-				sameDateAvgSpeed[0],
-				sameDateIntensity[1],
-				sameDateAvgSpeed[1],
-				sameDateIntensity[2],
-				sameDateAvgSpeed[2],
-				sameDateIntensity[3],
-				sameDateAvgSpeed[3],
-				sameDateIntensity[4],
-				sameDateAvgSpeed[4],
-				sameDateIntensity[5],
-				sameDateAvgSpeed[5],
-				sameDateIntensity[6],
-				sameDateAvgSpeed[6],
-				sameDateIntensity[7],
-				sameDateAvgSpeed[7],
-			)
-
-			tfosCsv.Write([]byte(tfoInfo))
+			tfoLaneId := int(tfo.LaneID.Value)
+			sameDateAvgSpeed[tfoLaneId] = tfo.AverageVehicleSpeed.Value
+			sameDateIntensity[tfoLaneId] = int(tfo.Intensity.Value)
 
 		}
+
+		tfoInfo := fmt.Sprintf("\r\n%s;%s;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;",
+			"roadsegment",
+			currentDate,
+			sameDateIntensity[0],
+			sameDateAvgSpeed[0],
+			sameDateIntensity[1],
+			sameDateAvgSpeed[1],
+			sameDateIntensity[2],
+			sameDateAvgSpeed[2],
+			sameDateIntensity[3],
+			sameDateAvgSpeed[3],
+			sameDateIntensity[4],
+			sameDateAvgSpeed[4],
+			sameDateIntensity[5],
+			sameDateAvgSpeed[5],
+			sameDateIntensity[6],
+			sameDateAvgSpeed[6],
+			sameDateIntensity[7],
+			sameDateAvgSpeed[7],
+		)
+
+		tfosCsv.Write([]byte(tfoInfo))
 
 		w.Write(tfosCsv.Bytes())
 

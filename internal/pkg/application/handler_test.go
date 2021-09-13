@@ -236,7 +236,7 @@ func TestGetTrafficFlowsHandlesDifferentDateObservations(t *testing.T) {
 
 	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
 
-	is.Equal(nr.Body.String(), "road_segment;date_observed;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;\r\nroadsegment;2016-12-07T11:10:00Z;8;17.3;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;\r\nroadsegment;2016-12-07T13:10:00Z;8;17.3;0;0.0;0;0.0;3;25.4;0;0.0;0;0.0;0;0.0;0;0.0;") // expected body to return values for intensity and average speed for two different date observations
+	is.Equal(nr.Body.String(), "road_segment;date_observed;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;\r\nroadsegment;2016-12-07T11:10:00Z;8;17.3;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;\r\nroadsegment;2016-12-07T13:10:00Z;0;0.0;0;0.0;0;0.0;3;25.4;0;0.0;0;0.0;0;0.0;0;0.0;") // expected body to return values for intensity and average speed for two different date observations
 }
 
 func setupMockService(responseCode int, responseBody string) *httptest.Server {
