@@ -13,7 +13,7 @@ import (
 
 func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tfosCsv := bytes.NewBufferString("road_segment;date_observed;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;")
+		tfosCsv := bytes.NewBufferString("date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG;")
 
 		from := r.URL.Query().Get("from")
 		to := r.URL.Query().Get("to")
@@ -21,7 +21,7 @@ func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) ht
 		tfos, err := getTrafficFlowsFromContextBroker(contextBroker, from, to)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Errorf("Failed to get trafficFlows from %s: %s", contextBroker, err.Error())
+			log.Errorf("failed to get traffic flow observations from %s: %s", contextBroker, err.Error())
 			return
 		}
 
@@ -43,7 +43,7 @@ func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) ht
 
 			if strings.Compare(currentDate, tfoDateObserved) != 0 {
 				tfoInfo := fmt.Sprintf("\r\n%s;%s;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;",
-					"roadsegment", currentDate,
+					currentDate, "roadsegment",
 					sameDateIntensity[0], sameDateAvgSpeed[0], sameDateIntensity[1], sameDateAvgSpeed[1],
 					sameDateIntensity[2], sameDateAvgSpeed[2], sameDateIntensity[3], sameDateAvgSpeed[3],
 					sameDateIntensity[4], sameDateAvgSpeed[4], sameDateIntensity[5], sameDateAvgSpeed[5],
@@ -65,7 +65,7 @@ func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) ht
 		}
 
 		tfoInfo := fmt.Sprintf("\r\n%s;%s;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;",
-			"roadsegment", currentDate,
+			currentDate, "roadsegment",
 			sameDateIntensity[0], sameDateAvgSpeed[0], sameDateIntensity[1], sameDateAvgSpeed[1],
 			sameDateIntensity[2], sameDateAvgSpeed[2], sameDateIntensity[3], sameDateAvgSpeed[3],
 			sameDateIntensity[4], sameDateAvgSpeed[4], sameDateIntensity[5], sameDateAvgSpeed[5],
