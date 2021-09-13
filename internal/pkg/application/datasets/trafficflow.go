@@ -40,24 +40,11 @@ func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) ht
 
 			if strings.Compare(currentDate, tfoDateObserved) != 0 {
 				tfoInfo := fmt.Sprintf("\r\n%s;%s;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;",
-					"roadsegment",
-					currentDate,
-					sameDateIntensity[0],
-					sameDateAvgSpeed[0],
-					sameDateIntensity[1],
-					sameDateAvgSpeed[1],
-					sameDateIntensity[2],
-					sameDateAvgSpeed[2],
-					sameDateIntensity[3],
-					sameDateAvgSpeed[3],
-					sameDateIntensity[4],
-					sameDateAvgSpeed[4],
-					sameDateIntensity[5],
-					sameDateAvgSpeed[5],
-					sameDateIntensity[6],
-					sameDateAvgSpeed[6],
-					sameDateIntensity[7],
-					sameDateAvgSpeed[7],
+					"roadsegment", currentDate,
+					sameDateIntensity[0], sameDateAvgSpeed[0], sameDateIntensity[1], sameDateAvgSpeed[1],
+					sameDateIntensity[2], sameDateAvgSpeed[2], sameDateIntensity[3], sameDateAvgSpeed[3],
+					sameDateIntensity[4], sameDateAvgSpeed[4], sameDateIntensity[5], sameDateAvgSpeed[5],
+					sameDateIntensity[6], sameDateAvgSpeed[6], sameDateIntensity[7], sameDateAvgSpeed[7],
 				)
 
 				sameDateIntensity = [8]int{}
@@ -75,24 +62,11 @@ func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) ht
 		}
 
 		tfoInfo := fmt.Sprintf("\r\n%s;%s;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;",
-			"roadsegment",
-			currentDate,
-			sameDateIntensity[0],
-			sameDateAvgSpeed[0],
-			sameDateIntensity[1],
-			sameDateAvgSpeed[1],
-			sameDateIntensity[2],
-			sameDateAvgSpeed[2],
-			sameDateIntensity[3],
-			sameDateAvgSpeed[3],
-			sameDateIntensity[4],
-			sameDateAvgSpeed[4],
-			sameDateIntensity[5],
-			sameDateAvgSpeed[5],
-			sameDateIntensity[6],
-			sameDateAvgSpeed[6],
-			sameDateIntensity[7],
-			sameDateAvgSpeed[7],
+			"roadsegment", currentDate,
+			sameDateIntensity[0], sameDateAvgSpeed[0], sameDateIntensity[1], sameDateAvgSpeed[1],
+			sameDateIntensity[2], sameDateAvgSpeed[2], sameDateIntensity[3], sameDateAvgSpeed[3],
+			sameDateIntensity[4], sameDateAvgSpeed[4], sameDateIntensity[5], sameDateAvgSpeed[5],
+			sameDateIntensity[6], sameDateAvgSpeed[6], sameDateIntensity[7], sameDateAvgSpeed[7],
 		)
 
 		tfosCsv.Write([]byte(tfoInfo))
