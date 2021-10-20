@@ -88,6 +88,7 @@ func calculateAverage(temps []Temp) (float64, error) {
 type Temp struct {
 	Id    string
 	Value float64
+	When  string
 }
 
 type TempService interface {
@@ -133,6 +134,7 @@ func getSomeTemperatures(contextBrokerURL string, from, to time.Time) ([]Temp, e
 		t := Temp{
 			Id:    wo.RefDevice.Object,
 			Value: wo.Temperature.Value,
+			When:  wo.DateObserved.Value.Value,
 		}
 		temps = append(temps, t)
 	}
