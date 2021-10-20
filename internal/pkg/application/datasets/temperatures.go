@@ -75,6 +75,7 @@ func calculateAverage(temps []Temp) (float64, error) {
 
 // TODO: Refaktorisera och flytta till domänlagret
 type Temp struct {
+	Id    string
 	Value float64
 }
 
@@ -119,6 +120,7 @@ func getSomeTemperatures(contextBrokerURL string, from, to time.Time) ([]Temp, e
 
 	for _, wo := range wos {
 		t := Temp{
+			Id:    wo.ID,
 			Value: wo.Temperature.Value,
 		}
 		temps = append(temps, t)
