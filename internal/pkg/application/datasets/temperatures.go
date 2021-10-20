@@ -8,9 +8,19 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 )
 
+type TempResponseValue struct {
+	Value string `json:"val"`
+}
+
+type TempResponseItem struct {
+	ID      string              `json:"id"`
+	Values  []TempResponseValue `json:"values"`
+	Average float64             `json:"average"`
+	Unit    string              `json:"unit"`
+}
+
 type TempResponse struct {
-	Items []struct {
-	} `json:"items"`
+	Items []TempResponseItem `json:"items"`
 }
 
 func NewRetrieveTemperaturesHandler(log logging.Logger, contextBrokerURL string) http.HandlerFunc {
