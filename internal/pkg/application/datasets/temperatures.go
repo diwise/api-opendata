@@ -111,7 +111,7 @@ func getSomeTemperatures(contextBrokerURL string, from, to time.Time) ([]Temp, e
 
 	timeAt := from.Format(time.RFC3339)
 	endTimeAt := to.Format(time.RFC3339)
-	url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=WeatherObserved&attrs=temperature&timerel=between&timeAt=%s&endTimeAt=%s", contextBrokerURL, timeAt, endTimeAt)
+	url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=WeatherObserved&attrs=temperature&georel=near;maxDistance==2000&geometry=Point&coordinates=[17.3051555,62.3908926]&timerel=between&timeAt=%s&endTimeAt=%s", contextBrokerURL, timeAt, endTimeAt)
 
 	response, err := http.Get(url)
 	if err != nil {
@@ -131,7 +131,7 @@ func getSomeTemperatures(contextBrokerURL string, from, to time.Time) ([]Temp, e
 
 	for _, wo := range wos {
 		t := Temp{
-			Id:    wo.ID,
+			Id:    wo.RefDevice.Object,
 			Value: wo.Temperature.Value,
 		}
 		temps = append(temps, t)
