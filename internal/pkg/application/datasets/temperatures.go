@@ -3,9 +3,12 @@ package datasets
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
+	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
 )
 
 type TempResponseValue struct {
@@ -30,7 +33,7 @@ func NewRetrieveTemperaturesHandler(log logging.Logger, svc TempService) http.Ha
 		tempRespItem := &TempResponseItem{}
 		tempRespItem.ID = "gurka"
 
-		temps, _ := svc.Get()
+		temps, _ := svc.Get(time.Now().UTC().Add(-7*24*time.Hour), time.Now().UTC())
 
 		tempRespItem.Average, _ = calculateAverage(temps)
 
@@ -76,33 +79,50 @@ type Temp struct {
 }
 
 type TempService interface {
-	Get() ([]Temp, error)
+	Get(from, to time.Time) ([]Temp, error)
 }
 
 type ts struct {
 	contextBrokerURL string
 }
 
+func (svc ts) Get(from, to time.Time) ([]Temp, error) {
+	return getSomeTemperatures(svc.contextBrokerURL, from, to)
+}
+
 func NewTempService(contextBrokerURL string) TempService {
 	return &ts{contextBrokerURL: contextBrokerURL}
 }
 
-func (svc ts) Get() ([]Temp, error) {
-	return getSomeTemperatures(svc.contextBrokerURL)
-}
+func getSomeTemperatures(contextBrokerURL string, from, to time.Time) ([]Temp, error) {
+	var err error
 
-func getSomeTemperatures(contextBrokerURL string) ([]Temp, error) {
-	temps := []Temp{
-		{
-			Value: 1.1,
-		},
-		{
-			Value: 2.1,
-		},
-		{
-			Value: 3.1,
-		},
+	timeAt := from.Format(time.RFC3339)
+	endTimeAt := to.Format(time.RFC3339)
+	url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=WeatherObserved&attrs=temperature&timerel=between&timeAt=%s&endTimeAt=%s", contextBrokerURL, timeAt, endTimeAt)
+
+	response, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed, status code not ok: %s", err)
+	}
+	defer response.Body.Close()
+
+	temps := []Temp{}
+	wos := []fiware.WeatherObserved{}
+
+	b, _ := io.ReadAll(response.Body)
+
+	err = json.Unmarshal(b, &wos)
+
+	for _, wo := range wos {
+		t := Temp{
+			Value: wo.Temperature.Value,
+		}
+		temps = append(temps, t)
 	}
 
-	return temps, fmt.Errorf("not implemented")
+	return temps, err
 }
