@@ -120,7 +120,7 @@ func getSomeTemperatures(contextBrokerURL string, from, to time.Time) ([]Temp, e
 
 	for _, wo := range wos {
 		t := Temp{
-			Id:    wo.ID,
+			Id:    wo.RefDevice.Object,
 			Value: wo.Temperature.Value,
 		}
 		temps = append(temps, t)
