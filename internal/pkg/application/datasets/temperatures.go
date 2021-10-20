@@ -13,12 +13,13 @@ import (
 
 type TempResponseValue struct {
 	Value string `json:"val"`
+	When  string `json:"when"`
 }
 
 type TempResponseItem struct {
 	ID      string              `json:"id"`
 	Values  []TempResponseValue `json:"values"`
-	Average float64             `json:"average"`
+	Average string              `json:"average"`
 }
 
 type TempResponse struct {
@@ -39,13 +40,20 @@ func NewRetrieveTemperaturesHandler(log logging.Logger, svc TempService) http.Ha
 			temp, exist := tempRespItemMap[t.Id]
 
 			if exist {
-				temp.Values = append(temp.Values, TempResponseValue{Value: fmt.Sprintf("%.2f", t.Value)})
+				temp.Values = append(temp.Values, TempResponseValue{
+					Value: fmt.Sprintf("%.2f", t.Value),
+					When:  t.When,
+				})
 				tempRespItemMap[t.Id] = temp
 			} else {
-				tempRespItem := TempResponseItem{}
-				tempRespItem.ID = t.Id
-				tempRespItem.Average = 12
-				tempRespItem.Values = []TempResponseValue{{Value: fmt.Sprintf("%.2f", t.Value)}}
+				tempRespItem := TempResponseItem{
+					ID: t.Id,
+					Values: []TempResponseValue{
+						{
+							Value: fmt.Sprintf("%.2f", t.Value),
+							When:  t.When,
+						}},
+				}
 
 				tempRespItemMap[t.Id] = tempRespItem
 			}
@@ -63,25 +71,8 @@ func NewRetrieveTemperaturesHandler(log logging.Logger, svc TempService) http.Ha
 			return
 		}
 
-		fmt.Println(string(bytes))
-
 		w.Write(bytes)
 	})
-}
-
-func calculateAverage(temps []Temp) (float64, error) {
-
-	if len(temps) == 0 {
-		return 0.0, fmt.Errorf("no temperatures available")
-	}
-
-	holder := 0.0
-
-	for _, t := range temps {
-		holder += t.Value
-	}
-
-	return holder / float64(len(temps)), fmt.Errorf("unexpected error while calculating average")
 }
 
 // TODO: Refaktorisera och flytta till domänlagret
