@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
@@ -30,7 +31,7 @@ func NewRetrieveTemperaturesHandler(log logging.Logger, svc TempService) http.Ha
 
 		response := &TempResponse{}
 
-		temps, _ := svc.Get()
+		temps, _ := svc.Get(time.Now().UTC().Add(-7*24*time.Hour), time.Now().UTC())
 		for _, t := range temps {
 			fmt.Printf("temp: %f\n", t.Value)
 		}
@@ -53,25 +54,27 @@ type Temp struct {
 }
 
 type TempService interface {
-	Get() ([]Temp, error)
+	Get(from, to time.Time) ([]Temp, error)
 }
 
 type ts struct {
 	contextBrokerURL string
 }
 
-func (svc ts) Get() ([]Temp, error) {
-	return getSomeTemperatures(svc.contextBrokerURL)
+func (svc ts) Get(from, to time.Time) ([]Temp, error) {
+	return getSomeTemperatures(svc.contextBrokerURL, from, to)
 }
 
 func NewTempService(contextBrokerURL string) TempService {
 	return &ts{contextBrokerURL: contextBrokerURL}
 }
 
-func getSomeTemperatures(contextBrokerURL string) ([]Temp, error) {
+func getSomeTemperatures(contextBrokerURL string, from, to time.Time) ([]Temp, error) {
 	var err error
 
-	url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=WeatherObserved&attrs=temperature&timerel=between&timeAt=2021-10-01T00:00:00Z&endTimeAt=2021-10-20T00:00:00Z", contextBrokerURL)
+	timeAt := from.Format(time.RFC3339)
+	endTimeAt := to.Format(time.RFC3339)
+	url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=WeatherObserved&attrs=temperature&timerel=between&timeAt=%s&endTimeAt=%s", contextBrokerURL, timeAt, endTimeAt)
 
 	response, err := http.Get(url)
 	if err != nil {
