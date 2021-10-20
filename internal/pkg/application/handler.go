@@ -28,7 +28,10 @@ func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.D
 	//router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db))
 	router.Get("/api/waterquality", datasets.NewRetrieveWaterQualityHandler(log, contextBrokerURL, waterQualityQueryParams))
 	router.Get("/api/beaches", datasets.NewRetrieveBeachesHandler(log, contextBrokerURL))
-	router.Get("/api/temperatures", datasets.NewRetrieveTemperaturesHandler(log, contextBrokerURL))
+	router.Get(
+		"/api/temperatures",
+		datasets.NewRetrieveTemperaturesHandler(log, datasets.NewTempService(contextBrokerURL)),
+	)
 	router.Get("/api/trafficflow", datasets.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL))
 }
 

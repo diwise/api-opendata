@@ -23,12 +23,12 @@ type TempResponse struct {
 	Items []TempResponseItem `json:"items"`
 }
 
-func NewRetrieveTemperaturesHandler(log logging.Logger, contextBrokerURL string) http.HandlerFunc {
+func NewRetrieveTemperaturesHandler(log logging.Logger, svc TempService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		response := &TempResponse{}
 
-		temps, _ := getSomeTemperatures()
+		temps, _ := svc.Get()
 		for _, t := range temps {
 			fmt.Printf("temp: %f\n", t.Value)
 		}
@@ -50,6 +50,22 @@ type Temp struct {
 	Value float64
 }
 
-func getSomeTemperatures() ([]Temp, error) {
+type TempService interface {
+	Get() ([]Temp, error)
+}
+
+type ts struct {
+	contextBrokerURL string
+}
+
+func (svc ts) Get() ([]Temp, error) {
+	return getSomeTemperatures(svc.contextBrokerURL)
+}
+
+func NewTempService(contextBrokerURL string) TempService {
+	return &ts{contextBrokerURL: contextBrokerURL}
+}
+
+func getSomeTemperatures(contextBrokerURL string) ([]Temp, error) {
 	return nil, fmt.Errorf("not implemented")
 }
