@@ -22,6 +22,14 @@ func TestInvokeTempHandler(t *testing.T) {
 	is.Equal(rw.Code, http.StatusOK) // response status should be 200 OK
 }
 
+func TestTemperaturesFromBroker(t *testing.T) {
+	log := logging.NewLogger()
+	rw := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "sundsvall.diwise.io", nil)
+
+	NewRetrieveTemperaturesHandler(log, NewTempService("https://sundsvall.diwise.io")).ServeHTTP(rw, req)
+}
+
 func setupMockService(responseCode int, responseBody string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/ld+json")

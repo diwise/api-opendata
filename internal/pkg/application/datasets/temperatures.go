@@ -3,9 +3,11 @@ package datasets
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
+	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
 )
 
 type TempResponseValue struct {
@@ -67,5 +69,32 @@ func NewTempService(contextBrokerURL string) TempService {
 }
 
 func getSomeTemperatures(contextBrokerURL string) ([]Temp, error) {
-	return nil, fmt.Errorf("not implemented")
+	var err error
+
+	url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=WeatherObserved&attrs=temperature&timerel=between&timeAt=2021-10-01T00:00:00Z&endTimeAt=2021-10-20T00:00:00Z", contextBrokerURL)
+
+	response, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed, status code not ok: %s", err)
+	}
+	defer response.Body.Close()
+
+	temps := []Temp{}
+	wos := []fiware.WeatherObserved{}
+
+	b, _ := io.ReadAll(response.Body)
+
+	err = json.Unmarshal(b, &wos)
+
+	for _, wo := range wos {
+		t := Temp{
+			Value: wo.Temperature.Value,
+		}
+		temps = append(temps, t)
+	}
+
+	return temps, err
 }
