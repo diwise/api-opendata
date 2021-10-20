@@ -30,12 +30,12 @@ func NewRetrieveTemperaturesHandler(log logging.Logger, svc TempService) http.Ha
 
 		response := &TempResponse{}
 
-		tempRespItem := &TempResponseItem{}
-		tempRespItem.ID = "gurka"
-
 		temps, _ := svc.Get(time.Now().UTC().Add(-7*24*time.Hour), time.Now().UTC())
 
+		tempRespItem := &TempResponseItem{}
+
 		tempRespItem.Average, _ = calculateAverage(temps)
+		tempRespItem.ID = "mydeviceid"
 
 		for _, t := range temps {
 			trv := &TempResponseValue{}
