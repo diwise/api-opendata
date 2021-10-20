@@ -22,7 +22,7 @@ type TempResponse struct {
 	Items []TempResponseItem `json:"items"`
 }
 
-func NewRetrieveTemperaturesHandler(log logging.Logger, contextBrokerURL string) http.HandlerFunc {
+func NewRetrieveTemperaturesHandler(log logging.Logger, svc TempService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		response := &TempResponse{}
@@ -30,9 +30,7 @@ func NewRetrieveTemperaturesHandler(log logging.Logger, contextBrokerURL string)
 		tempRespItem := &TempResponseItem{}
 		tempRespItem.ID = "gurka"
 
-		response.Items = append(response.Items, *tempRespItem)
-
-		temps, _ := getSomeTemperatures()
+		temps, _ := svc.Get()
 
 		tempRespItem.Average, _ = calculateAverage(temps)
 
@@ -41,12 +39,9 @@ func NewRetrieveTemperaturesHandler(log logging.Logger, contextBrokerURL string)
 			trv.Value = fmt.Sprintf("%.2f", t.Value)
 
 			tempRespItem.Values = append(tempRespItem.Values, *trv)
-
-			//value of temp, add to TempResponseValue.Value, append to array of Values in TempResponseItem.
-			//TempResponseItem added to TempResponse.
-
-			fmt.Printf("temp: %f\n", t.Value)
 		}
+
+		response.Items = append(response.Items, *tempRespItem)
 
 		w.Header().Add("Content-Type", "application/json")
 
@@ -80,6 +75,34 @@ type Temp struct {
 	Value float64
 }
 
-func getSomeTemperatures() ([]Temp, error) {
-	return []Temp{}, fmt.Errorf("not implemented")
+type TempService interface {
+	Get() ([]Temp, error)
+}
+
+type ts struct {
+	contextBrokerURL string
+}
+
+func NewTempService(contextBrokerURL string) TempService {
+	return &ts{contextBrokerURL: contextBrokerURL}
+}
+
+func (svc ts) Get() ([]Temp, error) {
+	return getSomeTemperatures(svc.contextBrokerURL)
+}
+
+func getSomeTemperatures(contextBrokerURL string) ([]Temp, error) {
+	temps := []Temp{
+		{
+			Value: 1.1,
+		},
+		{
+			Value: 2.1,
+		},
+		{
+			Value: 3.1,
+		},
+	}
+
+	return temps, fmt.Errorf("not implemented")
 }

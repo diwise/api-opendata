@@ -17,7 +17,7 @@ func TestInvokeTempHandler(t *testing.T) {
 	rw := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", server.URL+"/api/temperatures", nil)
 
-	NewRetrieveTemperaturesHandler(l, server.URL).ServeHTTP(rw, req)
+	NewRetrieveTemperaturesHandler(l, NewTempService(server.URL)).ServeHTTP(rw, req)
 
 	is.Equal(rw.Code, http.StatusOK) // response status should be 200 OK
 }
