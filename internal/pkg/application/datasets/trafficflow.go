@@ -43,7 +43,7 @@ func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) ht
 
 			if strings.Compare(currentDate, tfoDateObserved) != 0 {
 				tfoInfo := fmt.Sprintf("\r\n%s;%s;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;",
-					currentDate, "roadsegment",
+					currentDate, "urn:ngsi-ld:RoadSegment:19312:2860:35243",
 					sameDateIntensity[0], sameDateAvgSpeed[0], sameDateIntensity[1], sameDateAvgSpeed[1],
 					sameDateIntensity[2], sameDateAvgSpeed[2], sameDateIntensity[3], sameDateAvgSpeed[3],
 					sameDateIntensity[4], sameDateAvgSpeed[4], sameDateIntensity[5], sameDateAvgSpeed[5],
@@ -65,7 +65,7 @@ func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) ht
 		}
 
 		tfoInfo := fmt.Sprintf("\r\n%s;%s;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;%d;%.1f;",
-			currentDate, "roadsegment",
+			currentDate, "urn:ngsi-ld:RoadSegment:19312:2860:35243",
 			sameDateIntensity[0], sameDateAvgSpeed[0], sameDateIntensity[1], sameDateAvgSpeed[1],
 			sameDateIntensity[2], sameDateAvgSpeed[2], sameDateIntensity[3], sameDateAvgSpeed[3],
 			sameDateIntensity[4], sameDateAvgSpeed[4], sameDateIntensity[5], sameDateAvgSpeed[5],
@@ -92,10 +92,11 @@ func getTrafficFlowsFromContextBroker(host, from, to string) ([]*fiware.TrafficF
 	if err != nil {
 		return nil, err
 	}
+	defer response.Body.Close()
+
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("request failed, status code not ok: %s", err)
 	}
-	defer response.Body.Close()
 
 	tfos := []*fiware.TrafficFlowObserved{}
 
