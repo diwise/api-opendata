@@ -4,8 +4,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services"
+	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/matryer/is"
 )
@@ -13,28 +15,34 @@ import (
 func TestInvokeTempHandler(t *testing.T) {
 	is := is.New(t)
 	l := logging.NewLogger()
-	server := setupMockService(http.StatusOK, "")
 
 	rw := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", server.URL+"/api/temperatures", nil)
+	req, _ := http.NewRequest("GET", "http://diwise.io/api/temperatures", nil)
 
-	NewRetrieveTemperaturesHandler(l, services.NewTempService(server.URL)).ServeHTTP(rw, req)
+	svc := &services.TempServiceMock{
+		GetFunc: func(time.Time, time.Time) ([]domain.Temperature, error) {
+			return []domain.Temperature{}, nil
+		},
+	}
+
+	NewRetrieveTemperaturesHandler(l, svc).ServeHTTP(rw, req)
 
 	is.Equal(rw.Code, http.StatusOK) // response status should be 200 OK
 }
 
 func TestTemperaturesFromBroker(t *testing.T) {
+	is := is.New(t)
 	log := logging.NewLogger()
 	rw := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "sundsvall.diwise.io", nil)
+	req, _ := http.NewRequest("GET", "diwise.io", nil)
 
-	NewRetrieveTemperaturesHandler(log, services.NewTempService("https://sundsvall.diwise.io")).ServeHTTP(rw, req)
-}
+	svc := &services.TempServiceMock{
+		GetFunc: func(time.Time, time.Time) ([]domain.Temperature, error) {
+			return []domain.Temperature{}, nil
+		},
+	}
 
-func setupMockService(responseCode int, responseBody string) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "application/ld+json")
-		w.WriteHeader(responseCode)
-		w.Write([]byte(responseBody))
-	}))
+	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
+
+	is.Equal(rw.Code, http.StatusOK) // response status should be 200 OK
 }

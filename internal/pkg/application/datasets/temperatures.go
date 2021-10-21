@@ -28,7 +28,9 @@ type TempResponse struct {
 func NewRetrieveTemperaturesHandler(log logging.Logger, svc services.TempService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		response := &TempResponse{}
+		response := &TempResponse{
+			Items: []TempResponseItem{},
+		}
 
 		tempsFromCtxBroker, _ := svc.Get(time.Now().UTC().Add(-1*24*time.Hour), time.Now().UTC())
 
