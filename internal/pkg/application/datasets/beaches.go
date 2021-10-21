@@ -20,12 +20,12 @@ const (
 
 func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;municipality;updated;nutscode;wikidata;temp_url;description")
+		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;hov_ref;wikidata;updated;temp_url;description")
 
 		beaches, err := getBeachesFromContextBroker(contextBroker)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Errorf("Failed to get beaches from %s: %s", contextBroker, err.Error())
+			log.Errorf("failed to get beaches from %s: %s", contextBroker, err.Error())
 			return
 		}
 
@@ -39,14 +39,15 @@ func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.Ha
 			wiki := getWikiRefFromBeach(beach)
 			//beachID := strings.TrimPrefix(beach.ID, fiware.BeachIDPrefix)
 
-			tempURL := fmt.Sprintf("\"%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near;maxDistance==1000&geometry=Point&coordinates=[%f,%f]\"", contextBroker, longitude, latitude)
+			tempURL := fmt.Sprintf(
+				"\"%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near%%3BmaxDistance==1000&geometry=Point&coordinates=[%f,%f]\"", contextBroker, longitude, latitude,
+			)
 
-			beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;%s;%s;\"%s\"",
+			beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;%s;\"%s\"",
 				beach.ID, beach.Name.Value, latitude, longitude,
-				"2281",
-				time,
 				nutsCode,
 				wiki,
+				time,
 				tempURL,
 				strings.ReplaceAll(beach.Description.Value, "\"", "\"\""),
 			)
@@ -109,13 +110,16 @@ func getWikiRefFromBeach(beach *fiware.Beach) string {
 
 func getBeachesFromContextBroker(host string) ([]*fiware.Beach, error) {
 	response, err := http.Get(fmt.Sprintf("%s/ngsi-ld/v1/entities?type=Beach", host))
-	if response.StatusCode != http.StatusOK {
+	if err != nil {
 		return nil, err
 	}
 	defer response.Body.Close()
 
-	beaches := []*fiware.Beach{}
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed with status code %d", response.StatusCode)
+	}
 
+	beaches := []*fiware.Beach{}
 	err = json.NewDecoder(response.Body).Decode(&beaches)
 
 	return beaches, err
