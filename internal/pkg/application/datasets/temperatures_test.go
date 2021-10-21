@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/matryer/is"
 )
@@ -17,7 +18,7 @@ func TestInvokeTempHandler(t *testing.T) {
 	rw := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", server.URL+"/api/temperatures", nil)
 
-	NewRetrieveTemperaturesHandler(l, NewTempService(server.URL)).ServeHTTP(rw, req)
+	NewRetrieveTemperaturesHandler(l, services.NewTempService(server.URL)).ServeHTTP(rw, req)
 
 	is.Equal(rw.Code, http.StatusOK) // response status should be 200 OK
 }
@@ -27,7 +28,7 @@ func TestTemperaturesFromBroker(t *testing.T) {
 	rw := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "sundsvall.diwise.io", nil)
 
-	NewRetrieveTemperaturesHandler(log, NewTempService("https://sundsvall.diwise.io")).ServeHTTP(rw, req)
+	NewRetrieveTemperaturesHandler(log, services.NewTempService("https://sundsvall.diwise.io")).ServeHTTP(rw, req)
 }
 
 func setupMockService(responseCode int, responseBody string) *httptest.Server {

@@ -45,3 +45,9 @@ type Organization struct {
 	Fn       string
 	HasEmail string
 }
+
+type Temperature struct {
+	Id    string
+	Value float64
+	When  string
+}

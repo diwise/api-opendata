@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/datasets"
+	"github.com/diwise/api-opendata/internal/pkg/application/services"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
 	"github.com/go-chi/chi"
@@ -30,7 +31,7 @@ func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.D
 	router.Get("/api/beaches", datasets.NewRetrieveBeachesHandler(log, contextBrokerURL))
 	router.Get(
 		"/api/temperatures",
-		datasets.NewRetrieveTemperaturesHandler(log, datasets.NewTempService(contextBrokerURL)),
+		datasets.NewRetrieveTemperaturesHandler(log, services.NewTempService(contextBrokerURL)),
 	)
 	router.Get("/api/trafficflow", datasets.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL))
 }
