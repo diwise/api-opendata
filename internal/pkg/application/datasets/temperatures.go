@@ -30,22 +30,27 @@ func NewRetrieveTemperaturesHandler(log logging.Logger, svc services.TempService
 
 		response := &TempResponse{}
 
-		temps, _ := svc.Get(time.Now().UTC().Add(-1*24*time.Hour), time.Now().UTC())
+		tempsFromCtxBroker, _ := svc.Get(time.Now().UTC().Add(-1*24*time.Hour), time.Now().UTC())
 
 		tempRespItemMap := make(map[string]TempResponseItem)
+		sumOfTemperatures := make(map[string]float64)
 
-		for _, t := range temps {
+		for _, t := range tempsFromCtxBroker {
 
-			temp, exist := tempRespItemMap[t.Id]
+			tempRespItem, exist := tempRespItemMap[t.Id]
 
 			if exist {
-				temp.Values = append(temp.Values, TempResponseValue{
+				tempRespItem.Values = append(tempRespItem.Values, TempResponseValue{
 					Value: fmt.Sprintf("%.2f", t.Value),
 					When:  t.When,
 				})
-				tempRespItemMap[t.Id] = temp
+
+				sumOfTemperatures[t.Id] = sumOfTemperatures[t.Id] + t.Value
+
+				tempRespItemMap[t.Id] = tempRespItem
+
 			} else {
-				tempRespItem := TempResponseItem{
+				newTempRespItem := TempResponseItem{
 					ID: t.Id,
 					Values: []TempResponseValue{
 						{
@@ -54,11 +59,15 @@ func NewRetrieveTemperaturesHandler(log logging.Logger, svc services.TempService
 						}},
 				}
 
-				tempRespItemMap[t.Id] = tempRespItem
+				sumOfTemperatures[t.Id] = t.Value
+
+				tempRespItemMap[t.Id] = newTempRespItem
 			}
+
 		}
 
 		for _, v := range tempRespItemMap {
+			v.Average = fmt.Sprintf("%.2f", sumOfTemperatures[v.ID]/float64(len(v.Values)))
 			response.Items = append(response.Items, v)
 		}
 
@@ -69,6 +78,8 @@ func NewRetrieveTemperaturesHandler(log logging.Logger, svc services.TempService
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
+		fmt.Println(string(bytes))
 
 		w.Write(bytes)
 	})
