@@ -19,7 +19,7 @@ func NewRetrieveWaterQualityHandler(log logging.Logger, contextBroker string, wa
 		waterquality, err := getWaterQualityFromContextBroker(contextBroker, waterQualityQueryParams)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Errorf("Failed to get waterquality from %s: %s", contextBroker, err.Error())
+			log.Errorf("failed to get waterquality from %s: %s", contextBroker, err.Error())
 			return
 		}
 
@@ -55,13 +55,16 @@ func getWaterQualityFromContextBroker(host string, queryParams string) ([]*fiwar
 	}
 
 	response, err := http.Get(url)
-	if response.StatusCode != http.StatusOK {
+	if err != nil {
 		return nil, err
 	}
 	defer response.Body.Close()
 
-	waterquality := []*fiware.WaterQualityObserved{}
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed with status code %d", response.StatusCode)
+	}
 
+	waterquality := []*fiware.WaterQualityObserved{}
 	err = json.NewDecoder(response.Body).Decode(&waterquality)
 
 	return waterquality, err
