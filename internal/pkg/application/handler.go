@@ -27,13 +27,22 @@ func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.D
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
 
 	//router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db))
-	router.Get("/api/waterquality", datasets.NewRetrieveWaterQualityHandler(log, contextBrokerURL, waterQualityQueryParams))
-	router.Get("/api/beaches", datasets.NewRetrieveBeachesHandler(log, contextBrokerURL))
 	router.Get(
-		"/api/temperatures",
+		"/api/temperature/water",
+		datasets.NewRetrieveWaterQualityHandler(log, contextBrokerURL, waterQualityQueryParams),
+	)
+	router.Get(
+		"/api/beaches",
+		datasets.NewRetrieveBeachesHandler(log, contextBrokerURL),
+	)
+	router.Get(
+		"/api/temperature/air",
 		datasets.NewRetrieveTemperaturesHandler(log, services.NewTempService(contextBrokerURL)),
 	)
-	router.Get("/api/trafficflow", datasets.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL))
+	router.Get(
+		"/api/trafficflow",
+		datasets.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
+	)
 }
 
 func (router *RequestRouter) addProbeHandlers() {
@@ -68,8 +77,11 @@ func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcat
 		Debug:            false,
 	}).Handler)
 
-	// Enable gzip compression for ngsi-ld responses
-	compressor := middleware.NewCompressor(flate.DefaultCompression, "application/xml", "application/rdf+xml")
+	// Enable gzip compression for our responses
+	compressor := middleware.NewCompressor(
+		flate.DefaultCompression,
+		"text/csv", "application/json", "application/xml", "application/rdf+xml",
+	)
 	router.impl.Use(compressor.Handler)
 	router.impl.Use(middleware.Logger)
 
