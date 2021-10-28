@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
@@ -20,8 +19,12 @@ func TestInvokeTempHandler(t *testing.T) {
 	req, _ := http.NewRequest("GET", "http://diwise.io/api/temperatures", nil)
 
 	svc := &services.TempServiceMock{
-		GetFunc: func(time.Time, time.Time) ([]domain.Temperature, error) {
-			return []domain.Temperature{}, nil
+		QueryFunc: func() services.TempServiceQuery {
+			return &services.TempServiceQueryMock{
+				GetFunc: func() ([]domain.Temperature, error) {
+					return []domain.Temperature{}, nil
+				},
+			}
 		},
 	}
 
@@ -37,8 +40,12 @@ func TestTemperaturesFromBroker(t *testing.T) {
 	req, _ := http.NewRequest("GET", "diwise.io", nil)
 
 	svc := &services.TempServiceMock{
-		GetFunc: func(time.Time, time.Time) ([]domain.Temperature, error) {
-			return []domain.Temperature{}, nil
+		QueryFunc: func() services.TempServiceQuery {
+			return &services.TempServiceQueryMock{
+				GetFunc: func() ([]domain.Temperature, error) {
+					return []domain.Temperature{}, nil
+				},
+			}
 		},
 	}
 

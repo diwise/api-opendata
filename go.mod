@@ -3,7 +3,7 @@ module github.com/diwise/api-opendata
 go 1.17
 
 require (
-	github.com/diwise/ngsi-ld-golang v0.0.0-20210920211437-fe3883cb7dcd
+	github.com/diwise/ngsi-ld-golang v0.0.0-20211028162007-fad13291cb5b
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/matryer/is v1.4.0
 	github.com/rs/cors v1.8.0

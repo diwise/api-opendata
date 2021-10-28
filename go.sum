@@ -2,8 +2,8 @@ github.com/coreos/go-systemd/v22 v22.3.2/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSV
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/diwise/ngsi-ld-golang v0.0.0-20210920211437-fe3883cb7dcd h1:p5Qau7vzxEFh6E7eJogPOcU4/27Xn/Dk9Q3iqEf1T6A=
-github.com/diwise/ngsi-ld-golang v0.0.0-20210920211437-fe3883cb7dcd/go.mod h1:GLNRrYVBgug34POOdKCrbZ+7zpwDGz2iTf1cAex7/YM=
+github.com/diwise/ngsi-ld-golang v0.0.0-20211028162007-fad13291cb5b h1:7M9Nv4pL9kg9SvSklT02gHq7zOYA6xuhETyUSDu3XJQ=
+github.com/diwise/ngsi-ld-golang v0.0.0-20211028162007-fad13291cb5b/go.mod h1:GLNRrYVBgug34POOdKCrbZ+7zpwDGz2iTf1cAex7/YM=
 github.com/gin-contrib/sse v0.1.0/go.mod h1:RHrZQHXnP2xjPF+u1gW/2HnVO7nvIa9PG3Gm+fLHvGI=
 github.com/gin-gonic/gin v1.5.0/go.mod h1:Nd6IXA8m5kNZdNEHMBd93KT+mdY3+bewLgRvmCsR2Do=
 github.com/go-chi/chi v4.1.2+incompatible h1:fGFk2Gmi/YKXk0OmGfBh0WgmN3XB8lVnEyNz34tQRec=

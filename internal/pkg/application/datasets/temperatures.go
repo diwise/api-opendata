@@ -32,7 +32,7 @@ func NewRetrieveTemperaturesHandler(log logging.Logger, svc services.TempService
 			Items: []TempResponseItem{},
 		}
 
-		tempsFromCtxBroker, _ := svc.Get(time.Now().UTC().Add(-1*24*time.Hour), time.Now().UTC())
+		tempsFromCtxBroker, _ := svc.Query().BetweenTimes(time.Now().UTC().Add(-1*24*time.Hour), time.Now().UTC()).Get()
 
 		tempRespItemMap := make(map[string]TempResponseItem)
 		sumOfTemperatures := make(map[string]float64)
