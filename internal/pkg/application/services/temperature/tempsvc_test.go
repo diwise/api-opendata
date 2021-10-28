@@ -34,20 +34,31 @@ func TestFailureResponse(t *testing.T) {
 	is.True(temps == nil) // should return a nil slice
 }
 
-func TestSomething(t *testing.T) {
+func TestSingleObservationResponse(t *testing.T) {
 	is := is.New(t)
-
 	from, _ := time.Parse(time.RFC3339, "2021-09-01T12:00:00Z")
-	svc := setupMockServiceThatReturns(http.StatusOK, generateTestData(from, time.Hour, 12.7, 13.2, 14.1, 9.2))
-
+	svc := setupMockServiceThatReturns(http.StatusOK, generateTestData(from, time.Hour, 12.7))
 	ts := NewTempService(svc.URL)
+
 	temps, err := ts.Query().Get()
+
 	is.NoErr(err)
-	is.Equal(len(temps), 4) // should return 4 temperatures
+	is.Equal(len(temps), 1) // should return a single temperature
+}
+
+func TestMultipleObservationResponse(t *testing.T) {
+	is := is.New(t)
+	from, _ := time.Parse(time.RFC3339, "2021-09-01T12:00:00Z")
+	svc := setupMockServiceThatReturns(http.StatusOK, generateTestData(from, time.Hour, 1.0, 1.1, 1.2, 1.3, 1.4))
+	ts := NewTempService(svc.URL)
+
+	temps, err := ts.Query().Get()
+
+	is.NoErr(err)
+	is.Equal(len(temps), 5) // should return 5 temperatures
 }
 
 func generateTestData(from time.Time, delay time.Duration, temps ...float64) string {
-
 	obs := from
 	observations := []fiware.WeatherObserved{}
 
