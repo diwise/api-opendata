@@ -1,4 +1,4 @@
-package services
+package temperature
 
 import (
 	"encoding/json"

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/diwise/api-opendata/internal/pkg/application/services"
+	services "github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 )
 
