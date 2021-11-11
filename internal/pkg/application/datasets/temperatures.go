@@ -2,7 +2,6 @@ package datasets
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -11,66 +10,103 @@ import (
 )
 
 type TempResponseValue struct {
-	Value string `json:"val"`
-	When  string `json:"when"`
+	Average *float64   `json:"avg,omitempty"`
+	Max     *float64   `json:"max,omitempty"`
+	Min     *float64   `json:"min,omitempty"`
+	Value   *float64   `json:"val,omitempty"`
+	When    *time.Time `json:"when,omitempty"`
+	From    *time.Time `json:"from,omitempty"`
+	To      *time.Time `json:"to,omitempty"`
 }
 
-type TempResponseItem struct {
-	ID      string              `json:"id"`
-	Values  []TempResponseValue `json:"values"`
-	Average string              `json:"average"`
+type TempResponseSensor struct {
+	ID     string              `json:"id"`
+	Values []TempResponseValue `json:"values"`
 }
 
 type TempResponse struct {
-	Items []TempResponseItem `json:"items"`
+	Sensors []TempResponseSensor `json:"sensors"`
+}
+
+func getTimeParamsFromURL(r *http.Request) (time.Time, time.Time, error) {
+
+	var err error
+
+	startTime := time.Now().UTC().Add(-1 * 24 * time.Hour)
+	endTime := time.Now().UTC()
+
+	from := r.URL.Query().Get("timeAt")
+	if from != "" {
+		startTime, err = time.Parse(time.RFC3339, from)
+		if err != nil {
+			return time.Time{}, time.Time{}, err
+		}
+	}
+
+	to := r.URL.Query().Get("endTimeAt")
+	if to != "" {
+		endTime, err = time.Parse(time.RFC3339, to)
+		if err != nil {
+			return time.Time{}, time.Time{}, err
+		}
+	}
+
+	return startTime, endTime, nil
 }
 
 func NewRetrieveTemperaturesHandler(log logging.Logger, svc services.TempService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		response := &TempResponse{
-			Items: []TempResponseItem{},
+		query := svc.Query().Device(r.URL.Query().Get("sensor"))
+
+		from, to, err := getTimeParamsFromURL(r)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Errorf("unable to get time range: %s", err.Error())
+			return
 		}
 
-		tempsFromCtxBroker, _ := svc.Query().BetweenTimes(time.Now().UTC().Add(-1*24*time.Hour), time.Now().UTC()).Get()
+		query = query.BetweenTimes(from, to)
 
-		tempRespItemMap := make(map[string]TempResponseItem)
-		sumOfTemperatures := make(map[string]float64)
+		if r.URL.Query().Get("options") == "aggregatedValues" {
+			methods := r.URL.Query().Get("aggrMethods")
+			duration := r.URL.Query().Get("aggrPeriodDuration")
+			query = query.Aggregate(duration, methods)
+		}
 
-		for _, t := range tempsFromCtxBroker {
+		sensors, err := query.Get()
 
-			tempRespItem, exist := tempRespItemMap[t.Id]
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Errorf("unable to get temperatures: %s", err.Error())
+			return
+		}
 
-			if exist {
-				tempRespItem.Values = append(tempRespItem.Values, TempResponseValue{
-					Value: fmt.Sprintf("%.2f", t.Value),
-					When:  t.When,
-				})
+		response := &TempResponse{
+			Sensors: []TempResponseSensor{},
+		}
 
-				sumOfTemperatures[t.Id] = sumOfTemperatures[t.Id] + t.Value
-
-				tempRespItemMap[t.Id] = tempRespItem
-
-			} else {
-				newTempRespItem := TempResponseItem{
-					ID: t.Id,
-					Values: []TempResponseValue{
-						{
-							Value: fmt.Sprintf("%.2f", t.Value),
-							When:  t.When,
-						}},
-				}
-
-				sumOfTemperatures[t.Id] = t.Value
-
-				tempRespItemMap[t.Id] = newTempRespItem
+		for _, s := range sensors {
+			sensor := TempResponseSensor{
+				ID:     s.Id,
+				Values: []TempResponseValue{},
 			}
 
-		}
+			for _, t := range s.Temperatures {
+				value := TempResponseValue{
+					Average: t.Average,
+					Max:     t.Max,
+					Min:     t.Min,
+					Value:   t.Value,
+					When:    t.When,
+					From:    t.From,
+					To:      t.To,
+				}
 
-		for _, v := range tempRespItemMap {
-			v.Average = fmt.Sprintf("%.2f", sumOfTemperatures[v.ID]/float64(len(v.Values)))
-			response.Items = append(response.Items, v)
+				sensor.Values = append(sensor.Values, value)
+			}
+
+			response.Sensors = append(response.Sensors, sensor)
 		}
 
 		w.Header().Add("Content-Type", "application/json")
@@ -78,10 +114,9 @@ func NewRetrieveTemperaturesHandler(log logging.Logger, svc services.TempService
 		bytes, err := json.MarshalIndent(response, " ", "  ")
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			log.Errorf("unable to marshal results to json: %s", err.Error())
 			return
 		}
-
-		fmt.Println(string(bytes))
 
 		w.Write(bytes)
 	})

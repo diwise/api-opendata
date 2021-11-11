@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -16,26 +17,41 @@ type TempService interface {
 	Query() TempServiceQuery
 }
 
-const (
-	aggrMethodAverage string = "avg"
-	aggrMethodMaximum string = "max"
-	aggrMethodMinimum string = "min"
-)
+type aggrFunc func([]fiware.WeatherObserved, int, int, domain.Temperature) domain.Temperature
 
-type aggrFunc func([]domain.Temperature, int, int) float64
-
-func average(data []domain.Temperature, from, to int) float64 {
+func average(data []fiware.WeatherObserved, from, to int, aggregate domain.Temperature) domain.Temperature {
 	sum := 0.0
-	for i := from; i <= to; i++ {
-		sum += data[i].Value
+	for i := from; i < to; i++ {
+		sum += data[i].Temperature.Value
 	}
-	return sum / float64(to-from+1)
+	avg := sum / float64(to-from)
+	aggregate.Average = &avg
+	return aggregate
+}
+
+func max(data []fiware.WeatherObserved, from, to int, aggregate domain.Temperature) domain.Temperature {
+	max := data[from].Temperature.Value
+	for i := from + 1; i < to; i++ {
+		max = math.Max(max, data[i].Temperature.Value)
+	}
+	aggregate.Max = &max
+	return aggregate
+}
+
+func min(data []fiware.WeatherObserved, from, to int, aggregate domain.Temperature) domain.Temperature {
+	min := data[from].Temperature.Value
+	for i := from + 1; i < to; i++ {
+		min = math.Min(min, data[i].Temperature.Value)
+	}
+	aggregate.Min = &min
+	return aggregate
 }
 
 type TempServiceQuery interface {
 	Aggregate(period, aggregates string) TempServiceQuery
 	BetweenTimes(from, to time.Time) TempServiceQuery
-	Get() ([]domain.Temperature, error)
+	Device(device string) TempServiceQuery
+	Get() ([]domain.Sensor, error)
 }
 
 func NewTempService(contextBrokerURL string) TempService {
@@ -48,25 +64,51 @@ type ts struct {
 
 type tsq struct {
 	ts
-	from         time.Time
-	to           time.Time
-	aggregations []aggrFunc
+	device              string
+	from                time.Time
+	to                  time.Time
+	aggregations        []aggrFunc
+	aggregationDuration time.Duration
+	err                 error
 }
 
 func (svc ts) Query() TempServiceQuery {
 	return &tsq{ts: svc}
 }
 
+func parseAggregationPeriod(period string) (time.Duration, error) {
+	supportedPeriods := map[string]time.Duration{
+		"PT15M": 15 * time.Minute,
+		"PT1H":  1 * time.Hour,
+		"PT24H": 24 * time.Hour,
+		"P7D":   7 * 24 * time.Hour,
+	}
+
+	if dur, ok := supportedPeriods[period]; ok {
+		return dur, nil
+	}
+
+	return 0 * time.Millisecond, fmt.Errorf("aggregation period %s not in supported set [PT1H, PT24H, P7D]", period)
+}
+
 func (q tsq) Aggregate(period, aggregates string) TempServiceQuery {
 	supportedAggregates := map[string]aggrFunc{
-		aggrMethodAverage: average,
+		"avg": average,
+		"max": max,
+		"min": min,
 	}
 
 	for _, aggrName := range strings.Split(aggregates, ",") {
-		if aggrFn, ok := supportedAggregates[aggrName]; ok {
+		aggrFn, ok := supportedAggregates[aggrName]
+		if ok {
 			q.aggregations = append(q.aggregations, aggrFn)
+		} else {
+			q.err = fmt.Errorf("aggregation method %s not in supported set [avg, max, min]", aggrName)
+			return q
 		}
 	}
+
+	q.aggregationDuration, q.err = parseAggregationPeriod(period)
 
 	return q
 }
@@ -77,15 +119,32 @@ func (q tsq) BetweenTimes(from, to time.Time) TempServiceQuery {
 	return q
 }
 
-func (q tsq) Get() ([]domain.Temperature, error) {
+func (q tsq) Device(device string) TempServiceQuery {
+	q.device = device
+	return q
+}
 
-	timeAt := q.from.Format(time.RFC3339)
-	endTimeAt := q.to.Format(time.RFC3339)
+func (q tsq) Get() ([]domain.Sensor, error) {
+
+	if q.err == nil && q.device == "" {
+		q.err = fmt.Errorf("a specific device must be specified")
+	}
+
+	if q.err != nil {
+		return nil, fmt.Errorf("invalid temperature service query: %s", q.err.Error())
+	}
 
 	url := fmt.Sprintf(
-		"%s/ngsi-ld/v1/entities?type=WeatherObserved&attrs=temperature&georel=near%%3BmaxDistance==2000&geometry=Point&coordinates=[17.3051555,62.3908926]&timerel=between&timeAt=%s&endTimeAt=%s",
-		q.ts.contextBrokerURL, timeAt, endTimeAt,
+		"%s/ngsi-ld/v1/entities?type=WeatherObserved&attrs=temperature&q=refDevice==\"%s\"",
+		q.ts.contextBrokerURL,
+		q.device,
 	)
+
+	if !q.from.IsZero() && !q.to.IsZero() {
+		timeAt := q.from.Format(time.RFC3339)
+		endTimeAt := q.to.Format(time.RFC3339)
+		url = url + fmt.Sprintf("&timerel=between&timeAt=%s&endTimeAt=%s", timeAt, endTimeAt)
+	}
 
 	response, err := http.Get(url)
 	if err != nil {
@@ -99,7 +158,6 @@ func (q tsq) Get() ([]domain.Temperature, error) {
 
 	wos := []fiware.WeatherObserved{}
 	b, _ := io.ReadAll(response.Body)
-	fmt.Printf("received response: %s\n", string(b))
 
 	err = json.Unmarshal(b, &wos)
 	if err != nil {
@@ -108,14 +166,72 @@ func (q tsq) Get() ([]domain.Temperature, error) {
 
 	temps := []domain.Temperature{}
 
-	for _, wo := range wos {
-		t := domain.Temperature{
-			Id:    wo.RefDevice.Object,
-			Value: wo.Temperature.Value,
-			When:  wo.DateObserved.Value.Value,
+	if len(wos) > 0 {
+
+		if len(q.aggregations) == 0 {
+			for _, wo := range wos {
+				dateObserved, _ := time.Parse(time.RFC3339, wo.DateObserved.Value.Value)
+
+				t := domain.Temperature{
+					Id:    wo.RefDevice.Object,
+					Value: &wo.Temperature.Value,
+					When:  &dateObserved,
+				}
+				temps = append(temps, t)
+			}
+		} else {
+			dateOfFirstObservation, _ := time.Parse(time.RFC3339, wos[0].DateObserved.Value.Value)
+			periodStart := dateOfFirstObservation
+			if !q.from.IsZero() {
+				periodStart = q.from
+			}
+
+			periodEnd := periodStart.Add(q.aggregationDuration).Add(-1 * time.Millisecond)
+			for periodEnd.Before(dateOfFirstObservation) {
+				periodStart = periodStart.Add(q.aggregationDuration)
+				periodEnd = periodEnd.Add(q.aggregationDuration)
+			}
+
+			aggregationStartIndex := 0
+
+			for idx := range wos {
+				dateObserved, _ := time.Parse(time.RFC3339, wos[idx].DateObserved.Value.Value)
+				if dateObserved.After(periodEnd) {
+					ps := periodStart
+					pe := periodEnd
+
+					aggr := domain.Temperature{
+						Id:   wos[0].RefDevice.Object,
+						From: &ps,
+						To:   &pe,
+					}
+					for _, aggrF := range q.aggregations {
+						aggr = aggrF(wos, aggregationStartIndex, idx, aggr)
+					}
+
+					temps = append(temps, aggr)
+
+					periodStart = periodStart.Add(q.aggregationDuration)
+					periodEnd = periodEnd.Add(q.aggregationDuration)
+
+					aggregationStartIndex = idx
+				}
+			}
+
+			aggr := domain.Temperature{
+				Id:   wos[0].RefDevice.Object,
+				From: &periodStart,
+				To:   &periodEnd,
+			}
+			for _, aggrF := range q.aggregations {
+				aggr = aggrF(wos, aggregationStartIndex, len(wos), aggr)
+			}
+
+			temps = append(temps, aggr)
 		}
-		temps = append(temps, t)
 	}
 
-	return temps, nil
+	sensors := []domain.Sensor{{Id: q.device, Temperatures: temps}}
+
+	return sensors, nil
 }

@@ -25,7 +25,10 @@ var _ TempServiceQuery = &TempServiceQueryMock{}
 // 			BetweenTimesFunc: func(from time.Time, to time.Time) TempServiceQuery {
 // 				panic("mock out the BetweenTimes method")
 // 			},
-// 			GetFunc: func() ([]domain.Temperature, error) {
+// 			DeviceFunc: func(device string) TempServiceQuery {
+// 				panic("mock out the Device method")
+// 			},
+// 			GetFunc: func() ([]domain.Sensor, error) {
 // 				panic("mock out the Get method")
 // 			},
 // 		}
@@ -41,8 +44,11 @@ type TempServiceQueryMock struct {
 	// BetweenTimesFunc mocks the BetweenTimes method.
 	BetweenTimesFunc func(from time.Time, to time.Time) TempServiceQuery
 
+	// DeviceFunc mocks the Device method.
+	DeviceFunc func(device string) TempServiceQuery
+
 	// GetFunc mocks the Get method.
-	GetFunc func() ([]domain.Temperature, error)
+	GetFunc func() ([]domain.Sensor, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -60,12 +66,18 @@ type TempServiceQueryMock struct {
 			// To is the to argument value.
 			To time.Time
 		}
+		// Device holds details about calls to the Device method.
+		Device []struct {
+			// Device is the device argument value.
+			Device string
+		}
 		// Get holds details about calls to the Get method.
 		Get []struct {
 		}
 	}
 	lockAggregate    sync.RWMutex
 	lockBetweenTimes sync.RWMutex
+	lockDevice       sync.RWMutex
 	lockGet          sync.RWMutex
 }
 
@@ -139,8 +151,39 @@ func (mock *TempServiceQueryMock) BetweenTimesCalls() []struct {
 	return calls
 }
 
+// Device calls DeviceFunc.
+func (mock *TempServiceQueryMock) Device(device string) TempServiceQuery {
+	callInfo := struct {
+		Device string
+	}{
+		Device: device,
+	}
+	mock.lockDevice.Lock()
+	mock.calls.Device = append(mock.calls.Device, callInfo)
+	mock.lockDevice.Unlock()
+	if mock.DeviceFunc == nil {
+		return mock
+	}
+	return mock.DeviceFunc(device)
+}
+
+// DeviceCalls gets all the calls that were made to Device.
+// Check the length with:
+//     len(mockedTempServiceQuery.DeviceCalls())
+func (mock *TempServiceQueryMock) DeviceCalls() []struct {
+	Device string
+} {
+	var calls []struct {
+		Device string
+	}
+	mock.lockDevice.RLock()
+	calls = mock.calls.Device
+	mock.lockDevice.RUnlock()
+	return calls
+}
+
 // Get calls GetFunc.
-func (mock *TempServiceQueryMock) Get() ([]domain.Temperature, error) {
+func (mock *TempServiceQueryMock) Get() ([]domain.Sensor, error) {
 	callInfo := struct {
 	}{}
 	mock.lockGet.Lock()
@@ -148,10 +191,10 @@ func (mock *TempServiceQueryMock) Get() ([]domain.Temperature, error) {
 	mock.lockGet.Unlock()
 	if mock.GetFunc == nil {
 		var (
-			temperaturesOut []domain.Temperature
-			errOut          error
+			sensorsOut []domain.Sensor
+			errOut     error
 		)
-		return temperaturesOut, errOut
+		return sensorsOut, errOut
 	}
 	return mock.GetFunc()
 }
