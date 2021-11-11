@@ -12,7 +12,7 @@ import (
 	"github.com/matryer/is"
 )
 
-func TestThatQueryRequiresADevice(t *testing.T) {
+func TestThatQueryRequiresASensor(t *testing.T) {
 	is := is.New(t)
 	svc := setupMockServiceThatReturns(http.StatusOK, "[]")
 	ts := NewTempService(svc.URL)
@@ -28,7 +28,7 @@ func TestEmptyResponse(t *testing.T) {
 	svc := setupMockServiceThatReturns(http.StatusOK, "[]")
 	ts := NewTempService(svc.URL)
 
-	sensors, err := ts.Query().Sensor("testdevice").Get()
+	sensors, err := ts.Query().Sensor("testsensor").Get()
 
 	is.NoErr(err)
 	is.Equal(len(sensors[0].Temperatures), 0) // should not return any temperatures
@@ -39,7 +39,7 @@ func TestFailureResponse(t *testing.T) {
 	svc := setupMockServiceThatReturns(http.StatusInternalServerError, "")
 	ts := NewTempService(svc.URL)
 
-	sensors, err := ts.Query().Sensor("testdevice").Get()
+	sensors, err := ts.Query().Sensor("testsensor").Get()
 
 	is.True(err != nil)     // should return an error
 	is.True(sensors == nil) // should return a nil slice
@@ -51,7 +51,7 @@ func TestSingleObservationResponse(t *testing.T) {
 	svc := setupMockServiceThatReturns(http.StatusOK, generateTestData(from, time.Hour, 12.7))
 	ts := NewTempService(svc.URL)
 
-	sensors, err := ts.Query().Sensor("testdevice").Get()
+	sensors, err := ts.Query().Sensor("testsensor").Get()
 
 	is.NoErr(err)
 	is.Equal(len(sensors), 1) // should return a single temperature
@@ -63,7 +63,7 @@ func TestMultipleObservationResponse(t *testing.T) {
 	svc := setupMockServiceThatReturns(http.StatusOK, generateTestData(from, time.Hour, 1.0, 1.1, 1.2, 1.3, 1.4))
 	ts := NewTempService(svc.URL)
 
-	sensors, err := ts.Query().Sensor("testdevice").Get()
+	sensors, err := ts.Query().Sensor("testsensor").Get()
 
 	is.NoErr(err)
 	is.Equal(len(sensors[0].Temperatures), 5) // should return 5 temperatures
@@ -75,7 +75,7 @@ func TestAverageAggregationPT1H(t *testing.T) {
 	svc := setupMockServiceThatReturns(http.StatusOK, generateTestData(from, 20*time.Minute, 1.0, 2.0, 3.0, 4.0, 5.0))
 	ts := NewTempService(svc.URL)
 
-	sensors, err := ts.Query().Sensor("testdevice").Aggregate("PT1H", "avg").Get()
+	sensors, err := ts.Query().Sensor("testsensor").Aggregate("PT1H", "avg").Get()
 
 	is.NoErr(err)
 	is.Equal(len(sensors[0].Temperatures), 2) // should return 2 temperature averages
@@ -89,7 +89,7 @@ func TestAverageAggregationPT24H(t *testing.T) {
 	svc := setupMockServiceThatReturns(http.StatusOK, generateTestData(from, 12*time.Hour, 1.0, 2.0, 3.0, 4.0, 5.0))
 	ts := NewTempService(svc.URL)
 
-	sensors, err := ts.Query().Sensor("testdevice").Aggregate("PT24H", "avg").Get()
+	sensors, err := ts.Query().Sensor("testsensor").Aggregate("PT24H", "avg").Get()
 
 	is.NoErr(err)
 	is.Equal(len(sensors[0].Temperatures), 3) // should return 3 temperature averages
@@ -104,7 +104,7 @@ func TestAverageAggregationP1MFails(t *testing.T) {
 	svc := setupMockServiceThatReturns(http.StatusOK, generateTestData(from, time.Hour, 1.0, 2.0))
 	ts := NewTempService(svc.URL)
 
-	sensors, err := ts.Query().Sensor("testdevice").Aggregate("P1M", "avg").Get()
+	sensors, err := ts.Query().Sensor("testsensor").Aggregate("P1M", "avg").Get()
 
 	is.Equal(sensors, nil) // sensors should be nil
 	is.True(err != nil)    // an error should be returned
@@ -116,7 +116,7 @@ func TestMaxMinAggregationPT1H(t *testing.T) {
 	svc := setupMockServiceThatReturns(http.StatusOK, generateTestData(from, 20*time.Minute, 1.0, 2.0, 3.0, 4.0, 5.0))
 	ts := NewTempService(svc.URL)
 
-	sensors, err := ts.Query().Sensor("testdevice").Aggregate("PT1H", "max,min").Get()
+	sensors, err := ts.Query().Sensor("testsensor").Aggregate("PT1H", "max,min").Get()
 
 	is.NoErr(err)
 	is.Equal(len(sensors[0].Temperatures), 2)         // should return 2 temperature aggregates
@@ -130,7 +130,7 @@ func generateTestData(from time.Time, delay time.Duration, temps ...float64) str
 	observations := []fiware.WeatherObserved{}
 
 	for _, t := range temps {
-		wo := fiware.NewWeatherObserved("testdevice", 23.0, 17.2, obs.Format(time.RFC3339))
+		wo := fiware.NewWeatherObserved("testsensor", 23.0, 17.2, obs.Format(time.RFC3339))
 		wo.Temperature = ngsitypes.NewNumberProperty(t)
 		observations = append(observations, *wo)
 		obs = obs.Add(delay)
