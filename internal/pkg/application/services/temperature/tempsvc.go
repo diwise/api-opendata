@@ -50,7 +50,7 @@ func min(data []fiware.WeatherObserved, from, to int, aggregate domain.Temperatu
 type TempServiceQuery interface {
 	Aggregate(period, aggregates string) TempServiceQuery
 	BetweenTimes(from, to time.Time) TempServiceQuery
-	Device(device string) TempServiceQuery
+	Sensor(sensor string) TempServiceQuery
 	Get() ([]domain.Sensor, error)
 }
 
@@ -64,7 +64,7 @@ type ts struct {
 
 type tsq struct {
 	ts
-	device              string
+	sensor              string
 	from                time.Time
 	to                  time.Time
 	aggregations        []aggrFunc
@@ -119,15 +119,15 @@ func (q tsq) BetweenTimes(from, to time.Time) TempServiceQuery {
 	return q
 }
 
-func (q tsq) Device(device string) TempServiceQuery {
-	q.device = device
+func (q tsq) Sensor(sensor string) TempServiceQuery {
+	q.sensor = sensor
 	return q
 }
 
 func (q tsq) Get() ([]domain.Sensor, error) {
 
-	if q.err == nil && q.device == "" {
-		q.err = fmt.Errorf("a specific device must be specified")
+	if q.err == nil && q.sensor == "" {
+		q.err = fmt.Errorf("a specific sensor must be specified")
 	}
 
 	if q.err != nil {
@@ -137,7 +137,7 @@ func (q tsq) Get() ([]domain.Sensor, error) {
 	url := fmt.Sprintf(
 		"%s/ngsi-ld/v1/entities?type=WeatherObserved&attrs=temperature&q=refDevice==\"%s\"",
 		q.ts.contextBrokerURL,
-		q.device,
+		q.sensor,
 	)
 
 	if !q.from.IsZero() && !q.to.IsZero() {
@@ -231,7 +231,7 @@ func (q tsq) Get() ([]domain.Sensor, error) {
 		}
 	}
 
-	sensors := []domain.Sensor{{Id: q.device, Temperatures: temps}}
+	sensors := []domain.Sensor{{Id: q.sensor, Temperatures: temps}}
 
 	return sensors, nil
 }

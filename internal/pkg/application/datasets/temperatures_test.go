@@ -32,8 +32,8 @@ func TestThatSensorValueIsExtractedFromGetParameters(t *testing.T) {
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
 
-	is.Equal(len(tsqm.DeviceCalls()), 1)                // Device should have been called once
-	is.Equal(tsqm.DeviceCalls()[0].Device, "thesensor") // device id should match
+	is.Equal(len(tsqm.SensorCalls()), 1)                // Sensor should have been called once
+	is.Equal(tsqm.SensorCalls()[0].Sensor, "thesensor") // sensor id should match
 }
 
 func TestThatTimeSpanIsExtractedFromGetParameters(t *testing.T) {

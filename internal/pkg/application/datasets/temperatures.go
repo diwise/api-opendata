@@ -57,7 +57,7 @@ func getTimeParamsFromURL(r *http.Request) (time.Time, time.Time, error) {
 func NewRetrieveTemperaturesHandler(log logging.Logger, svc services.TempService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		query := svc.Query().Device(r.URL.Query().Get("sensor"))
+		query := svc.Query().Sensor(r.URL.Query().Get("sensor"))
 
 		from, to, err := getTimeParamsFromURL(r)
 		if err != nil {
