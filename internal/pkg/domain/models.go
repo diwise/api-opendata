@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 //Catalog ..
 type Catalog struct {
 	About       string
@@ -46,8 +48,18 @@ type Organization struct {
 	HasEmail string
 }
 
+type Sensor struct {
+	Id           string
+	Temperatures []Temperature
+}
+
 type Temperature struct {
-	Id    string
-	Value float64
-	When  string
+	Id      string
+	Average *float64
+	Max     *float64
+	Min     *float64
+	Value   *float64
+	When    *time.Time
+	From    *time.Time
+	To      *time.Time
 }

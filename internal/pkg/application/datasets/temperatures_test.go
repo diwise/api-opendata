@@ -1,48 +1,103 @@
 package datasets
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/diwise/api-opendata/internal/pkg/application/services"
+	services "github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/matryer/is"
 )
 
 func TestInvokeTempHandler(t *testing.T) {
-	is := is.New(t)
-	l := logging.NewLogger()
-
-	rw := httptest.NewRecorder()
+	is, log, rw := setup(t)
+	svc, tsqm := defaultTempServiceMock()
 	req, _ := http.NewRequest("GET", "http://diwise.io/api/temperatures", nil)
-
-	svc := &services.TempServiceMock{
-		GetFunc: func(time.Time, time.Time) ([]domain.Temperature, error) {
-			return []domain.Temperature{}, nil
-		},
-	}
-
-	NewRetrieveTemperaturesHandler(l, svc).ServeHTTP(rw, req)
-
-	is.Equal(rw.Code, http.StatusOK) // response status should be 200 OK
-}
-
-func TestTemperaturesFromBroker(t *testing.T) {
-	is := is.New(t)
-	log := logging.NewLogger()
-	rw := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "diwise.io", nil)
-
-	svc := &services.TempServiceMock{
-		GetFunc: func(time.Time, time.Time) ([]domain.Temperature, error) {
-			return []domain.Temperature{}, nil
-		},
-	}
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
 
-	is.Equal(rw.Code, http.StatusOK) // response status should be 200 OK
+	is.Equal(rw.Code, http.StatusOK)  // response status should be 200 OK
+	is.Equal(len(tsqm.GetCalls()), 1) // Get should have been called once
+}
+
+func TestThatSensorValueIsExtractedFromGetParameters(t *testing.T) {
+	is, log, rw := setup(t)
+	svc, tsqm := defaultTempServiceMock()
+	req, _ := http.NewRequest("GET", "?sensor=thesensor", nil)
+
+	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
+
+	is.Equal(len(tsqm.SensorCalls()), 1)                // Sensor should have been called once
+	is.Equal(tsqm.SensorCalls()[0].Sensor, "thesensor") // sensor id should match
+}
+
+func TestThatTimeSpanIsExtractedFromGetParameters(t *testing.T) {
+	is, log, rw := setup(t)
+	svc, tsqm := defaultTempServiceMock()
+	from, _ := time.Parse(time.RFC3339, "2010-01-01T12:13:14Z")
+	to, _ := time.Parse(time.RFC3339, "2010-01-01T22:23:24Z")
+	getParams := fmt.Sprintf("?timeAt=%s&endTimeAt=%s", from.Format(time.RFC3339), to.Format(time.RFC3339))
+	req, _ := http.NewRequest("GET", getParams, nil)
+
+	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
+
+	is.Equal(len(tsqm.BetweenTimesCalls()), 1)       // BetweenTimes should have been called once
+	is.Equal(tsqm.BetweenTimesCalls()[0].From, from) // from time should match
+	is.Equal(tsqm.BetweenTimesCalls()[0].To, to)     // to time should match
+}
+
+func TestThatAggregationSettingsAreExtractedFromGetParameters(t *testing.T) {
+	is, log, rw := setup(t)
+	svc, tsqm := defaultTempServiceMock()
+	req, _ := http.NewRequest("GET", "?aggrMethods=avg,max,min&aggrPeriodDuration=P2H&options=aggregatedValues", nil)
+
+	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
+
+	is.Equal(len(tsqm.AggregateCalls()), 1) // Aggregate should have been called once
+	is.Equal(tsqm.AggregateCalls()[0].Aggregates, "avg,max,min")
+	is.Equal(tsqm.AggregateCalls()[0].Period, "P2H")
+}
+
+func TestThatBadStartTimeFails(t *testing.T) {
+	is, log, rw := setup(t)
+	svc, _ := defaultTempServiceMock()
+	req, _ := http.NewRequest("GET", "?timeAt=gurka", nil)
+
+	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
+
+	is.Equal(rw.Code, http.StatusInternalServerError) // response status should be 500 ISE
+}
+
+func TestThatFailingGetGeneratesInternalServerError(t *testing.T) {
+	is, log, rw := setup(t)
+	svc, tsqm := defaultTempServiceMock()
+	tsqm.GetFunc = func() ([]domain.Sensor, error) { return nil, errors.New("failure") }
+	req, _ := http.NewRequest("GET", "", nil)
+
+	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
+
+	is.Equal(rw.Code, http.StatusInternalServerError) // response status should be 500 ISE
+}
+
+func setup(t *testing.T) (*is.I, logging.Logger, *httptest.ResponseRecorder) {
+	return is.New(t), logging.NewLogger(), httptest.NewRecorder()
+}
+
+func defaultTempServiceMock() (*services.TempServiceMock, *services.TempServiceQueryMock) {
+	tsqm := &services.TempServiceQueryMock{
+		GetFunc: func() ([]domain.Sensor, error) {
+			return []domain.Sensor{}, nil
+		},
+	}
+
+	return &services.TempServiceMock{
+		QueryFunc: func() services.TempServiceQuery {
+			return tsqm
+		},
+	}, tsqm
 }
