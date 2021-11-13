@@ -40,6 +40,10 @@ func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.D
 		datasets.NewRetrieveTemperaturesHandler(log, temperature.NewTempService(contextBrokerURL)),
 	)
 	router.Get(
+		"/api/temperature/air/sensors",
+		datasets.NewRetrieveTemperatureSensorsHandler(log, contextBrokerURL),
+	)
+	router.Get(
 		"/api/trafficflow",
 		datasets.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
 	)

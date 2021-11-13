@@ -84,8 +84,32 @@ func TestThatFailingGetGeneratesInternalServerError(t *testing.T) {
 	is.Equal(rw.Code, http.StatusInternalServerError) // response status should be 500 ISE
 }
 
+// #################################################
+
+func TestInvokeTempSensorsHandler(t *testing.T) {
+	is, log, rw := setup(t)
+	//svc := setupMockServiceThatReturns(http.StatusOK, "[]")
+	req, _ := http.NewRequest("GET", "http://diwise.io/api/temperature/air/sensors", nil)
+
+	NewRetrieveTemperatureSensorsHandler(log /*svc.URL*/, "https://diwise.io").ServeHTTP(rw, req)
+
+	is.Equal(rw.Code, http.StatusOK) // response status should be 200 OK
+}
+
+// #################################################
+
 func setup(t *testing.T) (*is.I, logging.Logger, *httptest.ResponseRecorder) {
 	return is.New(t), logging.NewLogger(), httptest.NewRecorder()
+}
+
+func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(responseCode)
+		w.Header().Add("Content-Type", "application/ld+json")
+		if body != "" {
+			w.Write([]byte(body))
+		}
+	}))
 }
 
 func defaultTempServiceMock() (*services.TempServiceMock, *services.TempServiceQueryMock) {
