@@ -29,9 +29,17 @@
       "get": {
         "description": "Returns this OpenAPI specification",
         "operationId": "getOpenAPI",
-        "security": [
-          {}
-        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/beaches": {
+      "get": {
+        "operationId": "getBeaches",
+        "description": "Get information about public beaches.",
         "responses": {
           "200": {
             "description": "OK"
@@ -57,7 +65,7 @@
             "name": "timeAt",
             "in": "query",
             "description": "Select temperatures from time",
-            "example": "2021-06-01T00:00:00+0200",
+            "example": "2021-06-01T00:00:00Z",
             "schema": {
               "type": "string",
               "format": "date-time"
@@ -67,7 +75,7 @@
             "name": "endTimeAt",
             "in": "query",
             "description": "Select temperatures up to time",
-            "example": "2021-07-01T00:00:00+0200",
+            "example": "2021-07-01T00:00:00Z",
             "schema": {
               "type": "string",
               "format": "date-time"
@@ -111,6 +119,28 @@
       "get": {
         "operationId": "getAirTemperatureSensors",
         "description": "Get available temperature sensors.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/temperature/water": {
+      "get": {
+        "operationId": "getWaterTemperatures",
+        "description": "Get water temperature information.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/trafficflow": {
+      "get": {
+        "operationId": "getTrafficFlow",
+        "description": "Get traffic flow information.",
         "responses": {
           "200": {
             "description": "OK"
