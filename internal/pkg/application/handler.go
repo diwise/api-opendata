@@ -71,7 +71,7 @@ func (router *RequestRouter) Post(pattern string, handlerFn http.HandlerFunc) {
 }
 
 //CreateRouterAndStartServing sets up the router and starts serving incoming requests
-func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcatResponse *bytes.Buffer) {
+func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) {
 
 	router := &RequestRouter{impl: chi.NewRouter()}
 
@@ -93,6 +93,7 @@ func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcat
 	router.addProbeHandlers()
 
 	router.Get("/api/datasets/dcat", NewRetrieveDatasetsHandler(log, dcatResponse))
+	router.Get("/api/openapi", NewRetrieveOpenAPIHandler(log, openapiResponse))
 
 	port := os.Getenv("SERVICE_PORT")
 	if port == "" {
@@ -191,5 +192,18 @@ func NewRetrieveDatasetsHandler(log logging.Logger, dcatResponse *bytes.Buffer) 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/rdf+xml")
 		w.Write(dcatResponse.Bytes())
+	})
+}
+
+func NewRetrieveOpenAPIHandler(log logging.Logger, openapiResponse *bytes.Buffer) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if openapiResponse == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(openapiResponse.Bytes())
 	})
 }
