@@ -1,0 +1,99 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Sundsvalls Kommuns öppna data",
+    "version": "1.0"
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "apikey"
+      }
+    }
+  },
+  "security": [
+    {}
+  ],
+  "servers": [
+    {
+      "url": "https://api.sundsvall.se/opendata/1.0",
+      "description": "some description"
+    }
+  ],
+  "paths": {
+    "/temperature/air": {
+      "get": {
+        "operationId": "getAirTemperatures",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters":[
+          {
+            "name": "sensor",
+            "in": "query",
+            "description": "ID of the temperature sensor to query. Available sensors are returned from the /temperature/air/sensors endpoint.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "timeAt",
+            "in": "query",
+            "description": "Select temperatures from time",
+            "example": "2021-06-01T00:00:00+0200",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endTimeAt",
+            "in": "query",
+            "description": "Select temperatures up to time",
+            "example": "2021-07-01T00:00:00+0200",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "options",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["aggregatedValues"]
+            }
+          },
+          {
+            "name": "aggrMethods",
+            "in": "query",
+            "description": "Select aggregation methods. (options MUST be set to aggregatedValues)",
+            "schema": {
+              "type": "string",
+              "enum": ["avg", "max,min", "avg,max,min"]
+            }
+          },
+          {
+            "name": "aggrPeriodDuration",
+            "in": "query",
+            "description": "Select aggregation period. (options MUST be set to aggregatedValues)",
+            "schema": {
+              "type": "string",
+              "enum": ["PT1H", "PT24H", "P7D"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  }
+}
