@@ -14,7 +14,9 @@
     }
   },
   "security": [
-    {}
+    {
+      "ApiKeyAuth": []
+    }
   ],
   "servers": [
     {
@@ -23,19 +25,29 @@
     }
   ],
   "paths": {
+    "/openapi": {
+      "get": {
+        "description": "Returns this OpenAPI specification",
+        "operationId": "getOpenAPI",
+        "security": [
+          {}
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/temperature/air": {
       "get": {
         "operationId": "getAirTemperatures",
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
+        "description": "Get temperature values from a given sensor.<p>Available sensors are returned from the /temperature/air/sensors endpoint.",
         "parameters":[
           {
             "name": "sensor",
             "in": "query",
-            "description": "ID of the temperature sensor to query. Available sensors are returned from the /temperature/air/sensors endpoint.",
+            "description": "ID of the temperature sensor to query.",
             "required": true,
             "schema": {
               "type": "string"
@@ -88,6 +100,17 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/temperature/air/sensors": {
+      "get": {
+        "operationId": "getAirTemperatureSensors",
+        "description": "Get available temperature sensors.",
         "responses": {
           "200": {
             "description": "OK"
