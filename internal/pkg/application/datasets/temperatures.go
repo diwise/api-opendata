@@ -128,8 +128,6 @@ func NewRetrieveTemperaturesHandler(log logging.Logger, svc services.TempService
 
 func NewRetrieveTemperatureSensorsHandler(log logging.Logger, brokerURL string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "application/ld+json")
-		w.WriteHeader(http.StatusOK)
 
 		url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=Device", brokerURL)
 
@@ -176,6 +174,8 @@ func NewRetrieveTemperatureSensorsHandler(log logging.Logger, brokerURL string) 
 			return
 		}
 
+		w.Header().Add("Content-Type", "application/ld+json")
+		w.WriteHeader(http.StatusOK)
 		w.Write(bytes)
 	})
 }
