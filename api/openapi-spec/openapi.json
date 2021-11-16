@@ -21,7 +21,11 @@
   "servers": [
     {
       "url": "https://api.sundsvall.se/opendata/1.0",
-      "description": "some description"
+      "description": "production environment"
+    },
+    {
+      "url": "https://api-test.sundsvall.se/opendata/1.0",
+      "description": "test environment"
     }
   ],
   "paths": {
