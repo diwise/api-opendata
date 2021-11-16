@@ -72,7 +72,7 @@ func TestMultipleObservationResponse(t *testing.T) {
 func TestAverageAggregationPT1H(t *testing.T) {
 	is := is.New(t)
 	from, _ := time.Parse(time.RFC3339, "2021-09-01T12:00:00Z")
-	svc := setupMockServiceThatReturns(http.StatusOK, generateTestData(from, 20*time.Minute, 1.0, 2.0, 3.0, 4.0, 5.0))
+	svc := setupMockServiceThatReturns(http.StatusOK, generateTestData(from, 20*time.Minute, 1.0, 2.0, 3.0, 4.0, 5.23))
 	ts := NewTempService(svc.URL)
 
 	sensors, err := ts.Query().Sensor("testsensor").Aggregate("PT1H", "avg").Get()
@@ -80,7 +80,7 @@ func TestAverageAggregationPT1H(t *testing.T) {
 	is.NoErr(err)
 	is.Equal(len(sensors[0].Temperatures), 2) // should return 2 temperature averages
 	is.Equal(*sensors[0].Temperatures[0].Average, 2.0)
-	is.Equal(*sensors[0].Temperatures[1].Average, 4.5)
+	is.Equal(*sensors[0].Temperatures[1].Average, 4.6)
 }
 
 func TestAverageAggregationPT24H(t *testing.T) {

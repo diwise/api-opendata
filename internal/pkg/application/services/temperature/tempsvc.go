@@ -24,8 +24,11 @@ func average(data []fiware.WeatherObserved, from, to int, aggregate domain.Tempe
 	for i := from; i < to; i++ {
 		sum += data[i].Temperature.Value
 	}
+
 	avg := sum / float64(to-from)
+	avg = float64(math.Round(avg*10) / 10)
 	aggregate.Average = &avg
+
 	return aggregate
 }
 
