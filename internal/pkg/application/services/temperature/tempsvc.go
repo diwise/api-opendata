@@ -137,34 +137,27 @@ func (q tsq) Get() ([]domain.Sensor, error) {
 		return nil, fmt.Errorf("invalid temperature service query: %s", q.err.Error())
 	}
 
-	url := fmt.Sprintf(
-		"%s/ngsi-ld/v1/entities?type=WeatherObserved&attrs=temperature&q=refDevice==\"%s\"",
-		q.ts.contextBrokerURL,
-		q.sensor,
-	)
-
-	if !q.from.IsZero() && !q.to.IsZero() {
-		timeAt := q.from.Format(time.RFC3339)
-		endTimeAt := q.to.Format(time.RFC3339)
-		url = url + fmt.Sprintf("&timerel=between&timeAt=%s&endTimeAt=%s", timeAt, endTimeAt)
-	}
-
-	response, err := http.Get(url)
+	pageSize := uint64(1000)
+	maxResultSize := uint64(50000)
+	wos, err := requestData(q, 0, pageSize)
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request failed, status code not ok: %d", response.StatusCode)
-	}
+	if len(wos) == int(pageSize) {
+		// We need to request more data page by page
+		for offset := pageSize; offset < maxResultSize; offset += pageSize {
+			page, err := requestData(q, offset, pageSize)
+			if err != nil {
+				return nil, err
+			}
 
-	wos := []fiware.WeatherObserved{}
-	b, _ := io.ReadAll(response.Body)
+			wos = append(wos, page...)
 
-	err = json.Unmarshal(b, &wos)
-	if err != nil {
-		return nil, err
+			if len(page) < int(pageSize) {
+				break
+			}
+		}
 	}
 
 	temps := []domain.Temperature{}
@@ -237,4 +230,46 @@ func (q tsq) Get() ([]domain.Sensor, error) {
 	sensors := []domain.Sensor{{Id: q.sensor, Temperatures: temps}}
 
 	return sensors, nil
+}
+
+func requestData(q tsq, offset, limit uint64) ([]fiware.WeatherObserved, error) {
+	url := fmt.Sprintf(
+		"%s/ngsi-ld/v1/entities?type=WeatherObserved&attrs=temperature&q=refDevice==\"%s\"",
+		q.ts.contextBrokerURL,
+		q.sensor,
+	)
+
+	if !q.from.IsZero() && !q.to.IsZero() {
+		timeAt := q.from.Format(time.RFC3339)
+		endTimeAt := q.to.Format(time.RFC3339)
+		url = url + fmt.Sprintf("&timerel=between&timeAt=%s&endTimeAt=%s", timeAt, endTimeAt)
+	}
+
+	if limit > 0 {
+		url = url + fmt.Sprintf("&limit=%d", limit)
+	}
+
+	if offset > 0 {
+		url = url + fmt.Sprintf("&offset=%d", offset)
+	}
+
+	response, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed, status code not ok: %d", response.StatusCode)
+	}
+
+	wos := []fiware.WeatherObserved{}
+	b, _ := io.ReadAll(response.Body)
+
+	err = json.Unmarshal(b, &wos)
+	if err != nil {
+		return nil, err
+	}
+
+	return wos, nil
 }
