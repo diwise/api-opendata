@@ -33,6 +33,7 @@
       "get": {
         "description": "Returns this OpenAPI specification",
         "operationId": "getOpenAPI",
+        "security": [{}],
         "responses": {
           "200": {
             "description": "OK"
