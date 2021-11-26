@@ -8,5 +8,6 @@ import (
 
 func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID, scope string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 	})
 }
