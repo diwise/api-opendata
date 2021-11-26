@@ -19,18 +19,46 @@ func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID
 			return
 		}
 
-		// http.Post with clientID and scope to get token
 		token, err := getTokenBearer(clientID, scope, loginUrl)
-
-		fmt.Println("Token: " + token)
 		if err != nil {
-			log.Errorf(err.Error())
+			log.Errorf("failed to retrieve token: %s", err.Error())
 			w.WriteHeader(http.StatusUnauthorized)
+			return
 		}
 
-		// use token and company code to get reports
+		reports, err := getReports(defaultUrl, companyCode, token)
+		if err != nil {
+			log.Errorf("failed to get reports: %s", err.Error())
+			return
+		}
+
+		w.Write([]byte(reports))
 
 	})
+}
+
+func getReports(url, companyCode, token string) ([]byte, error) {
+	client := http.Client{}
+
+	req, _ := http.NewRequest(http.MethodGet, url+"/api/publishedreports/v2", nil)
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Stratsys-CompanyCode", companyCode)
+
+	resp, err := client.Do(req)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed, status code not ok: %d", resp.StatusCode)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %s", err.Error())
+	}
+
+	reports, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %s", err.Error())
+	}
+
+	return reports, nil
 }
 
 func getTokenBearer(clientID, scope, authUrl string) (string, error) {

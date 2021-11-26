@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/datasets"
@@ -19,25 +18,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-/* STRATSYS TESTS */
-func TestThatWeGetAToken(t *testing.T) {
-
-	log := logging.NewLogger()
-	server := setupTokenMockService(http.StatusOK, accessTokenResp)
-
-	companyCode := "companyCode"
-	clientId := "clientId"
-	scope := "scope"
-	loginUrl := server.URL + "/token"
-	defaultUrl := server.URL
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, loginUrl, nil)
-
-	datasets.NewRetrieveStratsysReportsHandler(log, companyCode, clientId, scope, loginUrl, defaultUrl).ServeHTTP(w, req)
-}
-
-/* // STRATSYS TESTS */
 func TestThatRetrieveCatalogsSucceeds(t *testing.T) {
 	log := logging.NewLogger()
 	db, _ := database.NewDatabaseConnection(database.NewSQLiteConnector(), log)
@@ -203,21 +183,6 @@ func TestGetTrafficFlowsHandlesDateObservationsFromTimeSpan(t *testing.T) {
 
 }
 
-func setupTokenMockService(responseCode int, responseBody string) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		if strings.Contains(r.URL.Path, "token") {
-			w.Header().Add("Content-Type", "application/ld+json")
-			w.WriteHeader(responseCode)
-			w.Write([]byte(responseBody))
-		} else {
-			w.Header().Add("Content-Type", "application/ld+json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(nil))
-		}
-	}))
-}
-
 func setupMockService(responseCode int, responseBody string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/ld+json")
@@ -225,11 +190,6 @@ func setupMockService(responseCode int, responseBody string) *httptest.Server {
 		w.Write([]byte(responseBody))
 	}))
 }
-
-const accessTokenResp string = `{"access_token":"ncjklhclabclksabclac",
-"scope":"am_application_scope default",
-"token_type":"Bearer",
-"expires_in":3600}`
 
 const differentDateTfos string = `[{
 	"@context": [
