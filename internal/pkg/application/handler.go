@@ -25,6 +25,9 @@ type RequestRouter struct {
 func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.Datastore) {
 	contextBrokerURL := os.Getenv("DIWISE_CONTEXT_BROKER_URL")
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
+	stratsysCompanyCode := os.Getenv("STRATSYS_COMPANY_CODE")
+	stratsysClientId := os.Getenv("STRATSYS_CLIENT_ID")
+	stratsysScope := os.Getenv("STRATSYS_SCOPE")
 
 	//router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db))
 	router.Get(
@@ -47,6 +50,9 @@ func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.D
 		"/api/trafficflow",
 		datasets.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
 	)
+	router.Get(
+		"/api/stratsys",
+		datasets.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope))
 }
 
 func (router *RequestRouter) addProbeHandlers() {
