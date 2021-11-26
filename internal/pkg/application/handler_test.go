@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/datasets"
@@ -18,12 +19,31 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+/* STRATSYS TESTS */
+func TestThatWeGetAToken(t *testing.T) {
+
+	log := logging.NewLogger()
+	server := setupTokenMockService(http.StatusOK, accessTokenResp)
+
+	companyCode := "companyCode"
+	clientId := "clientId"
+	scope := "scope"
+	loginUrl := server.URL + "/token"
+	defaultUrl := server.URL
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, loginUrl, nil)
+
+	datasets.NewRetrieveStratsysReportsHandler(log, companyCode, clientId, scope, loginUrl, defaultUrl).ServeHTTP(w, req)
+}
+
+/* // STRATSYS TESTS */
 func TestThatRetrieveCatalogsSucceeds(t *testing.T) {
 	log := logging.NewLogger()
 	db, _ := database.NewDatabaseConnection(database.NewSQLiteConnector(), log)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "http://localhost:8080/catalogs", nil)
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/catalogs", nil)
 
 	NewRetrieveCatalogsHandler(log, db).ServeHTTP(w, req)
 
@@ -39,7 +59,7 @@ func TestGetBeaches(t *testing.T) {
 	server := setupMockService(http.StatusOK, beachesJson)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "http://localhost:8080/api/beaches", nil)
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/api/beaches", nil)
 
 	datasets.NewRetrieveBeachesHandler(log, server.URL).ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -55,7 +75,7 @@ func TestGetWaterQuality(t *testing.T) {
 	server := setupMockService(http.StatusOK, waterqualityJson)
 
 	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "http://localhost:8080/api/waterquality", nil)
+	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/api/waterquality", nil)
 
 	datasets.NewRetrieveWaterQualityHandler(log, server.URL, "").ServeHTTP(nr, req)
 	if nr.Code != http.StatusOK {
@@ -70,7 +90,7 @@ func TestGetTrafficFlowsHandlesEmptyResult(t *testing.T) {
 	server := setupMockService(http.StatusOK, "[]")
 
 	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "https://localhost:8080/api/trafficflow", nil)
+	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
 
 	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
 
@@ -123,7 +143,7 @@ func TestGetTrafficFlowsHandlesSingleObservation(t *testing.T) {
 	}]`)
 
 	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "https://localhost:8080/api/trafficflow", nil)
+	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
 
 	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
 
@@ -139,7 +159,7 @@ func TestGetTrafficFlowsHandlesSameDateObservations(t *testing.T) {
 	server := setupMockService(http.StatusOK, trafficFlowJson)
 
 	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "https://localhost:8080/api/trafficflow", nil)
+	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
 
 	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
 
@@ -155,7 +175,7 @@ func TestGetTrafficFlowsHandlesDifferentDateObservations(t *testing.T) {
 	server := setupMockService(http.StatusOK, differentDateTfos)
 
 	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "https://localhost:8080/api/trafficflow", nil)
+	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
 
 	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
 
@@ -177,10 +197,25 @@ func TestGetTrafficFlowsHandlesDateObservationsFromTimeSpan(t *testing.T) {
 	}))
 
 	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", server.URL+"/api/trafficflows?from=2016-12-07T11:10:00Z&to=2016-12-07T13:10:00Z", nil)
+	req, _ := http.NewRequest(http.MethodGet, server.URL+"/api/trafficflows?from=2016-12-07T11:10:00Z&to=2016-12-07T13:10:00Z", nil)
 
 	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
 
+}
+
+func setupTokenMockService(responseCode int, responseBody string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if strings.Contains(r.URL.Path, "token") {
+			w.Header().Add("Content-Type", "application/ld+json")
+			w.WriteHeader(responseCode)
+			w.Write([]byte(responseBody))
+		} else {
+			w.Header().Add("Content-Type", "application/ld+json")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(nil))
+		}
+	}))
 }
 
 func setupMockService(responseCode int, responseBody string) *httptest.Server {
@@ -190,6 +225,11 @@ func setupMockService(responseCode int, responseBody string) *httptest.Server {
 		w.Write([]byte(responseBody))
 	}))
 }
+
+const accessTokenResp string = `{"access_token":"ncjklhclabclksabclac",
+"scope":"am_application_scope default",
+"token_type":"Bearer",
+"expires_in":3600}`
 
 const differentDateTfos string = `[{
 	"@context": [

@@ -28,6 +28,8 @@ func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.D
 	stratsysCompanyCode := os.Getenv("STRATSYS_COMPANY_CODE")
 	stratsysClientId := os.Getenv("STRATSYS_CLIENT_ID")
 	stratsysScope := os.Getenv("STRATSYS_SCOPE")
+	stratsysLoginUrl := os.Getenv("STRATSYS_LOGIN_URL")
+	stratsysDefaultUrl := os.Getenv("STRATSYS_DEFAULT_URL")
 
 	//router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db))
 	router.Get(
@@ -52,7 +54,7 @@ func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.D
 	)
 	router.Get(
 		"/api/stratsys",
-		datasets.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope))
+		datasets.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl))
 }
 
 func (router *RequestRouter) addProbeHandlers() {
