@@ -29,6 +29,26 @@ func TestThatWeGetATokenFromStratsysHandler(t *testing.T) {
 	}
 }
 
+func TestThatWeCanRetrieveASingleReportFromStratsysHandler(t *testing.T) {
+
+	log := logging.NewLogger()
+	server := setupTokenMockService(http.StatusOK, accessTokenResp)
+
+	companyCode := "companyCode"
+	clientId := "clientId"
+	scope := "scope"
+	loginUrl := server.URL + "/token"
+	defaultUrl := server.URL
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, server.URL+"/api/stratsys/1337", nil)
+
+	NewRetrieveStratsysReportsHandler(log, companyCode, clientId, scope, loginUrl, defaultUrl).ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("Request failed, status code not OK: %d", w.Code)
+	}
+}
+
 func setupTokenMockService(responseCode int, responseBody string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

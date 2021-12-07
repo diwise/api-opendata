@@ -9,6 +9,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/application"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
+	"github.com/go-chi/chi"
 )
 
 func openDatasetsFile(log logging.Logger, path string) *os.File {
@@ -70,7 +71,16 @@ func main() {
 			}
 		}
 
+		port := os.Getenv("SERVICE_PORT")
+		if port == "" {
+			port = "8880"
+		}
+		log.Infof("Starting api-opendata on port %s.\n", port)
+
+		r := chi.NewRouter()
+
 		db, _ := database.NewDatabaseConnection(database.NewSQLiteConnector(), log)
-		application.CreateRouterAndStartServing(log, db, datasetResponseBuffer, oasResponseBuffer)
+		app := application.NewApplication(r, db, log, datasetResponseBuffer, oasResponseBuffer)
+		app.Start(port)
 	}
 }

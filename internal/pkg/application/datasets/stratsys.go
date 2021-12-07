@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
+	"github.com/go-chi/chi"
 )
 
 func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID, scope, loginUrl, defaultUrl string) http.HandlerFunc {
@@ -26,21 +27,38 @@ func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID
 			return
 		}
 
-		reports, err := getReports(defaultUrl, companyCode, token)
-		if err != nil {
-			log.Errorf("failed to get reports: %s", err.Error())
-			return
+		reportId := chi.URLParam(r, "reportID")
+
+		if reportId != "" {
+			reportById, err := getReportById(reportId, defaultUrl, companyCode, token)
+			if err != nil {
+				log.Errorf("failed to get reports: %s", err.Error())
+				return
+			}
+			w.Write([]byte(reportById))
+		} else {
+			reports, err := getReports(defaultUrl, companyCode, token)
+			if err != nil {
+				log.Errorf("failed to get reports: %s", err.Error())
+				return
+			}
+			w.Write([]byte(reports))
 		}
-
-		w.Write([]byte(reports))
-
 	})
 }
 
+func getReportById(id, url, companyCode, token string) ([]byte, error) {
+	return getReportOrReports(url+"/api/publishedreports/v2/"+id, companyCode, token)
+}
+
 func getReports(url, companyCode, token string) ([]byte, error) {
+	return getReportOrReports(url+"/api/publishedreports/v2", companyCode, token)
+}
+
+func getReportOrReports(url, companyCode, token string) ([]byte, error) {
 	client := http.Client{}
 
-	req, _ := http.NewRequest(http.MethodGet, url+"/api/publishedreports/v2", nil)
+	req, _ := http.NewRequest(http.MethodGet, url, nil)
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Stratsys-CompanyCode", companyCode)
