@@ -63,7 +63,7 @@ func newOpendataApp(r chi.Router, db database.Datastore, log logging.Logger, dca
 }
 
 func (a *opendataApp) Start(port string) error {
-	return http.ListenAndServe(fmt.Sprintf(":%s", port), a.router)
+	return http.ListenAndServe(fmt.Sprintf("Starting api-opendata on port:%s", port), a.router)
 }
 
 func (o *opendataApp) addDiwiseHandlers(r chi.Router, log logging.Logger, db database.Datastore) {

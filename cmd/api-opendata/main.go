@@ -75,12 +75,17 @@ func main() {
 		if port == "" {
 			port = "8880"
 		}
-		log.Infof("Starting api-opendata on port %s.\n", port)
 
 		r := chi.NewRouter()
 
-		db, _ := database.NewDatabaseConnection(database.NewSQLiteConnector(), log)
+		db, err := database.NewDatabaseConnection(database.NewSQLiteConnector(), log)
+		if err != nil {
+			log.Fatal("failed to connect to database, shutting down... %s", err.Error())
+		}
 		app := application.NewApplication(r, db, log, datasetResponseBuffer, oasResponseBuffer)
-		app.Start(port)
+		err = app.Start(port)
+		if err != nil {
+			log.Fatal("failed to start router... %s", err.Error())
+		}
 	}
 }

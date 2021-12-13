@@ -13,13 +13,11 @@ import (
 )
 
 func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID, scope, loginUrl, defaultUrl string) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if companyCode == "" || clientID == "" || scope == "" || loginUrl == "" || defaultUrl == "" {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Error("all environment variables need to be set")
-			return
-		}
+	if companyCode == "" || clientID == "" || scope == "" || loginUrl == "" || defaultUrl == "" {
+		log.Fatal("all environment variables need to be set")
+	}
 
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, err := getTokenBearer(clientID, scope, loginUrl)
 		if err != nil {
 			log.Errorf("failed to retrieve token: %s", err.Error())
@@ -44,6 +42,7 @@ func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID
 			}
 			w.Write([]byte(reports))
 		}
+
 	})
 }
 
@@ -71,12 +70,12 @@ func getReportOrReports(url, companyCode, token string) ([]byte, error) {
 		return nil, fmt.Errorf("request failed: %s", err.Error())
 	}
 
-	reports, err := ioutil.ReadAll(resp.Body)
+	response, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %s", err.Error())
 	}
 
-	return reports, nil
+	return response, nil
 }
 
 func getTokenBearer(clientID, scope, authUrl string) (string, error) {
