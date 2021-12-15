@@ -17,6 +17,8 @@ func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID
 		log.Fatal("all environment variables need to be set")
 	}
 
+	loginUrl = fmt.Sprintf("%s/%s/connect/token", loginUrl, companyCode)
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, err := getTokenBearer(clientID, scope, loginUrl)
 		if err != nil {
@@ -25,12 +27,13 @@ func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID
 			return
 		}
 
-		reportId := chi.URLParam(r, "reportID")
+		reportId := chi.URLParam(r, "id")
 
 		if reportId != "" {
 			reportById, err := getReportById(reportId, defaultUrl, companyCode, token)
 			if err != nil {
 				log.Errorf("failed to get reports: %s", err.Error())
+				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			w.Write([]byte(reportById))
@@ -38,6 +41,7 @@ func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID
 			reports, err := getReports(defaultUrl, companyCode, token)
 			if err != nil {
 				log.Errorf("failed to get reports: %s", err.Error())
+				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			w.Write([]byte(reports))
@@ -63,11 +67,13 @@ func getReportOrReports(url, companyCode, token string) ([]byte, error) {
 	req.Header.Add("Stratsys-CompanyCode", companyCode)
 
 	resp, err := client.Do(req)
+
+	if err != nil {
+		return nil, fmt.Errorf("error when requesting report: %s", err.Error())
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("request failed, status code not ok: %d", resp.StatusCode)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %s", err.Error())
 	}
 
 	response, err := ioutil.ReadAll(resp.Body)
@@ -89,23 +95,27 @@ func getTokenBearer(clientID, scope, authUrl string) (string, error) {
 
 	req, err := http.NewRequest(http.MethodPost, authUrl, body)
 	if err != nil {
-		return "", fmt.Errorf("failed to get token: %s", err.Error())
+		return "", fmt.Errorf("failed to create new token request: %s", err.Error())
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)
 
-	if resp.StatusCode != http.StatusOK {
+	if err != nil {
 		return "", fmt.Errorf("failed to get token: %s", err.Error())
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected response from token request: %d != %d", resp.StatusCode, http.StatusOK)
 	}
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response body: %s", err.Error())
 	}
-
-	defer resp.Body.Close()
 
 	token := tokenResponse{}
 

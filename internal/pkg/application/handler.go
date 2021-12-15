@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/flate"
 	"encoding/xml"
-	"fmt"
 	"net/http"
 	"os"
 
@@ -63,7 +62,8 @@ func newOpendataApp(r chi.Router, db database.Datastore, log logging.Logger, dca
 }
 
 func (a *opendataApp) Start(port string) error {
-	return http.ListenAndServe(fmt.Sprintf("Starting api-opendata on port:%s", port), a.router)
+	a.log.Infof("Starting api-opendata on port:%s", port)
+	return http.ListenAndServe(":"+port, a.router)
 }
 
 func (o *opendataApp) addDiwiseHandlers(r chi.Router, log logging.Logger, db database.Datastore) {
@@ -97,7 +97,10 @@ func (o *opendataApp) addDiwiseHandlers(r chi.Router, log logging.Logger, db dat
 		datasets.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
 	)
 	r.Get(
-		"/api/stratsys",
+		"/api/stratsys/publishedreports",
+		datasets.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl))
+	r.Get(
+		"/api/stratsys/publishedreports/{id}",
 		datasets.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl))
 }
 

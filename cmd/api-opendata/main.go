@@ -85,7 +85,7 @@ func main() {
 		app := application.NewApplication(r, db, log, datasetResponseBuffer, oasResponseBuffer)
 		err = app.Start(port)
 		if err != nil {
-			log.Fatal("failed to start router... %s", err.Error())
+			log.Fatal("failed to start router: %s", err.Error())
 		}
 	}
 }
