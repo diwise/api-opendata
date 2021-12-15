@@ -17,65 +17,28 @@ import (
 	"github.com/rs/cors"
 )
 
-//RequestRouter needs a comment
-type RequestRouter struct {
-	impl *chi.Mux
+type Application interface {
+	Start(port string) error
 }
 
-func (router *RequestRouter) addDiwiseHandlers(log logging.Logger, db database.Datastore) {
-	contextBrokerURL := os.Getenv("DIWISE_CONTEXT_BROKER_URL")
-	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
-
-	//router.Get("/catalogs/", NewRetrieveCatalogsHandler(log, db))
-	router.Get(
-		"/api/temperature/water",
-		datasets.NewRetrieveWaterQualityHandler(log, contextBrokerURL, waterQualityQueryParams),
-	)
-	router.Get(
-		"/api/beaches",
-		datasets.NewRetrieveBeachesHandler(log, contextBrokerURL),
-	)
-	router.Get(
-		"/api/temperature/air",
-		datasets.NewRetrieveTemperaturesHandler(log, temperature.NewTempService(contextBrokerURL)),
-	)
-	router.Get(
-		"/api/temperature/air/sensors",
-		datasets.NewRetrieveTemperatureSensorsHandler(log, contextBrokerURL),
-	)
-	router.Get(
-		"/api/trafficflow",
-		datasets.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
-	)
+type opendataApp struct {
+	router chi.Router
+	db     database.Datastore
+	log    logging.Logger
 }
 
-func (router *RequestRouter) addProbeHandlers() {
-	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+func NewApplication(r chi.Router, db database.Datastore, log logging.Logger, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) Application {
+	return newOpendataApp(r, db, log, dcatResponse, openapiResponse)
 }
 
-//Get accepts a pattern that should be routed to the handlerFn on a GET request
-func (router *RequestRouter) Get(pattern string, handlerFn http.HandlerFunc) {
-	router.impl.Get(pattern, handlerFn)
-}
+func newOpendataApp(r chi.Router, db database.Datastore, log logging.Logger, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) *opendataApp {
+	o := &opendataApp{
+		router: r,
+		db:     db,
+		log:    log,
+	}
 
-//Patch accepts a pattern that should be routed to the handlerFn on a PATCH request
-func (router *RequestRouter) Patch(pattern string, handlerFn http.HandlerFunc) {
-	router.impl.Patch(pattern, handlerFn)
-}
-
-//Post accepts a pattern that should be routed to the handlerFn on a POST request
-func (router *RequestRouter) Post(pattern string, handlerFn http.HandlerFunc) {
-	router.impl.Post(pattern, handlerFn)
-}
-
-//CreateRouterAndStartServing sets up the router and starts serving incoming requests
-func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) {
-
-	router := &RequestRouter{impl: chi.NewRouter()}
-
-	router.impl.Use(cors.New(cors.Options{
+	r.Use(cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
 		Debug:            false,
@@ -86,36 +49,79 @@ func CreateRouterAndStartServing(log logging.Logger, db database.Datastore, dcat
 		flate.DefaultCompression,
 		"text/csv", "application/json", "application/xml", "application/rdf+xml",
 	)
-	router.impl.Use(compressor.Handler)
-	router.impl.Use(middleware.Logger)
+	r.Use(compressor.Handler)
+	r.Use(middleware.Logger)
 
-	router.addDiwiseHandlers(log, db)
-	router.addProbeHandlers()
+	o.addDiwiseHandlers(r, log, db)
+	o.addProbeHandlers(r)
 
-	router.Get("/api/datasets/dcat", NewRetrieveDatasetsHandler(log, dcatResponse))
-	router.Get("/api/openapi", NewRetrieveOpenAPIHandler(log, openapiResponse))
+	r.Get("/api/datasets/dcat", o.newRetrieveDatasetsHandler(log, dcatResponse))
+	r.Get("/api/openapi", o.newRetrieveOpenAPIHandler(log, openapiResponse))
 
-	port := os.Getenv("SERVICE_PORT")
-	if port == "" {
-		port = "8880"
-	}
-
-	log.Infof("Starting api-opendata on port %s.\n", port)
-	log.Fatal(http.ListenAndServe(":"+port, router.impl))
+	return o
 }
 
-func NewRetrieveCatalogsHandler(log logging.Logger, db database.Datastore) http.HandlerFunc {
+func (a *opendataApp) Start(port string) error {
+	a.log.Infof("Starting api-opendata on port:%s", port)
+	return http.ListenAndServe(":"+port, a.router)
+}
+
+func (o *opendataApp) addDiwiseHandlers(r chi.Router, log logging.Logger, db database.Datastore) {
+	contextBrokerURL := os.Getenv("DIWISE_CONTEXT_BROKER_URL")
+	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
+	stratsysCompanyCode := os.Getenv("STRATSYS_COMPANY_CODE")
+	stratsysClientId := os.Getenv("STRATSYS_CLIENT_ID")
+	stratsysScope := os.Getenv("STRATSYS_SCOPE")
+	stratsysLoginUrl := os.Getenv("STRATSYS_LOGIN_URL")
+	stratsysDefaultUrl := os.Getenv("STRATSYS_DEFAULT_URL")
+
+	//r.Get("/catalogs", o.catalogsHandler())
+	r.Get(
+		"/api/temperature/water",
+		datasets.NewRetrieveWaterQualityHandler(log, contextBrokerURL, waterQualityQueryParams),
+	)
+	r.Get(
+		"/api/beaches",
+		datasets.NewRetrieveBeachesHandler(log, contextBrokerURL),
+	)
+	r.Get(
+		"/api/temperature/air",
+		datasets.NewRetrieveTemperaturesHandler(log, temperature.NewTempService(contextBrokerURL)),
+	)
+	r.Get(
+		"/api/temperature/air/sensors",
+		datasets.NewRetrieveTemperatureSensorsHandler(log, contextBrokerURL),
+	)
+	r.Get(
+		"/api/trafficflow",
+		datasets.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
+	)
+	r.Get(
+		"/api/stratsys/publishedreports",
+		datasets.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl))
+	r.Get(
+		"/api/stratsys/publishedreports/{id}",
+		datasets.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl))
+}
+
+func (o *opendataApp) addProbeHandlers(r chi.Router) {
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+}
+
+func (o *opendataApp) catalogsHandler() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		catalogs, err := db.GetAllCatalogs()
+		catalogs, err := o.db.GetAllCatalogs()
 		if err != nil {
-			log.Errorf("something went wrong when trying to get all Catalogs: %s", err.Error())
+			o.log.Errorf("something went wrong when trying to get all Catalogs: %s", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		for _, catalog := range catalogs {
 
-			dataService, _ := db.GetDataServiceFromPrimaryKey(catalog.ID)
+			dataService, _ := o.db.GetDataServiceFromPrimaryKey(catalog.ID)
 			dcatDataService := RdfDataService{
 				Attr_rdf_about: dataService.About,
 			}
@@ -123,27 +129,27 @@ func NewRetrieveCatalogsHandler(log logging.Logger, db database.Datastore) http.
 			dcatDataService.Dcterms_title.Title = dataService.Title
 			dcatDataService.Dcat_endpointURL.Attr_rdf_resource = dataService.EndpointURL
 
-			agent, _ := db.GetAgentFromPrimaryKey(catalog.ID)
+			agent, _ := o.db.GetAgentFromPrimaryKey(catalog.ID)
 			foafAbout := RdfAgent{
 				Attr_rdf_about: agent.About,
 				Foaf_name:      agent.Name,
 			}
 
-			distribution, _ := db.GetDistributionFromPrimaryKey(catalog.ID)
+			distribution, _ := o.db.GetDistributionFromPrimaryKey(catalog.ID)
 			dcatDist := RdfDistribution{
 				Attr_rdf_about: distribution.About,
 			}
 			dcatDist.Dcat_accessURL.Attr_rdf_resource = dcatDataService.Dcat_endpointURL.Attr_rdf_resource
 			//dcatDist.Dcat_accessService.Attr_rdf_resource = distribution.AccessService
 
-			org, _ := db.GetOrganizationFromPrimaryKey(catalog.ID)
+			org, _ := o.db.GetOrganizationFromPrimaryKey(catalog.ID)
 			rdfOrg := RdfOrganization{
 				Attr_rdf_about: org.About,
 				Vcard_Fn:       org.Fn,
 			}
 			rdfOrg.Vcard_hasEmail.Attr_rdf_resource = org.HasEmail
 
-			dataset, _ := db.GetDatasetFromPrimaryKey(catalog.ID)
+			dataset, _ := o.db.GetDatasetFromPrimaryKey(catalog.ID)
 			rdfDataset := RdfDataset{
 				Attr_rdf_about: dataset.About,
 			}
@@ -188,14 +194,14 @@ func NewRetrieveCatalogsHandler(log logging.Logger, db database.Datastore) http.
 	})
 }
 
-func NewRetrieveDatasetsHandler(log logging.Logger, dcatResponse *bytes.Buffer) http.HandlerFunc {
+func (o *opendataApp) newRetrieveDatasetsHandler(log logging.Logger, dcatResponse *bytes.Buffer) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/rdf+xml")
 		w.Write(dcatResponse.Bytes())
 	})
 }
 
-func NewRetrieveOpenAPIHandler(log logging.Logger, openapiResponse *bytes.Buffer) http.HandlerFunc {
+func (o *opendataApp) newRetrieveOpenAPIHandler(log logging.Logger, openapiResponse *bytes.Buffer) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if openapiResponse == nil {
 			w.WriteHeader(http.StatusNotFound)

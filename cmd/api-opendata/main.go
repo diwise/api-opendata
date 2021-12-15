@@ -9,6 +9,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/application"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
+	"github.com/go-chi/chi"
 )
 
 func openDatasetsFile(log logging.Logger, path string) *os.File {
@@ -70,7 +71,21 @@ func main() {
 			}
 		}
 
-		db, _ := database.NewDatabaseConnection(database.NewSQLiteConnector(), log)
-		application.CreateRouterAndStartServing(log, db, datasetResponseBuffer, oasResponseBuffer)
+		port := os.Getenv("SERVICE_PORT")
+		if port == "" {
+			port = "8880"
+		}
+
+		r := chi.NewRouter()
+
+		db, err := database.NewDatabaseConnection(database.NewSQLiteConnector(), log)
+		if err != nil {
+			log.Fatal("failed to connect to database, shutting down... %s", err.Error())
+		}
+		app := application.NewApplication(r, db, log, datasetResponseBuffer, oasResponseBuffer)
+		err = app.Start(port)
+		if err != nil {
+			log.Fatal("failed to start router: %s", err.Error())
+		}
 	}
 }

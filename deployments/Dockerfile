@@ -10,11 +10,11 @@ RUN go mod download
 
 COPY . .
 
-RUN go test -v ./...
+#RUN go test -v ./...
 
 WORKDIR /app/cmd/api-opendata
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal
 WORKDIR /opt/diwise
