@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/datasets"
+	"github.com/diwise/api-opendata/internal/pkg/application/datasets/stratsys"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
@@ -98,10 +99,10 @@ func (o *opendataApp) addDiwiseHandlers(r chi.Router, log logging.Logger, db dat
 	)
 	r.Get(
 		"/api/stratsys/publishedreports",
-		datasets.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl))
+		stratsys.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl))
 	r.Get(
 		"/api/stratsys/publishedreports/{id}",
-		datasets.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl))
+		stratsys.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl))
 }
 
 func (o *opendataApp) addProbeHandlers(r chi.Router) {

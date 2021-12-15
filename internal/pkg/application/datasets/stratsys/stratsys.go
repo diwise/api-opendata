@@ -1,4 +1,4 @@
-package datasets
+package stratsys
 
 import (
 	"encoding/json"
