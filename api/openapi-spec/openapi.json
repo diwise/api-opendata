@@ -152,6 +152,39 @@
           }
         }
       }
+    },
+    "/stratsys/publishedreports": {
+      "get": {
+        "operationId": "getStratsysReports",
+        "description": "Get published reports from stratsys.se.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/stratsys/publishedreports/{reportId}": {
+      "get": {
+        "operationId": "getStratsysReportByID",
+        "description": "Get a published report by ID from stratsys.se.",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "description": "ID of the report to be retrieved",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   }
 }
