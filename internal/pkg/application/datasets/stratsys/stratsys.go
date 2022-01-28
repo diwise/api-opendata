@@ -30,35 +30,41 @@ func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID
 		reportId := chi.URLParam(r, "id")
 
 		if reportId != "" {
-			reportById, err := getReportById(reportId, defaultUrl, companyCode, token)
+			response, err := getReportById(reportId, defaultUrl, companyCode, token)
 			if err != nil {
 				log.Errorf("failed to get reports: %s", err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
+				w.WriteHeader(response.code)
 				return
 			}
-			w.Write([]byte(reportById))
+			if response.contentType != "" {
+				w.Header().Add("Content-Type", response.contentType)
+			}
+			w.Write(response.body)
 		} else {
-			reports, err := getReports(defaultUrl, companyCode, token)
+			response, err := getReports(defaultUrl, companyCode, token)
 			if err != nil {
 				log.Errorf("failed to get reports: %s", err.Error())
-				w.WriteHeader(http.StatusInternalServerError)
+				w.WriteHeader(response.code)
 				return
 			}
-			w.Write([]byte(reports))
+			if response.contentType != "" {
+				w.Header().Add("Content-Type", response.contentType)
+			}
+			w.Write(response.body)
 		}
 
 	})
 }
 
-func getReportById(id, url, companyCode, token string) ([]byte, error) {
+func getReportById(id, url, companyCode, token string) (stratsysResponse, error) {
 	return getReportOrReports(url+"/api/publishedreports/v2/"+id, companyCode, token)
 }
 
-func getReports(url, companyCode, token string) ([]byte, error) {
+func getReports(url, companyCode, token string) (stratsysResponse, error) {
 	return getReportOrReports(url+"/api/publishedreports/v2", companyCode, token)
 }
 
-func getReportOrReports(url, companyCode, token string) ([]byte, error) {
+func getReportOrReports(url, companyCode, token string) (stratsysResponse, error) {
 	client := http.Client{}
 
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
@@ -67,21 +73,25 @@ func getReportOrReports(url, companyCode, token string) ([]byte, error) {
 	req.Header.Add("Stratsys-CompanyCode", companyCode)
 
 	resp, err := client.Do(req)
-
 	if err != nil {
-		return nil, fmt.Errorf("error when requesting report: %s", err.Error())
+		return stratsysResponse{code: http.StatusInternalServerError},
+			fmt.Errorf("error when requesting report: %s", err.Error())
 	}
+	defer resp.Body.Close()
+
+	ssresp := stratsysResponse{code: resp.StatusCode, contentType: resp.Header.Get("Content-Type")}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request failed, status code not ok: %d", resp.StatusCode)
+		return ssresp, fmt.Errorf("request failed, status code not ok: %d", resp.StatusCode)
 	}
 
-	response, err := ioutil.ReadAll(resp.Body)
+	ssresp.body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %s", err.Error())
+		ssresp.code = http.StatusInternalServerError
+		return ssresp, fmt.Errorf("failed to read response body: %s", err.Error())
 	}
 
-	return response, nil
+	return ssresp, nil
 }
 
 func getTokenBearer(clientID, scope, authUrl string) (string, error) {
@@ -125,6 +135,12 @@ func getTokenBearer(clientID, scope, authUrl string) (string, error) {
 	}
 
 	return token.AccessToken, nil
+}
+
+type stratsysResponse struct {
+	code        int
+	contentType string
+	body        []byte
 }
 
 type tokenResponse struct {
