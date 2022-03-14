@@ -57,6 +57,7 @@ func newOpendataApp(r chi.Router, db database.Datastore, log logging.Logger, dca
 	o.addProbeHandlers(r)
 
 	r.Get("/api/datasets/dcat", o.newRetrieveDatasetsHandler(log, dcatResponse))
+	r.Get("/api/api-docs", o.newRetrieveOpenAPIHandler(log, openapiResponse))
 	r.Get("/api/openapi", o.newRetrieveOpenAPIHandler(log, openapiResponse))
 
 	return o

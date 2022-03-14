@@ -29,7 +29,7 @@
     }
   ],
   "paths": {
-    "/openapi": {
+    "/api-docs": {
       "get": {
         "description": "Returns this OpenAPI specification",
         "operationId": "getOpenAPI",
