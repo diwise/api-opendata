@@ -8,13 +8,13 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/go-chi/chi"
+	"github.com/rs/zerolog"
 )
 
-func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID, scope, loginUrl, defaultUrl string) http.HandlerFunc {
+func NewRetrieveStratsysReportsHandler(log zerolog.Logger, companyCode, clientID, scope, loginUrl, defaultUrl string) http.HandlerFunc {
 	if companyCode == "" || clientID == "" || scope == "" || loginUrl == "" || defaultUrl == "" {
-		log.Fatal("all environment variables need to be set")
+		log.Fatal().Msg("all environment variables need to be set")
 	}
 
 	loginUrl = fmt.Sprintf("%s/%s/connect/token", loginUrl, companyCode)
@@ -22,7 +22,7 @@ func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, err := getTokenBearer(clientID, scope, loginUrl)
 		if err != nil {
-			log.Errorf("failed to retrieve token: %s", err.Error())
+			log.Error().Err(err).Msg("failed to retrieve token")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -32,7 +32,7 @@ func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID
 		if reportId != "" {
 			response, err := getReportById(reportId, defaultUrl, companyCode, token)
 			if err != nil {
-				log.Errorf("failed to get reports: %s", err.Error())
+				log.Error().Err(err).Msg("failed to get reports")
 				w.WriteHeader(response.code)
 				return
 			}
@@ -43,7 +43,7 @@ func NewRetrieveStratsysReportsHandler(log logging.Logger, companyCode, clientID
 		} else {
 			response, err := getReports(defaultUrl, companyCode, token)
 			if err != nil {
-				log.Errorf("failed to get reports: %s", err.Error())
+				log.Error().Err(err).Msg("failed to get reports")
 				w.WriteHeader(response.code)
 				return
 			}

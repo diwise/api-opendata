@@ -2,6 +2,7 @@ package application
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,9 +12,9 @@ import (
 	"testing"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/datasets"
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
 	"github.com/go-chi/chi"
+	"github.com/rs/zerolog"
 
 	"github.com/matryer/is"
 )
@@ -22,10 +23,10 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func NewAppForTesting() (*database.Datastore, logging.Logger, *opendataApp) {
+func NewAppForTesting() (*database.Datastore, zerolog.Logger, *opendataApp) {
 	r := chi.NewRouter()
-	log := logging.NewLogger()
-	return nil, log, newOpendataApp(r, nil, log, &bytes.Buffer{}, &bytes.Buffer{})
+
+	return nil, zerolog.Logger{}, newOpendataApp(r, nil, context.Background(), &bytes.Buffer{}, &bytes.Buffer{})
 }
 
 func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
@@ -53,15 +54,12 @@ func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.
 }*/
 
 func TestGetBeaches(t *testing.T) {
-
-	log := logging.NewLogger()
-
 	server := setupMockService(http.StatusOK, beachesJson)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/api/beaches", nil)
 
-	datasets.NewRetrieveBeachesHandler(log, server.URL).ServeHTTP(w, req)
+	datasets.NewRetrieveBeachesHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Errorf("Request failed, status code not OK: %d", w.Code)
 	}
@@ -70,14 +68,12 @@ func TestGetBeaches(t *testing.T) {
 }
 
 func TestGetWaterQuality(t *testing.T) {
-	log := logging.NewLogger()
-
 	server := setupMockService(http.StatusOK, waterqualityJson)
 
 	nr := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/api/waterquality", nil)
 
-	datasets.NewRetrieveWaterQualityHandler(log, server.URL, "").ServeHTTP(nr, req)
+	datasets.NewRetrieveWaterQualityHandler(zerolog.Logger{}, server.URL, "").ServeHTTP(nr, req)
 	if nr.Code != http.StatusOK {
 		t.Errorf("Request failed, status code not OK: %d", nr.Code)
 	}
@@ -85,14 +81,13 @@ func TestGetWaterQuality(t *testing.T) {
 
 func TestGetTrafficFlowsHandlesEmptyResult(t *testing.T) {
 	is := is.New(t)
-	log := logging.NewLogger()
 
 	server := setupMockService(http.StatusOK, "[]")
 
 	nr := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
+	datasets.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
 
 	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
 
@@ -101,7 +96,6 @@ func TestGetTrafficFlowsHandlesEmptyResult(t *testing.T) {
 
 func TestGetTrafficFlowsHandlesSingleObservation(t *testing.T) {
 	is := is.New(t)
-	log := logging.NewLogger()
 
 	server := setupMockService(http.StatusOK, `[{
 		"@context": [
@@ -145,7 +139,7 @@ func TestGetTrafficFlowsHandlesSingleObservation(t *testing.T) {
 	nr := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
+	datasets.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
 
 	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
 
@@ -154,14 +148,13 @@ func TestGetTrafficFlowsHandlesSingleObservation(t *testing.T) {
 
 func TestGetTrafficFlowsHandlesSameDateObservations(t *testing.T) {
 	is := is.New(t)
-	log := logging.NewLogger()
 
 	server := setupMockService(http.StatusOK, trafficFlowJson)
 
 	nr := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
+	datasets.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
 
 	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
 
@@ -170,14 +163,13 @@ func TestGetTrafficFlowsHandlesSameDateObservations(t *testing.T) {
 
 func TestGetTrafficFlowsHandlesDifferentDateObservations(t *testing.T) {
 	is := is.New(t)
-	log := logging.NewLogger()
 
 	server := setupMockService(http.StatusOK, differentDateTfos)
 
 	nr := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
+	datasets.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
 
 	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
 
@@ -186,7 +178,6 @@ func TestGetTrafficFlowsHandlesDifferentDateObservations(t *testing.T) {
 
 func TestGetTrafficFlowsHandlesDateObservationsFromTimeSpan(t *testing.T) {
 	is := is.New(t)
-	log := logging.NewLogger()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		is.Equal(r.URL.RequestURI(), "/ngsi-ld/v1/entities?type=TrafficFlowObserved&timerel=between&timeAt=2016-12-07T11:10:00Z&endTimeAt=2016-12-07T13:10:00Z")
@@ -199,7 +190,7 @@ func TestGetTrafficFlowsHandlesDateObservationsFromTimeSpan(t *testing.T) {
 	nr := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, server.URL+"/api/trafficflows?from=2016-12-07T11:10:00Z&to=2016-12-07T13:10:00Z", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
+	datasets.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
 
 }
 

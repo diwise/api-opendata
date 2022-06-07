@@ -10,8 +10,8 @@ import (
 
 	services "github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/matryer/is"
+	"github.com/rs/zerolog"
 )
 
 func TestInvokeTempHandler(t *testing.T) {
@@ -98,8 +98,8 @@ func TestInvokeTempSensorsHandler(t *testing.T) {
 
 // #################################################
 
-func setup(t *testing.T) (*is.I, logging.Logger, *httptest.ResponseRecorder) {
-	return is.New(t), logging.NewLogger(), httptest.NewRecorder()
+func setup(t *testing.T) (*is.I, zerolog.Logger, *httptest.ResponseRecorder) {
+	return is.New(t), zerolog.Logger{}, httptest.NewRecorder()
 }
 
 func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server {

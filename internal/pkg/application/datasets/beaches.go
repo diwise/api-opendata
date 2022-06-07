@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -18,14 +18,14 @@ const (
 	YearMonthDayISO8601 string = "2006-01-02"
 )
 
-func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.HandlerFunc {
+func NewRetrieveBeachesHandler(log zerolog.Logger, contextBroker string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;hov_ref;wikidata;updated;temp_url;description")
 
 		beaches, err := getBeachesFromContextBroker(contextBroker)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Errorf("failed to get beaches from %s: %s", contextBroker, err.Error())
+			log.Error().Err(err).Msgf("failed to get beaches from %s", contextBroker)
 			return
 		}
 

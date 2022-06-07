@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
+	"github.com/rs/zerolog"
 )
 
-func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) http.HandlerFunc {
+func NewRetrieveTrafficFlowsHandler(log zerolog.Logger, contextBroker string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tfosCsv := bytes.NewBufferString("date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG")
 
@@ -21,7 +21,7 @@ func NewRetrieveTrafficFlowsHandler(log logging.Logger, contextBroker string) ht
 		tfos, err := getTrafficFlowsFromContextBroker(contextBroker, from, to)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Errorf("failed to get traffic flow observations from %s: %s", contextBroker, err.Error())
+			log.Error().Err(err).Msgf("failed to get traffic flow observations from %s", contextBroker)
 			return
 		}
 

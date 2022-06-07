@@ -8,18 +8,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
+	"github.com/rs/zerolog"
 )
 
-func NewRetrieveWaterQualityHandler(log logging.Logger, contextBroker string, waterQualityQueryParams string) http.HandlerFunc {
+func NewRetrieveWaterQualityHandler(log zerolog.Logger, contextBroker string, waterQualityQueryParams string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		waterQualityCsv := bytes.NewBufferString("timestamp;latitude;longitude;temperature;sensor")
 
 		waterquality, err := getWaterQualityFromContextBroker(contextBroker, waterQualityQueryParams)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Errorf("failed to get waterquality from %s: %s", contextBroker, err.Error())
+			log.Error().Err(err).Msgf("failed to get waterquality from %s", contextBroker)
 			return
 		}
 

@@ -1,8 +1,9 @@
 package database
 
 import (
+	"context"
+
 	"github.com/diwise/api-opendata/internal/pkg/domain"
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/persistence"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -48,7 +49,7 @@ func NewSQLiteConnector() ConnectorFunc {
 }
 
 //NewDatabaseConnection initializes a new connection to the database and wraps it in a Datastore
-func NewDatabaseConnection(connect ConnectorFunc, log logging.Logger) (Datastore, error) {
+func NewDatabaseConnection(connect ConnectorFunc, ctx context.Context) (Datastore, error) {
 	impl, err := connect()
 	if err != nil {
 		return nil, err

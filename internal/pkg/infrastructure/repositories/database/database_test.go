@@ -1,6 +1,7 @@
 package database_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -16,7 +17,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestDatabaseConnection(t *testing.T) {
-	db, err := db.NewDatabaseConnection(db.NewSQLiteConnector(), &log.Logger{})
+	db, err := db.NewDatabaseConnection(db.NewSQLiteConnector(), context.Background())
 	if err != nil {
 		t.Errorf("could not connect to database: %s", err)
 	}
@@ -65,7 +66,7 @@ func TestDatabaseConnection(t *testing.T) {
 }
 
 func TestThatAllThingsCanBeRetrievedFromDatabase(t *testing.T) {
-	db, err := db.NewDatabaseConnection(db.NewSQLiteConnector(), &log.Logger{})
+	db, err := db.NewDatabaseConnection(db.NewSQLiteConnector(), context.Background())
 	if err != nil {
 		t.Errorf("could not connect to database: %s", err)
 	}
