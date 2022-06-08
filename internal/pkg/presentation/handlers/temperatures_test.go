@@ -17,7 +17,8 @@ import (
 func TestInvokeTempHandler(t *testing.T) {
 	is, log, rw := setup(t)
 	svc, tsqm := defaultTempServiceMock()
-	req, _ := http.NewRequest("GET", "http://diwise.io/api/temperatures", nil)
+	req, err := http.NewRequest("GET", "http://diwise.io/api/temperature/air", nil)
+	is.NoErr(err)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
 
@@ -76,7 +77,7 @@ func TestThatBadStartTimeFails(t *testing.T) {
 func TestThatFailingGetGeneratesInternalServerError(t *testing.T) {
 	is, log, rw := setup(t)
 	svc, tsqm := defaultTempServiceMock()
-	tsqm.GetFunc = func() ([]domain.Sensor, error) { return nil, errors.New("failure") }
+	tsqm.GetFunc = func(*http.Request, zerolog.Logger) ([]domain.Sensor, error) { return nil, errors.New("failure") }
 	req, _ := http.NewRequest("GET", "", nil)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
@@ -114,7 +115,7 @@ func setup(t *testing.T) (*is.I, zerolog.Logger, *httptest.ResponseRecorder) {
 
 func defaultTempServiceMock() (*services.TempServiceMock, *services.TempServiceQueryMock) {
 	tsqm := &services.TempServiceQueryMock{
-		GetFunc: func() ([]domain.Sensor, error) {
+		GetFunc: func(r *http.Request, log zerolog.Logger) ([]domain.Sensor, error) {
 			return []domain.Sensor{}, nil
 		},
 	}

@@ -10,7 +10,10 @@ import (
 
 	services "github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type TempResponseValue struct {
@@ -78,7 +81,7 @@ func NewRetrieveTemperaturesHandler(log zerolog.Logger, svc services.TempService
 			query = query.Aggregate(duration, methods)
 		}
 
-		sensors, err := query.Get()
+		sensors, err := query.Get(r, log)
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -128,12 +131,32 @@ func NewRetrieveTemperaturesHandler(log zerolog.Logger, svc services.TempService
 
 func NewRetrieveTemperatureSensorsHandler(log zerolog.Logger, brokerURL string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
+		httpClient := http.Client{
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		}
+
+		ctx, span := tracer.Start(r.Context(), "incoming-message")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		traceID := span.SpanContext().TraceID()
+		if traceID.IsValid() {
+			log = log.With().Str("traceID", traceID.String()).Logger()
+		}
+
+		ctx = logging.NewContextWithLogger(ctx, log)
 
 		url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=Device", brokerURL)
 
 		log.Info().Msgf("requesting device information from %s", url)
-		response, err := http.Get(url)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to create http request")
+			return
+		}
 
+		response, err := httpClient.Do(req)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to query devices from broker")
 			w.WriteHeader(http.StatusInternalServerError)

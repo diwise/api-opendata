@@ -7,6 +7,8 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"sync"
 	"time"
+	"net/http"
+	"github.com/rs/zerolog"
 )
 
 // Ensure, that TempServiceQueryMock does implement TempServiceQuery.
@@ -28,7 +30,7 @@ var _ TempServiceQuery = &TempServiceQueryMock{}
 // 			SensorFunc: func(sensor string) TempServiceQuery {
 // 				panic("mock out the Sensor method")
 // 			},
-// 			GetFunc: func() ([]domain.Sensor, error) {
+// 			GetFunc: func(r *http.Request, log zerolog.Logger) ([]domain.Sensor, error) {
 // 				panic("mock out the Get method")
 // 			},
 // 		}
@@ -48,7 +50,7 @@ type TempServiceQueryMock struct {
 	SensorFunc func(sensor string) TempServiceQuery
 
 	// GetFunc mocks the Get method.
-	GetFunc func() ([]domain.Sensor, error)
+	GetFunc func(r *http.Request, log zerolog.Logger) ([]domain.Sensor, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -73,6 +75,10 @@ type TempServiceQueryMock struct {
 		}
 		// Get holds details about calls to the Get method.
 		Get []struct {
+			// R is the r argument value.
+			R *http.Request
+			// Log is the log argument value.
+			Log zerolog.Logger
 		}
 	}
 	lockAggregate    sync.RWMutex
@@ -183,9 +189,14 @@ func (mock *TempServiceQueryMock) SensorCalls() []struct {
 }
 
 // Get calls GetFunc.
-func (mock *TempServiceQueryMock) Get() ([]domain.Sensor, error) {
+func (mock *TempServiceQueryMock) Get(r *http.Request, log zerolog.Logger) ([]domain.Sensor, error) {
 	callInfo := struct {
-	}{}
+		R *http.Request
+		Log zerolog.Logger
+	}{
+		R: r,
+		Log: log,
+	}
 	mock.lockGet.Lock()
 	mock.calls.Get = append(mock.calls.Get, callInfo)
 	mock.lockGet.Unlock()
@@ -196,15 +207,19 @@ func (mock *TempServiceQueryMock) Get() ([]domain.Sensor, error) {
 		)
 		return sensorsOut, errOut
 	}
-	return mock.GetFunc()
+	return mock.GetFunc(r, log)
 }
 
 // GetCalls gets all the calls that were made to Get.
 // Check the length with:
 //     len(mockedTempServiceQuery.GetCalls())
 func (mock *TempServiceQueryMock) GetCalls() []struct {
+	R *http.Request
+	Log zerolog.Logger
 } {
 	var calls []struct {
+		R *http.Request
+		Log zerolog.Logger
 	}
 	mock.lockGet.RLock()
 	calls = mock.calls.Get
