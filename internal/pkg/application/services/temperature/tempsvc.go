@@ -246,7 +246,7 @@ func requestData(r *http.Request, log zerolog.Logger, q tsq, offset, limit uint6
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
-	ctx, span := tracer.Start(r.Context(), "incoming-message")
+	ctx, span := tracer.Start(r.Context(), "temperature-service")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 	traceID := span.SpanContext().TraceID()
