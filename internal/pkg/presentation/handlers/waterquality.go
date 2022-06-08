@@ -9,11 +9,25 @@ import (
 	"strings"
 
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel"
 )
+
+var tracer = otel.Tracer("api-opendata/api")
 
 func NewRetrieveWaterQualityHandler(log zerolog.Logger, contextBroker string, waterQualityQueryParams string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
+		_, span := tracer.Start(r.Context(), "water-quality-handler")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		traceID := span.SpanContext().TraceID()
+		if traceID.IsValid() {
+			log = log.With().Str("traceID", traceID.String()).Logger()
+		}
+
 		waterQualityCsv := bytes.NewBufferString("timestamp;latitude;longitude;temperature;sensor")
 
 		waterquality, err := getWaterQualityFromContextBroker(contextBroker, waterQualityQueryParams)

@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/diwise/api-opendata/internal/pkg/application/handlers"
-	"github.com/diwise/api-opendata/internal/pkg/application/handlers/stratsys"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
+	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
+	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"

@@ -11,8 +11,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/diwise/api-opendata/internal/pkg/application/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
+	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/go-chi/chi"
 	"github.com/rs/zerolog"
 
