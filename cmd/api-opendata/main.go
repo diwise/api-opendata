@@ -90,7 +90,7 @@ func main() {
 		if err != nil {
 			log.Fatal().Msgf("failed to connect to database, shutting down... %s", err.Error())
 		}
-		app := application.NewApplication(r, db, ctx, datasetResponseBuffer, oasResponseBuffer)
+		app := application.NewAPI(r, db, ctx, datasetResponseBuffer, oasResponseBuffer)
 		err = app.Start(port)
 		if err != nil {
 			log.Fatal().Msgf("failed to start router: %s", err.Error())
