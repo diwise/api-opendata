@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/flate"
 	"context"
-	"encoding/xml"
 	"net/http"
 	"os"
 
@@ -81,7 +80,6 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger, db dat
 	stratsysLoginUrl := os.Getenv("STRATSYS_LOGIN_URL")
 	stratsysDefaultUrl := os.Getenv("STRATSYS_DEFAULT_URL")
 
-	//r.Get("/catalogs", o.catalogsHandler())
 	r.Get(
 		"/api/temperature/water",
 		handlers.NewRetrieveWaterQualityHandler(log, contextBrokerURL, waterQualityQueryParams),
@@ -115,90 +113,6 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger, db dat
 func (o *opendataAPI) addProbeHandlers(r chi.Router) {
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-	})
-}
-
-func (o *opendataAPI) catalogsHandler() http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		catalogs, err := o.db.GetAllCatalogs()
-		if err != nil {
-			o.log.Error().Err(err).Msg("something went wrong when trying to get all Catalogs")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		for _, catalog := range catalogs {
-
-			dataService, _ := o.db.GetDataServiceFromPrimaryKey(catalog.ID)
-			dcatDataService := RdfDataService{
-				Attr_rdf_about: dataService.About,
-			}
-			dcatDataService.Dcterms_title.XMLLang = "sv"
-			dcatDataService.Dcterms_title.Title = dataService.Title
-			dcatDataService.Dcat_endpointURL.Attr_rdf_resource = dataService.EndpointURL
-
-			agent, _ := o.db.GetAgentFromPrimaryKey(catalog.ID)
-			foafAbout := RdfAgent{
-				Attr_rdf_about: agent.About,
-				Foaf_name:      agent.Name,
-			}
-
-			distribution, _ := o.db.GetDistributionFromPrimaryKey(catalog.ID)
-			dcatDist := RdfDistribution{
-				Attr_rdf_about: distribution.About,
-			}
-			dcatDist.Dcat_accessURL.Attr_rdf_resource = dcatDataService.Dcat_endpointURL.Attr_rdf_resource
-			//dcatDist.Dcat_accessService.Attr_rdf_resource = distribution.AccessService
-
-			org, _ := o.db.GetOrganizationFromPrimaryKey(catalog.ID)
-			rdfOrg := RdfOrganization{
-				Attr_rdf_about: org.About,
-				Vcard_Fn:       org.Fn,
-			}
-			rdfOrg.Vcard_hasEmail.Attr_rdf_resource = org.HasEmail
-
-			dataset, _ := o.db.GetDatasetFromPrimaryKey(catalog.ID)
-			rdfDataset := RdfDataset{
-				Attr_rdf_about: dataset.About,
-			}
-			rdfDataset.Dcterms_title.Title = dataset.Title
-			rdfDataset.Dcterms_title.XMLLang = "sv"
-			rdfDataset.Dcterms_description.Description = dataset.Description
-			rdfDataset.Dcterms_publisher.Attr_rdf_resource = agent.About
-			rdfDataset.Dcat_distribution.Attr_rdf_resource = dcatDist.Attr_rdf_about
-			rdfDataset.Dcat_contactPoint.Attr_rdf_resource = org.About
-
-			rdfCatalog := RdfCatalog{
-				Attr_rdf_about: catalog.About,
-			}
-
-			rdfCatalog.Dcterms_title.XMLLang = "sv"
-			rdfCatalog.Dcterms_title.Title = catalog.Title
-			rdfCatalog.Dcterms_description.XMLLang = "sv"
-			rdfCatalog.Dcterms_description.Description = catalog.Description
-			rdfCatalog.Dcterms_publisher.Attr_rdf_resource = agent.About
-			rdfCatalog.Dcat_dataset.Attr_rdf_resource = dataset.About
-
-			rdf := Rdf_RDF{
-				Rdf_Catalog:      &rdfCatalog,
-				Rdf_Dataset:      &rdfDataset,
-				Rdf_Agent:        &foafAbout,
-				Rdf_Distribution: &dcatDist,
-				Rdf_Organization: &rdfOrg,
-				Rdf_DataService:  &dcatDataService,
-				Attr_rdf:         "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-				Attr_dcterms:     "http://purl.org/dc/terms/",
-				Attr_vcard:       "http://www.w3.org/2006/vcard/ns#",
-				Attr_dcat:        "http://www.w3.org/ns/dcat#",
-				Attr_foaf:        "http://xmlns.com/foaf/0.1/",
-			}
-
-			data, _ := xml.MarshalIndent(rdf, " ", "	")
-			w.Write(data)
-		}
-
-		w.WriteHeader(http.StatusOK)
-
 	})
 }
 

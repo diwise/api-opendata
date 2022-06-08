@@ -38,21 +38,6 @@ func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.
 	return resp, string(respBody)
 }
 
-//fix test below when retrieving catalogs becomes relevant
-/*func TestThatRetrieveCatalogsSucceeds(t *testing.T) {
-	log := logging.NewLogger()
-	db, _ := database.NewDatabaseConnection(database.NewSQLiteConnector(), log)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/catalogs", nil)
-
-	NewRetrieveCatalogsHandler(log, db).ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("Request failed, status code not OK: %d", w.Code)
-	}
-}*/
-
 func TestGetBeaches(t *testing.T) {
 	server := setupMockService(http.StatusOK, beachesJson)
 
