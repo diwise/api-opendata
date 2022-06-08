@@ -102,7 +102,7 @@ func setup(t *testing.T) (*is.I, zerolog.Logger, *httptest.ResponseRecorder) {
 	return is.New(t), zerolog.Logger{}, httptest.NewRecorder()
 }
 
-func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server {
+/*func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(responseCode)
 		w.Header().Add("Content-Type", "application/ld+json")
@@ -110,7 +110,7 @@ func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server
 			w.Write([]byte(body))
 		}
 	}))
-}
+}*/
 
 func defaultTempServiceMock() (*services.TempServiceMock, *services.TempServiceQueryMock) {
 	tsqm := &services.TempServiceQueryMock{
