@@ -137,7 +137,7 @@ func NewRetrieveTemperatureSensorsHandler(log zerolog.Logger, brokerURL string) 
 			Transport: otelhttp.NewTransport(http.DefaultTransport),
 		}
 
-		ctx, span := tracer.Start(r.Context(), "incoming-message")
+		ctx, span := tracer.Start(r.Context(), "temp-sensors-handler")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 		traceID := span.SpanContext().TraceID()

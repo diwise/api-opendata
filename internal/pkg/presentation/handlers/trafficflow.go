@@ -88,7 +88,7 @@ func getTrafficFlowsFromContextBroker(r *http.Request, log zerolog.Logger, host,
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
-	ctx, span := tracer.Start(r.Context(), "water-quality-handler")
+	ctx, span := tracer.Start(r.Context(), "traffic-flow-handler")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 	traceID := span.SpanContext().TraceID()

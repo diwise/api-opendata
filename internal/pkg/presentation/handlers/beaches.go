@@ -9,7 +9,10 @@ import (
 	"time"
 
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const (
@@ -22,7 +25,7 @@ func NewRetrieveBeachesHandler(log zerolog.Logger, contextBroker string) http.Ha
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;hov_ref;wikidata;updated;temp_url;description")
 
-		beaches, err := getBeachesFromContextBroker(contextBroker)
+		beaches, err := getBeachesFromContextBroker(r, log, contextBroker)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Error().Err(err).Msgf("failed to get beaches from %s", contextBroker)
@@ -108,8 +111,31 @@ func getWikiRefFromBeach(beach *fiware.Beach) string {
 	return ""
 }
 
-func getBeachesFromContextBroker(host string) ([]*fiware.Beach, error) {
-	response, err := http.Get(fmt.Sprintf("%s/ngsi-ld/v1/entities?type=Beach", host))
+func getBeachesFromContextBroker(r *http.Request, log zerolog.Logger, host string) ([]*fiware.Beach, error) {
+	var err error
+
+	httpClient := http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+
+	ctx, span := tracer.Start(r.Context(), "beaches-handler")
+	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+	traceID := span.SpanContext().TraceID()
+	if traceID.IsValid() {
+		log = log.With().Str("traceID", traceID.String()).Logger()
+	}
+
+	ctx = logging.NewContextWithLogger(ctx, log)
+
+	url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=Beach", host)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to create http request")
+		return nil, err
+	}
+
+	response, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
