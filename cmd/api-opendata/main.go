@@ -7,8 +7,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/diwise/api-opendata/internal/pkg/application"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
+	presentation "github.com/diwise/api-opendata/internal/pkg/presentation"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -90,8 +90,8 @@ func main() {
 		if err != nil {
 			log.Fatal().Msgf("failed to connect to database, shutting down... %s", err.Error())
 		}
-		app := application.NewAPI(r, db, ctx, datasetResponseBuffer, oasResponseBuffer)
-		err = app.Start(port)
+		api := presentation.NewAPI(r, db, ctx, datasetResponseBuffer, oasResponseBuffer)
+		err = api.Start(port)
 		if err != nil {
 			log.Fatal().Msgf("failed to start router: %s", err.Error())
 		}
