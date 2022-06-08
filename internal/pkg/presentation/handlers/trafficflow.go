@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func NewRetrieveTrafficFlowsHandler(log zerolog.Logger, contextBroker string) http.HandlerFunc {
@@ -18,7 +20,7 @@ func NewRetrieveTrafficFlowsHandler(log zerolog.Logger, contextBroker string) ht
 		from := r.URL.Query().Get("from")
 		to := r.URL.Query().Get("to")
 
-		tfos, err := getTrafficFlowsFromContextBroker(contextBroker, from, to)
+		tfos, err := getTrafficFlowsFromContextBroker(r, log, contextBroker, from, to)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			log.Error().Err(err).Msgf("failed to get traffic flow observations from %s", contextBroker)
@@ -79,8 +81,20 @@ func NewRetrieveTrafficFlowsHandler(log zerolog.Logger, contextBroker string) ht
 	})
 }
 
-func getTrafficFlowsFromContextBroker(host, from, to string) ([]*fiware.TrafficFlowObserved, error) {
+func getTrafficFlowsFromContextBroker(r *http.Request, log zerolog.Logger, host, from, to string) ([]*fiware.TrafficFlowObserved, error) {
 	var err error
+
+	httpClient := http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+
+	ctx, span := tracer.Start(r.Context(), "water-quality-handler")
+	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+	traceID := span.SpanContext().TraceID()
+	if traceID.IsValid() {
+		log = log.With().Str("traceID", traceID.String()).Logger()
+	}
 
 	url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=TrafficFlowObserved", host)
 
@@ -88,15 +102,22 @@ func getTrafficFlowsFromContextBroker(host, from, to string) ([]*fiware.TrafficF
 		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, from, to)
 	}
 
-	response, err := http.Get(url)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
+		log.Error().Err(err).Msg("failed to create http request")
 		return nil, err
 	}
-	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request failed, status code not ok: %s", err)
+	response, err := httpClient.Do(req)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to get water quality observed from context broker")
+		return nil, err
 	}
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed, status code not ok: %d", response.StatusCode)
+	}
+
+	defer response.Body.Close()
 
 	tfos := []*fiware.TrafficFlowObserved{}
 
