@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/diwise/api-opendata/internal/pkg/application/datasets"
-	"github.com/diwise/api-opendata/internal/pkg/application/datasets/stratsys"
+	"github.com/diwise/api-opendata/internal/pkg/application/handlers"
+	"github.com/diwise/api-opendata/internal/pkg/application/handlers/stratsys"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -20,24 +20,24 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type Application interface {
+type API interface {
 	Start(port string) error
 }
 
-type opendataApp struct {
+type opendataAPI struct {
 	router chi.Router
 	db     database.Datastore
 	log    zerolog.Logger
 }
 
-func NewApplication(r chi.Router, db database.Datastore, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) Application {
-	return newOpendataApp(r, db, ctx, dcatResponse, openapiResponse)
+func NewAPI(r chi.Router, db database.Datastore, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) API {
+	return newOpendataAPI(r, db, ctx, dcatResponse, openapiResponse)
 }
 
-func newOpendataApp(r chi.Router, db database.Datastore, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) *opendataApp {
+func newOpendataAPI(r chi.Router, db database.Datastore, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) *opendataAPI {
 	log := logging.GetFromContext(ctx)
 
-	o := &opendataApp{
+	o := &opendataAPI{
 		router: r,
 		db:     db,
 		log:    log,
@@ -67,12 +67,12 @@ func newOpendataApp(r chi.Router, db database.Datastore, ctx context.Context, dc
 	return o
 }
 
-func (a *opendataApp) Start(port string) error {
+func (a *opendataAPI) Start(port string) error {
 	a.log.Info().Msgf("Starting api-opendata on port:%s", port)
 	return http.ListenAndServe(":"+port, a.router)
 }
 
-func (o *opendataApp) addDiwiseHandlers(r chi.Router, log zerolog.Logger, db database.Datastore) {
+func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger, db database.Datastore) {
 	contextBrokerURL := os.Getenv("DIWISE_CONTEXT_BROKER_URL")
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
 	stratsysCompanyCode := os.Getenv("STRATSYS_COMPANY_CODE")
@@ -84,23 +84,23 @@ func (o *opendataApp) addDiwiseHandlers(r chi.Router, log zerolog.Logger, db dat
 	//r.Get("/catalogs", o.catalogsHandler())
 	r.Get(
 		"/api/temperature/water",
-		datasets.NewRetrieveWaterQualityHandler(log, contextBrokerURL, waterQualityQueryParams),
+		handlers.NewRetrieveWaterQualityHandler(log, contextBrokerURL, waterQualityQueryParams),
 	)
 	r.Get(
 		"/api/beaches",
-		datasets.NewRetrieveBeachesHandler(log, contextBrokerURL),
+		handlers.NewRetrieveBeachesHandler(log, contextBrokerURL),
 	)
 	r.Get(
 		"/api/temperature/air",
-		datasets.NewRetrieveTemperaturesHandler(log, temperature.NewTempService(contextBrokerURL)),
+		handlers.NewRetrieveTemperaturesHandler(log, temperature.NewTempService(contextBrokerURL)),
 	)
 	r.Get(
 		"/api/temperature/air/sensors",
-		datasets.NewRetrieveTemperatureSensorsHandler(log, contextBrokerURL),
+		handlers.NewRetrieveTemperatureSensorsHandler(log, contextBrokerURL),
 	)
 	r.Get(
 		"/api/trafficflow",
-		datasets.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
+		handlers.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
 	)
 	r.Get(
 		"/api/stratsys/publishedreports",
@@ -112,13 +112,13 @@ func (o *opendataApp) addDiwiseHandlers(r chi.Router, log zerolog.Logger, db dat
 	)
 }
 
-func (o *opendataApp) addProbeHandlers(r chi.Router) {
+func (o *opendataAPI) addProbeHandlers(r chi.Router) {
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 }
 
-func (o *opendataApp) catalogsHandler() http.HandlerFunc {
+func (o *opendataAPI) catalogsHandler() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		catalogs, err := o.db.GetAllCatalogs()
 		if err != nil {
@@ -202,14 +202,14 @@ func (o *opendataApp) catalogsHandler() http.HandlerFunc {
 	})
 }
 
-func (o *opendataApp) newRetrieveDatasetsHandler(log zerolog.Logger, dcatResponse *bytes.Buffer) http.HandlerFunc {
+func (o *opendataAPI) newRetrieveDatasetsHandler(log zerolog.Logger, dcatResponse *bytes.Buffer) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/rdf+xml")
 		w.Write(dcatResponse.Bytes())
 	})
 }
 
-func (o *opendataApp) newRetrieveOpenAPIHandler(log zerolog.Logger, openapiResponse *bytes.Buffer) http.HandlerFunc {
+func (o *opendataAPI) newRetrieveOpenAPIHandler(log zerolog.Logger, openapiResponse *bytes.Buffer) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if openapiResponse == nil {
 			w.WriteHeader(http.StatusNotFound)

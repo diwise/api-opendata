@@ -11,7 +11,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/diwise/api-opendata/internal/pkg/application/datasets"
+	"github.com/diwise/api-opendata/internal/pkg/application/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
 	"github.com/go-chi/chi"
 	"github.com/rs/zerolog"
@@ -23,10 +23,10 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func NewAppForTesting() (*database.Datastore, zerolog.Logger, *opendataApp) {
+func NewAppForTesting() (*database.Datastore, zerolog.Logger, *opendataAPI) {
 	r := chi.NewRouter()
 
-	return nil, zerolog.Logger{}, newOpendataApp(r, nil, context.Background(), &bytes.Buffer{}, &bytes.Buffer{})
+	return nil, zerolog.Logger{}, newOpendataAPI(r, nil, context.Background(), &bytes.Buffer{}, &bytes.Buffer{})
 }
 
 func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
@@ -59,7 +59,7 @@ func TestGetBeaches(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/api/beaches", nil)
 
-	datasets.NewRetrieveBeachesHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
+	handlers.NewRetrieveBeachesHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Errorf("Request failed, status code not OK: %d", w.Code)
 	}
@@ -73,7 +73,7 @@ func TestGetWaterQuality(t *testing.T) {
 	nr := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/api/waterquality", nil)
 
-	datasets.NewRetrieveWaterQualityHandler(zerolog.Logger{}, server.URL, "").ServeHTTP(nr, req)
+	handlers.NewRetrieveWaterQualityHandler(zerolog.Logger{}, server.URL, "").ServeHTTP(nr, req)
 	if nr.Code != http.StatusOK {
 		t.Errorf("Request failed, status code not OK: %d", nr.Code)
 	}
@@ -87,7 +87,7 @@ func TestGetTrafficFlowsHandlesEmptyResult(t *testing.T) {
 	nr := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
 
 	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
 
@@ -139,7 +139,7 @@ func TestGetTrafficFlowsHandlesSingleObservation(t *testing.T) {
 	nr := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
 
 	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
 
@@ -154,7 +154,7 @@ func TestGetTrafficFlowsHandlesSameDateObservations(t *testing.T) {
 	nr := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
 
 	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
 
@@ -169,7 +169,7 @@ func TestGetTrafficFlowsHandlesDifferentDateObservations(t *testing.T) {
 	nr := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
 
 	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
 
@@ -190,7 +190,7 @@ func TestGetTrafficFlowsHandlesDateObservationsFromTimeSpan(t *testing.T) {
 	nr := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, server.URL+"/api/trafficflows?from=2016-12-07T11:10:00Z&to=2016-12-07T13:10:00Z", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
 
 }
 
