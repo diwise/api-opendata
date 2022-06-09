@@ -3,7 +3,6 @@ package application
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -39,49 +38,42 @@ func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.
 }
 
 func TestGetBeaches(t *testing.T) {
+	is := is.New(t)
 	server := setupMockService(http.StatusOK, beachesJson)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/api/beaches", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/beaches", nil)
 
 	handlers.NewRetrieveBeachesHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("Request failed, status code not OK: %d", w.Code)
-	}
-
-	fmt.Println(w.Body.String())
+	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 
 func TestGetWaterQuality(t *testing.T) {
+	is := is.New(t)
 	server := setupMockService(http.StatusOK, waterqualityJson)
 
-	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/api/waterquality", nil)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/waterquality", nil)
 
-	handlers.NewRetrieveWaterQualityHandler(zerolog.Logger{}, server.URL, "").ServeHTTP(nr, req)
-	if nr.Code != http.StatusOK {
-		t.Errorf("Request failed, status code not OK: %d", nr.Code)
-	}
+	handlers.NewRetrieveWaterQualityHandler(zerolog.Logger{}, server.URL, "").ServeHTTP(w, req)
+	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 
 func TestGetTrafficFlowsHandlesEmptyResult(t *testing.T) {
 	is := is.New(t)
-
 	server := setupMockService(http.StatusOK, "[]")
 
-	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/trafficflow", nil)
 
-	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
 
-	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
-
-	is.Equal(nr.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG") // body should only contain Csv Header
+	is.Equal(w.Code, http.StatusOK)                                                                                                                                         // return code must be 200, Status OK
+	is.Equal(w.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG") // body should only contain Csv Header
 }
 
 func TestGetTrafficFlowsHandlesSingleObservation(t *testing.T) {
 	is := is.New(t)
-
 	server := setupMockService(http.StatusOK, `[{
 		"@context": [
 		  "https://schema.lab.fiware.org/ld/context",
@@ -121,44 +113,39 @@ func TestGetTrafficFlowsHandlesSingleObservation(t *testing.T) {
 			}
 	}]`)
 
-	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/trafficflow", nil)
 
-	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
 
-	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
-
-	is.Equal(nr.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG\r\n2016-12-07T11:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;8;17.3;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0") // expected body to return values for intensity and average speed for only one observation
+	is.Equal(w.Code, http.StatusOK)                                                                                                                                                                                                                                                           // return code must be 200, Status OK
+	is.Equal(w.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG\r\n2016-12-07T11:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;8;17.3;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0") // expected body to return values for intensity and average speed for only one observation
 }
 
 func TestGetTrafficFlowsHandlesSameDateObservations(t *testing.T) {
 	is := is.New(t)
-
 	server := setupMockService(http.StatusOK, trafficFlowJson)
 
-	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/trafficflow", nil)
 
-	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
 
-	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
-
-	is.Equal(nr.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG\r\n2016-12-07T11:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;8;17.3;11;78.3;41;39.5;14;34.2;15;68.5;18;22.8;11;20.5;15;42.5") // expected body to return values for intensity and average speed for eight same date observations
+	is.Equal(w.Code, http.StatusOK)                                                                                                                                                                                                                                                                         // return code must be 200, Status OK
+	is.Equal(w.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG\r\n2016-12-07T11:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;8;17.3;11;78.3;41;39.5;14;34.2;15;68.5;18;22.8;11;20.5;15;42.5") // expected body to return values for intensity and average speed for eight same date observations
 }
 
 func TestGetTrafficFlowsHandlesDifferentDateObservations(t *testing.T) {
 	is := is.New(t)
-
 	server := setupMockService(http.StatusOK, differentDateTfos)
 
-	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/trafficflow", nil)
 
-	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
 
-	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
-
-	is.Equal(nr.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG\r\n2016-12-07T11:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;8;17.3;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0\r\n2016-12-07T13:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;0;0.0;0;0.0;0;0.0;3;25.4;0;0.0;0;0.0;0;0.0;0;0.0\r\n2016-12-07T18:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;0;0.0;0;0.0;0;0.0;3;25.4;0;0.0;0;0.0;0;0.0;0;0.0") // expected body to return values for intensity and average speed for two different date observations
+	is.Equal(w.Code, http.StatusOK)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               // return code must be 200, Status OK
+	is.Equal(w.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG\r\n2016-12-07T11:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;8;17.3;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0\r\n2016-12-07T13:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;0;0.0;0;0.0;0;0.0;3;25.4;0;0.0;0;0.0;0;0.0;0;0.0\r\n2016-12-07T18:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;0;0.0;0;0.0;0;0.0;3;25.4;0;0.0;0;0.0;0;0.0;0;0.0") // expected body to return values for intensity and average speed for two different date observations
 }
 
 func TestGetTrafficFlowsHandlesDateObservationsFromTimeSpan(t *testing.T) {
@@ -172,10 +159,11 @@ func TestGetTrafficFlowsHandlesDateObservationsFromTimeSpan(t *testing.T) {
 		w.Write([]byte("[]"))
 	}))
 
-	nr := httptest.NewRecorder()
+	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, server.URL+"/api/trafficflows?from=2016-12-07T11:10:00Z&to=2016-12-07T13:10:00Z", nil)
 
-	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
+	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 
 }
 

@@ -57,9 +57,10 @@ func main() {
 	if datafile == nil {
 		log.Fatal().Msg("Unable to open dataset file. Exiting.")
 	} else {
+		defer datafile.Close()
+
 		datasetResponseBuffer := bytes.NewBuffer(nil)
 		written, err := io.Copy(datasetResponseBuffer, datafile)
-		defer datafile.Close()
 
 		if err != nil {
 			log.Fatal().Err(err).Msg("unable to copy datasets file into response buffer")
@@ -70,10 +71,12 @@ func main() {
 		var oasResponseBuffer *bytes.Buffer
 		if oasfile != nil {
 			defer oasfile.Close()
+
 			oasResponseBuffer = bytes.NewBuffer(nil)
 			written, err := io.Copy(oasResponseBuffer, oasfile)
+
 			if err != nil {
-				log.Error().Err(err).Msgf("failed to copy OpenAPI specification into response buffer")
+				log.Error().Err(err).Msg("failed to copy OpenAPI specification into response buffer")
 			} else {
 				log.Info().Msgf("copied %d bytes from %s into openapi response buffer.", written, openApiSpecFileName)
 			}
