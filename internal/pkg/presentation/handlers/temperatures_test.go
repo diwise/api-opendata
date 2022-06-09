@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -77,7 +78,7 @@ func TestThatBadStartTimeFails(t *testing.T) {
 func TestThatFailingGetGeneratesInternalServerError(t *testing.T) {
 	is, log, rw := setup(t)
 	svc, tsqm := defaultTempServiceMock()
-	tsqm.GetFunc = func(*http.Request, zerolog.Logger) ([]domain.Sensor, error) { return nil, errors.New("failure") }
+	tsqm.GetFunc = func(context.Context, zerolog.Logger) ([]domain.Sensor, error) { return nil, errors.New("failure") }
 	req, _ := http.NewRequest("GET", "", nil)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
@@ -115,7 +116,7 @@ func setup(t *testing.T) (*is.I, zerolog.Logger, *httptest.ResponseRecorder) {
 
 func defaultTempServiceMock() (*services.TempServiceMock, *services.TempServiceQueryMock) {
 	tsqm := &services.TempServiceQueryMock{
-		GetFunc: func(r *http.Request, log zerolog.Logger) ([]domain.Sensor, error) {
+		GetFunc: func(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, error) {
 			return []domain.Sensor{}, nil
 		},
 	}

@@ -1,6 +1,7 @@
 package temperature
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,14 +12,9 @@ import (
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
 )
-
-var tracer = otel.Tracer("api-opendata/services")
 
 type TempService interface {
 	Query() TempServiceQuery
@@ -61,7 +57,7 @@ type TempServiceQuery interface {
 	Aggregate(period, aggregates string) TempServiceQuery
 	BetweenTimes(from, to time.Time) TempServiceQuery
 	Sensor(sensor string) TempServiceQuery
-	Get(r *http.Request, log zerolog.Logger) ([]domain.Sensor, error)
+	Get(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, error)
 }
 
 func NewTempService(contextBrokerURL string) TempService {
@@ -134,7 +130,7 @@ func (q tsq) Sensor(sensor string) TempServiceQuery {
 	return q
 }
 
-func (q tsq) Get(r *http.Request, log zerolog.Logger) ([]domain.Sensor, error) {
+func (q tsq) Get(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, error) {
 
 	if q.err == nil && q.sensor == "" {
 		q.err = fmt.Errorf("a specific sensor must be specified")
@@ -146,7 +142,7 @@ func (q tsq) Get(r *http.Request, log zerolog.Logger) ([]domain.Sensor, error) {
 
 	pageSize := uint64(1000)
 	maxResultSize := uint64(50000)
-	wos, err := requestData(r, log, q, 0, pageSize)
+	wos, err := requestData(ctx, log, q, 0, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +150,7 @@ func (q tsq) Get(r *http.Request, log zerolog.Logger) ([]domain.Sensor, error) {
 	if len(wos) == int(pageSize) {
 		// We need to request more data page by page
 		for offset := pageSize; offset < maxResultSize; offset += pageSize {
-			page, err := requestData(r, log, q, offset, pageSize)
+			page, err := requestData(ctx, log, q, offset, pageSize)
 			if err != nil {
 				return nil, err
 			}
@@ -239,22 +235,12 @@ func (q tsq) Get(r *http.Request, log zerolog.Logger) ([]domain.Sensor, error) {
 	return sensors, nil
 }
 
-func requestData(r *http.Request, log zerolog.Logger, q tsq, offset, limit uint64) ([]fiware.WeatherObserved, error) {
+func requestData(ctx context.Context, log zerolog.Logger, q tsq, offset, limit uint64) ([]fiware.WeatherObserved, error) {
 	var err error
 
 	httpClient := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
-
-	ctx, span := tracer.Start(r.Context(), "temperature-service")
-	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
-	traceID := span.SpanContext().TraceID()
-	if traceID.IsValid() {
-		log = log.With().Str("traceID", traceID.String()).Logger()
-	}
-
-	ctx = logging.NewContextWithLogger(ctx, log)
 
 	url := fmt.Sprintf(
 		"%s/ngsi-ld/v1/entities?type=WeatherObserved&attrs=temperature&q=refDevice==\"%s\"",
@@ -278,14 +264,12 @@ func requestData(r *http.Request, log zerolog.Logger, q tsq, offset, limit uint6
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to create http request")
-		return nil, err
+		return nil, fmt.Errorf("failed to create http request: %w", err)
 	}
 
 	response, err := httpClient.Do(req)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to get water quality observed from context broker")
-		return nil, err
+		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer response.Body.Close()
 
@@ -298,7 +282,7 @@ func requestData(r *http.Request, log zerolog.Logger, q tsq, offset, limit uint6
 
 	err = json.Unmarshal(b, &wos)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	return wos, nil

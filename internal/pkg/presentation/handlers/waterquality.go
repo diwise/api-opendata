@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -17,14 +19,21 @@ import (
 
 var tracer = otel.Tracer("api-opendata/api")
 
-func NewRetrieveWaterQualityHandler(log zerolog.Logger, contextBroker string, waterQualityQueryParams string) http.HandlerFunc {
+func NewRetrieveWaterQualityHandler(logger zerolog.Logger, contextBroker string, waterQualityQueryParams string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
+		ctx, span := tracer.Start(r.Context(), "retrieve-water-qualities")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+
 		waterQualityCsv := bytes.NewBufferString("timestamp;latitude;longitude;temperature;sensor")
 
-		waterquality, err := getWaterQualityFromContextBroker(r, log, contextBroker, waterQualityQueryParams)
+		waterquality, err := getWaterQualityFromContextBroker(ctx, log, contextBroker, waterQualityQueryParams)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
 			log.Error().Err(err).Msgf("failed to get waterquality from %s", contextBroker)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
@@ -53,19 +62,11 @@ func NewRetrieveWaterQualityHandler(log zerolog.Logger, contextBroker string, wa
 	})
 }
 
-func getWaterQualityFromContextBroker(r *http.Request, log zerolog.Logger, host string, queryParams string) ([]*fiware.WaterQualityObserved, error) {
+func getWaterQualityFromContextBroker(ctx context.Context, log zerolog.Logger, host string, queryParams string) ([]*fiware.WaterQualityObserved, error) {
 	var err error
 
 	httpClient := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
-	ctx, span := tracer.Start(r.Context(), "water-quality-handler")
-	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
-	traceID := span.SpanContext().TraceID()
-	if traceID.IsValid() {
-		log = log.With().Str("traceID", traceID.String()).Logger()
 	}
 
 	url := host + "/ngsi-ld/v1/entities?type=WaterQualityObserved"
@@ -75,23 +76,27 @@ func getWaterQualityFromContextBroker(r *http.Request, log zerolog.Logger, host 
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to create http request")
+		err = fmt.Errorf("failed to create http request: %w", err)
 		return nil, err
 	}
 
 	response, err := httpClient.Do(req)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to get water quality observed from context broker")
+		err = fmt.Errorf("request failed: %w", err)
 		return nil, err
 	}
-	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed with status code %d", response.StatusCode)
-	}
-
 	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		err = fmt.Errorf("failed with status code %d", response.StatusCode)
+		return nil, err
+	}
 
 	waterquality := []*fiware.WaterQualityObserved{}
 	err = json.NewDecoder(response.Body).Decode(&waterquality)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
 
 	return waterquality, err
 }

@@ -10,7 +10,7 @@ import (
 
 	services "github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -61,8 +61,14 @@ func getTimeParamsFromURL(r *http.Request) (time.Time, time.Time, error) {
 	return startTime, endTime, nil
 }
 
-func NewRetrieveTemperaturesHandler(log zerolog.Logger, svc services.TempService) http.HandlerFunc {
+func NewRetrieveTemperaturesHandler(logger zerolog.Logger, svc services.TempService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
+		ctx, span := tracer.Start(r.Context(), "retrieve-temperatures")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		query := svc.Query().Sensor(r.URL.Query().Get("sensor"))
 
@@ -81,7 +87,7 @@ func NewRetrieveTemperaturesHandler(log zerolog.Logger, svc services.TempService
 			query = query.Aggregate(duration, methods)
 		}
 
-		sensors, err := query.Get(r, log)
+		sensors, err := query.Get(ctx, log)
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -137,15 +143,10 @@ func NewRetrieveTemperatureSensorsHandler(log zerolog.Logger, brokerURL string) 
 			Transport: otelhttp.NewTransport(http.DefaultTransport),
 		}
 
-		ctx, span := tracer.Start(r.Context(), "temp-sensors-handler")
+		ctx, span := tracer.Start(r.Context(), "get-temp-sensors")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		traceID := span.SpanContext().TraceID()
-		if traceID.IsValid() {
-			log = log.With().Str("traceID", traceID.String()).Logger()
-		}
-
-		ctx = logging.NewContextWithLogger(ctx, log)
+		_, ctx, log = o11y.AddTraceIDToLoggerAndStoreInContext(span, log, ctx)
 
 		url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=Device", brokerURL)
 
@@ -153,6 +154,7 @@ func NewRetrieveTemperatureSensorsHandler(log zerolog.Logger, brokerURL string) 
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to create http request")
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
@@ -192,8 +194,8 @@ func NewRetrieveTemperatureSensorsHandler(log zerolog.Logger, brokerURL string) 
 
 		bytes, err := json.MarshalIndent(devices[0:numberOfTempSensors], " ", "  ")
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
 			log.Error().Err(err).Msg("unable to marshal devices to json")
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
