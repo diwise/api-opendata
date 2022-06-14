@@ -1,6 +1,7 @@
-package datasets
+package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,14 +11,15 @@ import (
 
 	services "github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/matryer/is"
+	"github.com/rs/zerolog"
 )
 
 func TestInvokeTempHandler(t *testing.T) {
 	is, log, rw := setup(t)
 	svc, tsqm := defaultTempServiceMock()
-	req, _ := http.NewRequest("GET", "http://diwise.io/api/temperatures", nil)
+	req, err := http.NewRequest("GET", "http://diwise.io/api/temperature/air", nil)
+	is.NoErr(err)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
 
@@ -76,7 +78,7 @@ func TestThatBadStartTimeFails(t *testing.T) {
 func TestThatFailingGetGeneratesInternalServerError(t *testing.T) {
 	is, log, rw := setup(t)
 	svc, tsqm := defaultTempServiceMock()
-	tsqm.GetFunc = func() ([]domain.Sensor, error) { return nil, errors.New("failure") }
+	tsqm.GetFunc = func(context.Context, zerolog.Logger) ([]domain.Sensor, error) { return nil, errors.New("failure") }
 	req, _ := http.NewRequest("GET", "", nil)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
@@ -98,11 +100,11 @@ func TestInvokeTempSensorsHandler(t *testing.T) {
 
 // #################################################
 
-func setup(t *testing.T) (*is.I, logging.Logger, *httptest.ResponseRecorder) {
-	return is.New(t), logging.NewLogger(), httptest.NewRecorder()
+func setup(t *testing.T) (*is.I, zerolog.Logger, *httptest.ResponseRecorder) {
+	return is.New(t), zerolog.Logger{}, httptest.NewRecorder()
 }
 
-func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server {
+/*func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(responseCode)
 		w.Header().Add("Content-Type", "application/ld+json")
@@ -110,11 +112,11 @@ func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server
 			w.Write([]byte(body))
 		}
 	}))
-}
+}*/
 
 func defaultTempServiceMock() (*services.TempServiceMock, *services.TempServiceQueryMock) {
 	tsqm := &services.TempServiceQueryMock{
-		GetFunc: func() ([]domain.Sensor, error) {
+		GetFunc: func(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, error) {
 			return []domain.Sensor{}, nil
 		},
 	}

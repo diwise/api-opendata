@@ -1,15 +1,19 @@
-package datasets
+package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
+	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const (
@@ -18,14 +22,20 @@ const (
 	YearMonthDayISO8601 string = "2006-01-02"
 )
 
-func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.HandlerFunc {
+func NewRetrieveBeachesHandler(logger zerolog.Logger, contextBroker string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		ctx, span := tracer.Start(r.Context(), "retrieve-beaches")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+
 		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;hov_ref;wikidata;updated;temp_url;description")
 
-		beaches, err := getBeachesFromContextBroker(contextBroker)
+		beaches, err := getBeachesFromContextBroker(ctx, log, contextBroker)
 		if err != nil {
+			log.Error().Err(err).Msgf("failed to get beaches from %s", contextBroker)
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Errorf("failed to get beaches from %s: %s", contextBroker, err.Error())
 			return
 		}
 
@@ -37,7 +47,6 @@ func NewRetrieveBeachesHandler(log logging.Logger, contextBroker string) http.Ha
 			time := getDateModifiedFromBeach(beach)
 			nutsCode := getNutsCodeFromBeach(beach)
 			wiki := getWikiRefFromBeach(beach)
-			//beachID := strings.TrimPrefix(beach.ID, fiware.BeachIDPrefix)
 
 			tempURL := fmt.Sprintf(
 				"\"%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near%%3BmaxDistance==1000&geometry=Point&coordinates=[%f,%f]\"", contextBroker, longitude, latitude,
@@ -108,10 +117,22 @@ func getWikiRefFromBeach(beach *fiware.Beach) string {
 	return ""
 }
 
-func getBeachesFromContextBroker(host string) ([]*fiware.Beach, error) {
-	response, err := http.Get(fmt.Sprintf("%s/ngsi-ld/v1/entities?type=Beach", host))
+func getBeachesFromContextBroker(ctx context.Context, log zerolog.Logger, host string) ([]*fiware.Beach, error) {
+	var err error
+
+	httpClient := http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+
+	url := fmt.Sprintf("%s/ngsi-ld/v1/entities?type=Beach", host)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create http request: %w", err)
+	}
+
+	response, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer response.Body.Close()
 
@@ -121,6 +142,9 @@ func getBeachesFromContextBroker(host string) ([]*fiware.Beach, error) {
 
 	beaches := []*fiware.Beach{}
 	err = json.NewDecoder(response.Body).Decode(&beaches)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
 
 	return beaches, err
 }

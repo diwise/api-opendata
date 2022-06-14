@@ -4,7 +4,9 @@
 package temperature
 
 import (
+	"context"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
+	"github.com/rs/zerolog"
 	"sync"
 	"time"
 )
@@ -25,11 +27,11 @@ var _ TempServiceQuery = &TempServiceQueryMock{}
 // 			BetweenTimesFunc: func(from time.Time, to time.Time) TempServiceQuery {
 // 				panic("mock out the BetweenTimes method")
 // 			},
+// 			GetFunc: func(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, error) {
+// 				panic("mock out the Get method")
+// 			},
 // 			SensorFunc: func(sensor string) TempServiceQuery {
 // 				panic("mock out the Sensor method")
-// 			},
-// 			GetFunc: func() ([]domain.Sensor, error) {
-// 				panic("mock out the Get method")
 // 			},
 // 		}
 //
@@ -44,11 +46,11 @@ type TempServiceQueryMock struct {
 	// BetweenTimesFunc mocks the BetweenTimes method.
 	BetweenTimesFunc func(from time.Time, to time.Time) TempServiceQuery
 
+	// GetFunc mocks the Get method.
+	GetFunc func(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, error)
+
 	// SensorFunc mocks the Sensor method.
 	SensorFunc func(sensor string) TempServiceQuery
-
-	// GetFunc mocks the Get method.
-	GetFunc func() ([]domain.Sensor, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -66,19 +68,23 @@ type TempServiceQueryMock struct {
 			// To is the to argument value.
 			To time.Time
 		}
+		// Get holds details about calls to the Get method.
+		Get []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Log is the log argument value.
+			Log zerolog.Logger
+		}
 		// Sensor holds details about calls to the Sensor method.
 		Sensor []struct {
 			// Sensor is the sensor argument value.
 			Sensor string
 		}
-		// Get holds details about calls to the Get method.
-		Get []struct {
-		}
 	}
 	lockAggregate    sync.RWMutex
 	lockBetweenTimes sync.RWMutex
-	lockSensor       sync.RWMutex
 	lockGet          sync.RWMutex
+	lockSensor       sync.RWMutex
 }
 
 // Aggregate calls AggregateFunc.
@@ -151,6 +157,45 @@ func (mock *TempServiceQueryMock) BetweenTimesCalls() []struct {
 	return calls
 }
 
+// Get calls GetFunc.
+func (mock *TempServiceQueryMock) Get(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, error) {
+	callInfo := struct {
+		Ctx context.Context
+		Log zerolog.Logger
+	}{
+		Ctx: ctx,
+		Log: log,
+	}
+	mock.lockGet.Lock()
+	mock.calls.Get = append(mock.calls.Get, callInfo)
+	mock.lockGet.Unlock()
+	if mock.GetFunc == nil {
+		var (
+			sensorsOut []domain.Sensor
+			errOut     error
+		)
+		return sensorsOut, errOut
+	}
+	return mock.GetFunc(ctx, log)
+}
+
+// GetCalls gets all the calls that were made to Get.
+// Check the length with:
+//     len(mockedTempServiceQuery.GetCalls())
+func (mock *TempServiceQueryMock) GetCalls() []struct {
+	Ctx context.Context
+	Log zerolog.Logger
+} {
+	var calls []struct {
+		Ctx context.Context
+		Log zerolog.Logger
+	}
+	mock.lockGet.RLock()
+	calls = mock.calls.Get
+	mock.lockGet.RUnlock()
+	return calls
+}
+
 // Sensor calls SensorFunc.
 func (mock *TempServiceQueryMock) Sensor(sensor string) TempServiceQuery {
 	callInfo := struct {
@@ -179,35 +224,5 @@ func (mock *TempServiceQueryMock) SensorCalls() []struct {
 	mock.lockSensor.RLock()
 	calls = mock.calls.Sensor
 	mock.lockSensor.RUnlock()
-	return calls
-}
-
-// Get calls GetFunc.
-func (mock *TempServiceQueryMock) Get() ([]domain.Sensor, error) {
-	callInfo := struct {
-	}{}
-	mock.lockGet.Lock()
-	mock.calls.Get = append(mock.calls.Get, callInfo)
-	mock.lockGet.Unlock()
-	if mock.GetFunc == nil {
-		var (
-			sensorsOut []domain.Sensor
-			errOut     error
-		)
-		return sensorsOut, errOut
-	}
-	return mock.GetFunc()
-}
-
-// GetCalls gets all the calls that were made to Get.
-// Check the length with:
-//     len(mockedTempServiceQuery.GetCalls())
-func (mock *TempServiceQueryMock) GetCalls() []struct {
-} {
-	var calls []struct {
-	}
-	mock.lockGet.RLock()
-	calls = mock.calls.Get
-	mock.lockGet.RUnlock()
 	return calls
 }

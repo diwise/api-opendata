@@ -6,13 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/matryer/is"
+	"github.com/rs/zerolog"
 )
 
 func TestThatWeGetATokenFromStratsysHandler(t *testing.T) {
 	is := is.New(t)
-	log := logging.NewLogger()
 	server := setupTokenMockService(http.StatusOK, accessTokenResp)
 
 	loginUrl := server.URL + "/token"
@@ -22,14 +21,13 @@ func TestThatWeGetATokenFromStratsysHandler(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPost, loginUrl, nil)
 	is.NoErr(err)
 
-	NewRetrieveStratsysReportsHandler(log, "companyCode", "clientId", "scope", loginUrl, defaultUrl).ServeHTTP(w, req)
+	NewRetrieveStratsysReportsHandler(zerolog.Logger{}, "companyCode", "clientId", "scope", loginUrl, defaultUrl).ServeHTTP(w, req)
 
 	is.Equal(w.Code, http.StatusOK)
 }
 
 func TestThatWeCanRetrieveASingleReportFromStratsysHandler(t *testing.T) {
 	is := is.New(t)
-	log := logging.NewLogger()
 	server := setupTokenMockService(http.StatusOK, accessTokenResp)
 
 	loginUrl := server.URL + "/token"
@@ -39,7 +37,7 @@ func TestThatWeCanRetrieveASingleReportFromStratsysHandler(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, server.URL+"/api/stratsys/1337", nil)
 	is.NoErr(err)
 
-	NewRetrieveStratsysReportsHandler(log, "companyCode", "clientId", "scope", loginUrl, defaultUrl).ServeHTTP(w, req)
+	NewRetrieveStratsysReportsHandler(zerolog.Logger{}, "companyCode", "clientId", "scope", loginUrl, defaultUrl).ServeHTTP(w, req)
 
 	is.Equal(w.Code, http.StatusOK)
 	is.Equal(w.Header().Get("Content-Type"), "application/json")
