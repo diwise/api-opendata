@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -25,20 +24,18 @@ type API interface {
 
 type opendataAPI struct {
 	router chi.Router
-	db     database.Datastore
 	log    zerolog.Logger
 }
 
-func NewAPI(r chi.Router, db database.Datastore, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) API {
-	return newOpendataAPI(r, db, ctx, dcatResponse, openapiResponse)
+func NewAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) API {
+	return newOpendataAPI(r, ctx, dcatResponse, openapiResponse)
 }
 
-func newOpendataAPI(r chi.Router, db database.Datastore, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) *opendataAPI {
+func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) *opendataAPI {
 	log := logging.GetFromContext(ctx)
 
 	o := &opendataAPI{
 		router: r,
-		db:     db,
 		log:    log,
 	}
 
@@ -56,7 +53,7 @@ func newOpendataAPI(r chi.Router, db database.Datastore, ctx context.Context, dc
 	r.Use(compressor.Handler)
 	r.Use(middleware.Logger)
 
-	o.addDiwiseHandlers(r, log, db)
+	o.addDiwiseHandlers(r, log)
 	o.addProbeHandlers(r)
 
 	r.Get("/api/datasets/dcat", o.newRetrieveDatasetsHandler(log, dcatResponse))
@@ -71,7 +68,7 @@ func (a *opendataAPI) Start(port string) error {
 	return http.ListenAndServe(":"+port, a.router)
 }
 
-func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger, db database.Datastore) {
+func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	contextBrokerURL := os.Getenv("DIWISE_CONTEXT_BROKER_URL")
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
 	stratsysCompanyCode := os.Getenv("STRATSYS_COMPANY_CODE")

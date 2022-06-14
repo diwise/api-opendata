@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
 	presentation "github.com/diwise/api-opendata/internal/pkg/presentation"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -89,11 +88,7 @@ func main() {
 
 		r := chi.NewRouter()
 
-		db, err := database.NewDatabaseConnection(database.NewSQLiteConnector(), ctx)
-		if err != nil {
-			log.Fatal().Msgf("failed to connect to database, shutting down... %s", err.Error())
-		}
-		api := presentation.NewAPI(r, db, ctx, datasetResponseBuffer, oasResponseBuffer)
+		api := presentation.NewAPI(r, ctx, datasetResponseBuffer, oasResponseBuffer)
 		err = api.Start(port)
 		if err != nil {
 			log.Fatal().Msgf("failed to start router: %s", err.Error())

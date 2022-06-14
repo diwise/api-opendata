@@ -10,7 +10,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/go-chi/chi"
 	"github.com/rs/zerolog"
@@ -22,10 +21,10 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func NewAppForTesting() (*database.Datastore, zerolog.Logger, *opendataAPI) {
+func NewAppForTesting() (zerolog.Logger, *opendataAPI) {
 	r := chi.NewRouter()
 
-	return nil, zerolog.Logger{}, newOpendataAPI(r, nil, context.Background(), &bytes.Buffer{}, &bytes.Buffer{})
+	return zerolog.Logger{}, newOpendataAPI(r, context.Background(), &bytes.Buffer{}, &bytes.Buffer{})
 }
 
 func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
