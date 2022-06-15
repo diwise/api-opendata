@@ -10,6 +10,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
+	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -69,8 +70,10 @@ func (a *opendataAPI) Start(port string) error {
 }
 
 func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
-	contextBrokerURL := os.Getenv("DIWISE_CONTEXT_BROKER_URL")
+	contextBrokerURL := env.GetVariableOrDie(log, "DIWISE_CONTEXT_BROKER_URL", "context broker URL")
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
+
+	stratsysEnabled := (env.GetVariableOrDefault(log, "STRATSYS_ENABLED", "true") != "false")
 	stratsysCompanyCode := os.Getenv("STRATSYS_COMPANY_CODE")
 	stratsysClientId := os.Getenv("STRATSYS_CLIENT_ID")
 	stratsysScope := os.Getenv("STRATSYS_SCOPE")
@@ -97,14 +100,17 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 		"/api/trafficflow",
 		handlers.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
 	)
-	r.Get(
-		"/api/stratsys/publishedreports",
-		stratsys.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
-	)
-	r.Get(
-		"/api/stratsys/publishedreports/{id}",
-		stratsys.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
-	)
+
+	if stratsysEnabled {
+		r.Get(
+			"/api/stratsys/publishedreports",
+			stratsys.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
+		)
+		r.Get(
+			"/api/stratsys/publishedreports/{id}",
+			stratsys.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
+		)
+	}
 }
 
 func (o *opendataAPI) addProbeHandlers(r chi.Router) {
