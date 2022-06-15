@@ -631,87 +631,59 @@ const waterqualityJson string = `[{
 
 const beachesJson string = `[
 	{
-	  "@context": [
-		"https://schema.lab.fiware.org/ld/context",
-		"https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
-	  ],
-	  "dateCreated": {
-		"type": "Property",
-		"value": {
-		  "@type": "DateTime",
-		  "@value": "2018-06-21T14:47:44Z"
-		}
-	  },
-	  "dateModified": {
-		"type": "Property",
-		"value": {
-		  "@type": "DateTime",
-		  "@value": "2020-09-25T14:05:09Z"
-		}
-	  },
-	  "description": {
-		"type": "Property",
-		"value": "Slädavikens havsbad är en badstrand belägen på den östra sidan av Alnön, öppen maj-augusti. Sandstranden är långgrund och badet passar därför barnfamiljer. Det finns grillplats, omklädningshytt, WC och parkering för cirka 20 bilar. Vattenprover tas."
-	  },
+	  "dateCreated": "2018-06-21T14:47:44Z",
+	  "dateModified": "2020-09-25T14:05:09Z",
+	  "description": "Slädavikens havsbad är en badstrand belägen på den östra sidan av Alnön, öppen maj-augusti. Sandstranden är långgrund och badet passar därför barnfamiljer. Det finns grillplats, omklädningshytt, WC och parkering för cirka 20 bilar. Vattenprover tas.",
 	  "id": "urn:ngsi-ld:Beach:se:sundsvall:anlaggning:283",
 	  "location": {
-		"type": "GeoProperty",
-		"value": {
-		  "coordinates": [
+		"coordinates": [
+		[
 			[
-			  [
-				[
-				  17.47263962458644,
-				  62.435152221329254
-				],
-				[
-				  17.473786216873332,
-				  62.43536925656754
-				],
-				[
-				  17.474885857246488,
-				  62.43543825037522
-				],
-				[
-				  17.475474288895757,
-				  62.43457483986073
-				],
-				[
-				  17.474334094644085,
-				  62.43422493307671
-				],
-				[
-				  17.47407369318257,
-				  62.434225532314045
-				],
-				[
-				  17.473565135911233,
-				  62.43447998588642
-				],
-				[
-				  17.472995143072257,
-				  62.434936697524215
-				],
-				[
-				  17.47263962458644,
-				  62.435152221329254
-				]
-			  ]
+			[
+				17.47263962458644,
+				62.435152221329254
+			],
+			[
+				17.473786216873332,
+				62.43536925656754
+			],
+			[
+				17.474885857246488,
+				62.43543825037522
+			],
+			[
+				17.475474288895757,
+				62.43457483986073
+			],
+			[
+				17.474334094644085,
+				62.43422493307671
+			],
+			[
+				17.47407369318257,
+				62.434225532314045
+			],
+			[
+				17.473565135911233,
+				62.43447998588642
+			],
+			[
+				17.472995143072257,
+				62.434936697524215
+			],
+			[
+				17.47263962458644,
+				62.435152221329254
 			]
-		  ],
-		  "type": "MultiPolygon"
-		}
-	  },
-	  "name": {
-		"type": "Property",
-		"value": "Slädaviken"
-	  },
-	  "refSeeAlso": {
-		"object": [
+			]
+		]
+		],
+		"type": "MultiPolygon"
+	},
+	  "name": "Slädaviken",
+	  "refSeeAlso": [
 		  "https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/SE0712281000003473",
 		  "https://www.wikidata.org/wiki/Q10671745"
 		],
-		"type": "Relationship"
-	  },
 	  "type": "Beach"
 	}]`
