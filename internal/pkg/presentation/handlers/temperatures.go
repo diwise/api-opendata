@@ -73,7 +73,7 @@ func NewRetrieveTemperaturesHandler(logger zerolog.Logger, svc services.TempServ
 		sensor := r.URL.Query().Get("sensor")
 		if sensor == "" {
 			w.WriteHeader(http.StatusBadRequest)
-			log.Error("no sensor specified in temperature request")
+			log.Error().Msg("no sensor specified in temperature request")
 			return
 		}
 
