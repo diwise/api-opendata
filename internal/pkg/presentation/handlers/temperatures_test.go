@@ -18,7 +18,7 @@ import (
 func TestInvokeTempHandler(t *testing.T) {
 	is, log, rw := setup(t)
 	svc, tsqm := defaultTempServiceMock()
-	req, err := http.NewRequest("GET", "http://diwise.io/api/temperature/air", nil)
+	req, err := http.NewRequest("GET", "http://diwise.io/api/temperature/air?sensor=thatone", nil)
 	is.NoErr(err)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
@@ -43,7 +43,7 @@ func TestThatTimeSpanIsExtractedFromGetParameters(t *testing.T) {
 	svc, tsqm := defaultTempServiceMock()
 	from, _ := time.Parse(time.RFC3339, "2010-01-01T12:13:14Z")
 	to, _ := time.Parse(time.RFC3339, "2010-01-01T22:23:24Z")
-	getParams := fmt.Sprintf("?timeAt=%s&endTimeAt=%s", from.Format(time.RFC3339), to.Format(time.RFC3339))
+	getParams := fmt.Sprintf("?sensor=thatone&timeAt=%s&endTimeAt=%s", from.Format(time.RFC3339), to.Format(time.RFC3339))
 	req, _ := http.NewRequest("GET", getParams, nil)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
@@ -56,7 +56,7 @@ func TestThatTimeSpanIsExtractedFromGetParameters(t *testing.T) {
 func TestThatAggregationSettingsAreExtractedFromGetParameters(t *testing.T) {
 	is, log, rw := setup(t)
 	svc, tsqm := defaultTempServiceMock()
-	req, _ := http.NewRequest("GET", "?aggrMethods=avg,max,min&aggrPeriodDuration=P2H&options=aggregatedValues", nil)
+	req, _ := http.NewRequest("GET", "?sensor=thatone&aggrMethods=avg,max,min&aggrPeriodDuration=P2H&options=aggregatedValues", nil)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
 
@@ -68,18 +68,18 @@ func TestThatAggregationSettingsAreExtractedFromGetParameters(t *testing.T) {
 func TestThatBadStartTimeFails(t *testing.T) {
 	is, log, rw := setup(t)
 	svc, _ := defaultTempServiceMock()
-	req, _ := http.NewRequest("GET", "?timeAt=gurka", nil)
+	req, _ := http.NewRequest("GET", "?sensor=thatone&timeAt=gurka", nil)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
 
-	is.Equal(rw.Code, http.StatusInternalServerError) // response status should be 500 ISE
+	is.Equal(rw.Code, http.StatusBadRequest) // response status should be 400 bad request
 }
 
 func TestThatFailingGetGeneratesInternalServerError(t *testing.T) {
 	is, log, rw := setup(t)
 	svc, tsqm := defaultTempServiceMock()
 	tsqm.GetFunc = func(context.Context, zerolog.Logger) ([]domain.Sensor, error) { return nil, errors.New("failure") }
-	req, _ := http.NewRequest("GET", "", nil)
+	req, _ := http.NewRequest("GET", "?sensor=thatone", nil)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
 
