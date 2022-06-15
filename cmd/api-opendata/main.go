@@ -83,7 +83,7 @@ func main() {
 
 		port := os.Getenv("SERVICE_PORT")
 		if port == "" {
-			port = "8880"
+			port = "8080"
 		}
 
 		r := chi.NewRouter()
