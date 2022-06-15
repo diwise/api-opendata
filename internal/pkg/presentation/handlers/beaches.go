@@ -26,46 +26,85 @@ const (
 func NewRetrieveBeachesHandler(logger zerolog.Logger, contextBroker string) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var err error
-		ctx, span := tracer.Start(r.Context(), "retrieve-beaches")
-		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
-
-		beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;hov_ref;wikidata;updated;temp_url;description")
-
-		err = getBeachesFromContextBroker(ctx, log, contextBroker, "default", func(b beach) {
-			latitude, longitude := b.LatLon()
-
-			time := getDateModifiedFromBeach(&b)
-			nutsCode := getNutsCodeFromBeach(&b)
-			wiki := getWikiRefFromBeach(&b)
-
-			tempURL := fmt.Sprintf(
-				"\"%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near%%3BmaxDistance==1000&geometry=Point&coordinates=[%f,%f]\"", contextBroker, longitude, latitude,
-			)
-
-			beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;%s;\"%s\"",
-				b.ID, b.Name, latitude, longitude,
-				nutsCode,
-				wiki,
-				time,
-				tempURL,
-				strings.ReplaceAll(b.Description, "\"", "\"\""),
-			)
-
-			beachesCsv.Write([]byte(beachInfo))
-		})
-
-		if err != nil {
-			log.Error().Err(err).Msgf("failed to get beaches from %s", contextBroker)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		acceptedContentType := r.Header.Get("Accept")
+		if strings.HasPrefix(acceptedContentType, "application/json") {
+			serveBeachesAsJSON(logger, contextBroker, w, r)
+		} else {
+			serveBeachesAsTextCSV(logger, contextBroker, w, r)
 		}
-
-		w.Header().Add("Content-Type", "text/csv")
-		w.Write(beachesCsv.Bytes())
 	})
+}
+
+const beachJSONFormat string = `{"id": "%s", "name": "%s", "location": {"type": "Point", "coordinates": [%f, %f]}}"`
+
+func serveBeachesAsJSON(logger zerolog.Logger, contextBroker string, w http.ResponseWriter, r *http.Request) {
+	var err error
+	ctx, span := tracer.Start(r.Context(), "retrieve-beaches")
+	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+	_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+
+	beaches := []string{}
+
+	err = getBeachesFromContextBroker(ctx, log, contextBroker, "default", func(b beach) {
+		latitude, longitude := b.LatLon()
+		beaches = append(beaches, fmt.Sprintf(beachJSONFormat, b.ID, b.Name, longitude, latitude))
+	})
+
+	if err != nil {
+		log.Error().Err(err).Msgf("failed to get beaches from %s", contextBroker)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	beachJSON := "{\"data\": [" + strings.Join(beaches, ",") + "]}"
+
+	w.Header().Add("Content-Type", "application/json")
+	w.Write([]byte(beachJSON))
+}
+
+func serveBeachesAsTextCSV(logger zerolog.Logger, contextBroker string, w http.ResponseWriter, r *http.Request) {
+	var err error
+	ctx, span := tracer.Start(r.Context(), "retrieve-beaches-csv")
+	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+	_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+
+	beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;hov_ref;wikidata;updated;temp_url;description")
+
+	err = getBeachesFromContextBroker(ctx, log, contextBroker, "default", func(b beach) {
+		latitude, longitude := b.LatLon()
+
+		time := getDateModifiedFromBeach(&b)
+		nutsCode := getNutsCodeFromBeach(&b)
+		wiki := getWikiRefFromBeach(&b)
+
+		tempURL := fmt.Sprintf(
+			"\"%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near%%3BmaxDistance==1000&geometry=Point&coordinates=[%f,%f]\"",
+			contextBroker, longitude, latitude,
+		)
+
+		beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;%s;\"%s\"",
+			b.ID, b.Name, latitude, longitude,
+			nutsCode,
+			wiki,
+			time,
+			tempURL,
+			strings.ReplaceAll(b.Description, "\"", "\"\""),
+		)
+
+		beachesCsv.Write([]byte(beachInfo))
+	})
+
+	if err != nil {
+		log.Error().Err(err).Msgf("failed to get beaches from %s", contextBroker)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("Content-Type", "text/csv")
+	w.Write(beachesCsv.Bytes())
 }
 
 func getBeachesFromContextBroker(ctx context.Context, logger zerolog.Logger, brokerURL, tenant string, callback func(b beach)) error {
@@ -107,8 +146,6 @@ func getBeachesFromContextBroker(ctx context.Context, logger zerolog.Logger, bro
 		contentType := resp.Header.Get("Content-Type")
 		return fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", resp.StatusCode, contentType, string(respBody))
 	}
-
-	logger.Info().Msgf("response: %s", respBody)
 
 	var beaches []beach
 	err = json.Unmarshal(respBody, &beaches)
