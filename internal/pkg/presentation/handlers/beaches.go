@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi"
 	"github.com/rs/zerolog"
@@ -56,7 +58,12 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, contextBroker string) ht
 		}
 
 		latitude, longitude := inBeach.LatLon()
-		wq, err := getWaterQualitiesNearBeach(ctx, contextBroker, latitude, longitude)
+		wq, err := getWaterQualitiesNearBeach(ctx, contextBroker, "default", latitude, longitude)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to fetch water qualities")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		outBeach := &BeachOut{
 			ID:           inBeach.ID,
@@ -73,8 +80,117 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, contextBroker string) ht
 	})
 }
 
-func getWaterQualitiesNearBeach(ctx context.Context, contextBroker string, latitude, longitude float64) ([]WaterQuality, error) {
-	return []WaterQuality{{Temperature: 15.2, DateObserved: time.Now().UTC().Format(time.RFC3339)}}, nil
+func getWaterQualitiesNearBeach(ctx context.Context, brokerURL, tenant string, latitude, longitude float64) ([]WaterQuality, error) {
+	var err error
+	ctx, span := tracer.Start(ctx, "retrieve-water-qualites")
+	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+	httpClient := http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+
+	baseURL := fmt.Sprintf(
+		"%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near%%3BmaxDistance==1000&geometry=Point&coordinates=[%f,%f]",
+		brokerURL, longitude, latitude,
+	)
+
+	count, err := func() (int64, error) {
+		subctx, subspan := tracer.Start(ctx, "retrieve-wqo-count")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, subspan) }()
+
+		requestURL := fmt.Sprintf("%s&limit=0&count=true", baseURL)
+
+		req, err := http.NewRequestWithContext(subctx, http.MethodGet, requestURL, nil)
+		if err != nil {
+			err = fmt.Errorf("failed to create request: %s", err.Error())
+			return 0, err
+		}
+
+		req.Header.Add("Accept", "application/ld+json")
+		req.Header.Add("Link", "<https://schema.lab.fiware.org/ld/context>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"")
+		req.Header.Add("NGSILD-Tenant", tenant)
+
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			err = fmt.Errorf("failed to send request: %s", err.Error())
+			return 0, err
+		}
+		defer resp.Body.Close()
+
+		resultsCount := resp.Header.Get("Ngsild-Results-Count")
+		if resultsCount == "" {
+			return 0, nil
+		}
+
+		count, err := strconv.ParseInt(resultsCount, 10, 64)
+		if err != nil {
+			err = fmt.Errorf("malformed results header value: %s", err.Error())
+		}
+
+		return count, err
+	}()
+
+	if count == 0 || err != nil {
+		return []WaterQuality{}, err
+	}
+
+	const MaxTempCount int64 = 5
+	requestURL := baseURL + "&options=keyValues"
+
+	if MaxTempCount < count {
+		requestURL = fmt.Sprintf("%s&offset=%d", requestURL, count-MaxTempCount)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+	if err != nil {
+		err = fmt.Errorf("failed to create request: %s", err.Error())
+		return nil, err
+	}
+
+	req.Header.Add("Accept", "application/ld+json")
+	req.Header.Add("Link", "<https://schema.lab.fiware.org/ld/context>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"")
+	req.Header.Add("NGSILD-Tenant", tenant)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		err = fmt.Errorf("failed to send request: %s", err.Error())
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		err = fmt.Errorf("failed to read response body: %s", err.Error())
+		return nil, err
+	}
+
+	if resp.StatusCode >= http.StatusBadRequest {
+		reqbytes, _ := httputil.DumpRequest(req, false)
+		respbytes, _ := httputil.DumpResponse(resp, false)
+
+		log := logging.GetFromContext(ctx)
+		log.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
+		return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		contentType := resp.Header.Get("Content-Type")
+		err = fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", resp.StatusCode, contentType, string(respBody))
+		return nil, err
+	}
+
+	var wqo []WaterQuality
+	err = json.Unmarshal(respBody, &wqo)
+	if err != nil {
+		err = fmt.Errorf("failed to unmarshal response: %s", err.Error())
+		return nil, err
+	}
+
+	for i, j := 0, len(wqo)-1; i < j; i, j = i+1, j-1 {
+		wqo[i], wqo[j] = wqo[j], wqo[i]
+	}
+
+	return wqo, nil
 }
 
 func NewRetrieveBeachesHandler(logger zerolog.Logger, contextBroker string) http.HandlerFunc {
