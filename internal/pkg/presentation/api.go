@@ -71,6 +71,8 @@ func (a *opendataAPI) Start(port string) error {
 
 func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	contextBrokerURL := env.GetVariableOrDie(log, "DIWISE_CONTEXT_BROKER_URL", "context broker URL")
+	contextBrokerTenant := env.GetVariableOrDefault(log, "DIWISE_CONTEXT_BROKER_TENANT", "default")
+
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
 
 	stratsysEnabled := (env.GetVariableOrDefault(log, "STRATSYS_ENABLED", "true") != "false")
@@ -86,11 +88,11 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	)
 	r.Get(
 		"/api/beaches",
-		handlers.NewRetrieveBeachesHandler(log, contextBrokerURL),
+		handlers.NewRetrieveBeachesHandler(log, contextBrokerURL, contextBrokerTenant),
 	)
 	r.Get(
 		"/api/beaches/{id}",
-		handlers.NewRetrieveBeachByIDHandler(log, contextBrokerURL),
+		handlers.NewRetrieveBeachByIDHandler(log, contextBrokerURL, contextBrokerTenant),
 	)
 	r.Get(
 		"/api/temperature/air",

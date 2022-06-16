@@ -27,7 +27,7 @@ const (
 	YearMonthDayISO8601 string = "2006-01-02"
 )
 
-func NewRetrieveBeachByIDHandler(logger zerolog.Logger, contextBroker string) http.HandlerFunc {
+func NewRetrieveBeachByIDHandler(logger zerolog.Logger, contextBroker, tenant string) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
@@ -44,7 +44,7 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, contextBroker string) ht
 			return
 		}
 
-		inBeach, err := getBeachByIDFromContextBroker(ctx, log, contextBroker, "default", beachID)
+		inBeach, err := getBeachByIDFromContextBroker(ctx, log, contextBroker, tenant, beachID)
 		if err != nil {
 			if err == ErrNoSuchBeach {
 				w.WriteHeader(http.StatusNotFound)
@@ -193,22 +193,22 @@ func getWaterQualitiesNearBeach(ctx context.Context, brokerURL, tenant string, l
 	return wqo, nil
 }
 
-func NewRetrieveBeachesHandler(logger zerolog.Logger, contextBroker string) http.HandlerFunc {
+func NewRetrieveBeachesHandler(logger zerolog.Logger, contextBroker, tenant string) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		acceptedContentType := r.Header.Get("Accept")
 		if strings.HasPrefix(acceptedContentType, "application/json") {
-			serveBeachesAsJSON(logger, contextBroker, w, r)
+			serveBeachesAsJSON(logger, contextBroker, tenant, w, r)
 		} else {
-			serveBeachesAsTextCSV(logger, contextBroker, w, r)
+			serveBeachesAsTextCSV(logger, contextBroker, tenant, w, r)
 		}
 	})
 }
 
 const beachJSONFormat string = `{"id": "%s", "name": "%s", "location": {"type": "Point", "coordinates": [%f, %f]}}"`
 
-func serveBeachesAsJSON(logger zerolog.Logger, contextBroker string, w http.ResponseWriter, r *http.Request) {
+func serveBeachesAsJSON(logger zerolog.Logger, contextBroker, tenant string, w http.ResponseWriter, r *http.Request) {
 	var err error
 	ctx, span := tracer.Start(r.Context(), "retrieve-beaches")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
@@ -217,7 +217,7 @@ func serveBeachesAsJSON(logger zerolog.Logger, contextBroker string, w http.Resp
 
 	beaches := []string{}
 
-	err = getBeachesFromContextBroker(ctx, log, contextBroker, "default", func(b beach) {
+	err = getBeachesFromContextBroker(ctx, log, contextBroker, tenant, func(b beach) {
 		latitude, longitude := b.LatLon()
 		beaches = append(beaches, fmt.Sprintf(beachJSONFormat, b.ID, b.Name, longitude, latitude))
 	})
@@ -234,7 +234,7 @@ func serveBeachesAsJSON(logger zerolog.Logger, contextBroker string, w http.Resp
 	w.Write([]byte(beachJSON))
 }
 
-func serveBeachesAsTextCSV(logger zerolog.Logger, contextBroker string, w http.ResponseWriter, r *http.Request) {
+func serveBeachesAsTextCSV(logger zerolog.Logger, contextBroker, tenant string, w http.ResponseWriter, r *http.Request) {
 	var err error
 	ctx, span := tracer.Start(r.Context(), "retrieve-beaches-csv")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
@@ -243,7 +243,7 @@ func serveBeachesAsTextCSV(logger zerolog.Logger, contextBroker string, w http.R
 
 	beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;hov_ref;wikidata;updated;temp_url;description")
 
-	err = getBeachesFromContextBroker(ctx, log, contextBroker, "default", func(b beach) {
+	err = getBeachesFromContextBroker(ctx, log, contextBroker, tenant, func(b beach) {
 		latitude, longitude := b.LatLon()
 
 		time := getDateModifiedFromBeach(&b)

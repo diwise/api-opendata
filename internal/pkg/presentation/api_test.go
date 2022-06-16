@@ -43,7 +43,7 @@ func TestGetBeaches(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/api/beaches", nil)
 
-	handlers.NewRetrieveBeachesHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
+	handlers.NewRetrieveBeachesHandler(zerolog.Logger{}, server.URL, "default").ServeHTTP(w, req)
 	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 
