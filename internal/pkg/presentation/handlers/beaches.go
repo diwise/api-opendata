@@ -16,7 +16,7 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -76,6 +76,7 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, contextBroker, tenant st
 
 		json, err := json.MarshalIndent(outBeach, "", "  ")
 		w.Header().Add("Content-Type", "application/json")
+		w.Header().Add("Cache-Control", "max-age=600")
 		w.Write(json)
 	})
 }
@@ -231,6 +232,7 @@ func serveBeachesAsJSON(logger zerolog.Logger, contextBroker, tenant string, w h
 	beachJSON := "{\"data\": [" + strings.Join(beaches, ",") + "]}"
 
 	w.Header().Add("Content-Type", "application/json")
+	w.Header().Add("Cache-Control", "max-age=3600")
 	w.Write([]byte(beachJSON))
 }
 
