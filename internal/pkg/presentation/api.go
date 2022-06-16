@@ -89,6 +89,10 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 		handlers.NewRetrieveBeachesHandler(log, contextBrokerURL),
 	)
 	r.Get(
+		"/api/beaches/{id}",
+		handlers.NewRetrieveBeachByIDHandler(log, contextBrokerURL),
+	)
+	r.Get(
 		"/api/temperature/air",
 		handlers.NewRetrieveTemperaturesHandler(log, temperature.NewTempService(contextBrokerURL)),
 	)
