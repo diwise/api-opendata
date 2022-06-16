@@ -12,8 +12,8 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/riandyrn/otelchi"
 
 	"github.com/rs/cors"
@@ -48,7 +48,6 @@ func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffe
 		"text/csv", "application/json", "application/xml", "application/rdf+xml",
 	)
 	r.Use(compressor.Handler)
-	r.Use(middleware.Logger)
 	r.Use(otelchi.Middleware("api-opendata", otelchi.WithChiRoutes(r)))
 
 	o := &opendataAPI{
