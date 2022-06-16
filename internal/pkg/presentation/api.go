@@ -12,8 +12,9 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/riandyrn/otelchi"
 
 	"github.com/rs/cors"
 	"github.com/rs/zerolog"
@@ -35,11 +36,6 @@ func NewAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, opena
 func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) *opendataAPI {
 	log := logging.GetFromContext(ctx)
 
-	o := &opendataAPI{
-		router: r,
-		log:    log,
-	}
-
 	r.Use(cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
@@ -53,13 +49,19 @@ func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffe
 	)
 	r.Use(compressor.Handler)
 	r.Use(middleware.Logger)
+	r.Use(otelchi.Middleware("api-opendata", otelchi.WithChiRoutes(r)))
+
+	o := &opendataAPI{
+		router: r,
+		log:    log,
+	}
 
 	o.addDiwiseHandlers(r, log)
 	o.addProbeHandlers(r)
 
-	r.Get("/api/datasets/dcat", o.newRetrieveDatasetsHandler(log, dcatResponse))
-	r.Get("/api/api-docs", o.newRetrieveOpenAPIHandler(log, openapiResponse))
-	r.Get("/api/openapi", o.newRetrieveOpenAPIHandler(log, openapiResponse))
+	o.router.Get("/api/datasets/dcat", o.newRetrieveDatasetsHandler(log, dcatResponse))
+	o.router.Get("/api/api-docs", o.newRetrieveOpenAPIHandler(log, openapiResponse))
+	o.router.Get("/api/openapi", o.newRetrieveOpenAPIHandler(log, openapiResponse))
 
 	return o
 }
