@@ -11,7 +11,7 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 )
 
 func openDatasetsFile(ctx context.Context, path string) *os.File {
@@ -83,7 +83,7 @@ func main() {
 
 		port := os.Getenv("SERVICE_PORT")
 		if port == "" {
-			port = "8880"
+			port = "8080"
 		}
 
 		r := chi.NewRouter()

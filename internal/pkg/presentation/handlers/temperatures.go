@@ -70,12 +70,21 @@ func NewRetrieveTemperaturesHandler(logger zerolog.Logger, svc services.TempServ
 
 		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		query := svc.Query().Sensor(r.URL.Query().Get("sensor"))
+		sensor := r.URL.Query().Get("sensor")
+		if sensor == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			err := fmt.Errorf("no sensor specified in temperature request")
+			log.Error().Err(err).Msg("bad request")
+			return
+		}
+
+		query := svc.Query().Sensor(sensor)
 
 		from, to, err := getTimeParamsFromURL(r)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Error().Err(err).Msg("unable to get time range")
+			w.WriteHeader(http.StatusBadRequest)
+			err = fmt.Errorf("unable to get time range (%w)", err)
+			log.Error().Err(err).Msg("bad request")
 			return
 		}
 
@@ -91,7 +100,8 @@ func NewRetrieveTemperaturesHandler(logger zerolog.Logger, svc services.TempServ
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Error().Err(err).Msg("unable to get temperatures")
+			err = fmt.Errorf("unable to get temperatures")
+			log.Error().Err(err).Msg("internal error")
 			return
 		}
 
@@ -127,7 +137,8 @@ func NewRetrieveTemperaturesHandler(logger zerolog.Logger, svc services.TempServ
 		bytes, err := json.MarshalIndent(response, " ", "  ")
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Error().Err(err).Msg("unable to marshal results to json")
+			err = fmt.Errorf("unable to marshal results to json (%w)", err)
+			log.Error().Err(err).Msg("internal error")
 			return
 		}
 

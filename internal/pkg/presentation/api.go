@@ -10,9 +10,11 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
+	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/riandyrn/otelchi"
 
 	"github.com/rs/cors"
 	"github.com/rs/zerolog"
@@ -34,11 +36,6 @@ func NewAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, opena
 func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) *opendataAPI {
 	log := logging.GetFromContext(ctx)
 
-	o := &opendataAPI{
-		router: r,
-		log:    log,
-	}
-
 	r.Use(cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
@@ -51,14 +48,19 @@ func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffe
 		"text/csv", "application/json", "application/xml", "application/rdf+xml",
 	)
 	r.Use(compressor.Handler)
-	r.Use(middleware.Logger)
+	r.Use(otelchi.Middleware("api-opendata", otelchi.WithChiRoutes(r)))
+
+	o := &opendataAPI{
+		router: r,
+		log:    log,
+	}
 
 	o.addDiwiseHandlers(r, log)
 	o.addProbeHandlers(r)
 
-	r.Get("/api/datasets/dcat", o.newRetrieveDatasetsHandler(log, dcatResponse))
-	r.Get("/api/api-docs", o.newRetrieveOpenAPIHandler(log, openapiResponse))
-	r.Get("/api/openapi", o.newRetrieveOpenAPIHandler(log, openapiResponse))
+	o.router.Get("/api/datasets/dcat", o.newRetrieveDatasetsHandler(log, dcatResponse))
+	o.router.Get("/api/api-docs", o.newRetrieveOpenAPIHandler(log, openapiResponse))
+	o.router.Get("/api/openapi", o.newRetrieveOpenAPIHandler(log, openapiResponse))
 
 	return o
 }
@@ -69,8 +71,12 @@ func (a *opendataAPI) Start(port string) error {
 }
 
 func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
-	contextBrokerURL := os.Getenv("DIWISE_CONTEXT_BROKER_URL")
+	contextBrokerURL := env.GetVariableOrDie(log, "DIWISE_CONTEXT_BROKER_URL", "context broker URL")
+	contextBrokerTenant := env.GetVariableOrDefault(log, "DIWISE_CONTEXT_BROKER_TENANT", "default")
+
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
+
+	stratsysEnabled := (env.GetVariableOrDefault(log, "STRATSYS_ENABLED", "true") != "false")
 	stratsysCompanyCode := os.Getenv("STRATSYS_COMPANY_CODE")
 	stratsysClientId := os.Getenv("STRATSYS_CLIENT_ID")
 	stratsysScope := os.Getenv("STRATSYS_SCOPE")
@@ -83,7 +89,11 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	)
 	r.Get(
 		"/api/beaches",
-		handlers.NewRetrieveBeachesHandler(log, contextBrokerURL),
+		handlers.NewRetrieveBeachesHandler(log, contextBrokerURL, contextBrokerTenant),
+	)
+	r.Get(
+		"/api/beaches/{id}",
+		handlers.NewRetrieveBeachByIDHandler(log, contextBrokerURL, contextBrokerTenant),
 	)
 	r.Get(
 		"/api/temperature/air",
@@ -97,14 +107,17 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 		"/api/trafficflow",
 		handlers.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
 	)
-	r.Get(
-		"/api/stratsys/publishedreports",
-		stratsys.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
-	)
-	r.Get(
-		"/api/stratsys/publishedreports/{id}",
-		stratsys.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
-	)
+
+	if stratsysEnabled {
+		r.Get(
+			"/api/stratsys/publishedreports",
+			stratsys.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
+		)
+		r.Get(
+			"/api/stratsys/publishedreports/{id}",
+			stratsys.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
+		)
+	}
 }
 
 func (o *opendataAPI) addProbeHandlers(r chi.Router) {

@@ -4,8 +4,9 @@ go 1.18
 
 require (
 	github.com/diwise/ngsi-ld-golang v0.0.0-20211028162007-fad13291cb5b
-	github.com/go-chi/chi v4.1.2+incompatible
+	github.com/go-chi/chi/v5 v5.0.7
 	github.com/matryer/is v1.4.0
+	github.com/riandyrn/otelchi v0.4.0
 	github.com/rs/cors v1.8.2
 	github.com/rs/zerolog v1.26.1
 	go.opentelemetry.io/otel v1.7.0
@@ -19,6 +20,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
+	go.opentelemetry.io/contrib v1.0.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.6.3 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.6.3 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.6.3 // indirect
