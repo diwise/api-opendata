@@ -2,7 +2,7 @@ package application
 
 import (
 	"bytes"
-	"fmt"
+	"context"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -10,10 +10,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/diwise/api-opendata/internal/pkg/application/datasets"
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/repositories/database"
-	"github.com/go-chi/chi"
+	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
+	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog"
 
 	"github.com/matryer/is"
 )
@@ -22,10 +21,10 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func NewAppForTesting() (*database.Datastore, logging.Logger, *opendataApp) {
+func NewAppForTesting() (zerolog.Logger, *opendataAPI) {
 	r := chi.NewRouter()
-	log := logging.NewLogger()
-	return nil, log, newOpendataApp(r, nil, log, &bytes.Buffer{}, &bytes.Buffer{})
+
+	return zerolog.Logger{}, newOpendataAPI(r, context.Background(), &bytes.Buffer{}, &bytes.Buffer{})
 }
 
 func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
@@ -37,72 +36,43 @@ func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.
 	return resp, string(respBody)
 }
 
-//fix test below when retrieving catalogs becomes relevant
-/*func TestThatRetrieveCatalogsSucceeds(t *testing.T) {
-	log := logging.NewLogger()
-	db, _ := database.NewDatabaseConnection(database.NewSQLiteConnector(), log)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/catalogs", nil)
-
-	NewRetrieveCatalogsHandler(log, db).ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Errorf("Request failed, status code not OK: %d", w.Code)
-	}
-}*/
-
 func TestGetBeaches(t *testing.T) {
-
-	log := logging.NewLogger()
-
+	is := is.New(t)
 	server := setupMockService(http.StatusOK, beachesJson)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/api/beaches", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/beaches", nil)
 
-	datasets.NewRetrieveBeachesHandler(log, server.URL).ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("Request failed, status code not OK: %d", w.Code)
-	}
-
-	fmt.Println(w.Body.String())
+	handlers.NewRetrieveBeachesHandler(zerolog.Logger{}, server.URL, "default").ServeHTTP(w, req)
+	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 
 func TestGetWaterQuality(t *testing.T) {
-	log := logging.NewLogger()
-
+	is := is.New(t)
 	server := setupMockService(http.StatusOK, waterqualityJson)
 
-	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "http://localhost:8080/api/waterquality", nil)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/waterquality", nil)
 
-	datasets.NewRetrieveWaterQualityHandler(log, server.URL, "").ServeHTTP(nr, req)
-	if nr.Code != http.StatusOK {
-		t.Errorf("Request failed, status code not OK: %d", nr.Code)
-	}
+	handlers.NewRetrieveWaterQualityHandler(zerolog.Logger{}, server.URL, "").ServeHTTP(w, req)
+	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 
 func TestGetTrafficFlowsHandlesEmptyResult(t *testing.T) {
 	is := is.New(t)
-	log := logging.NewLogger()
-
 	server := setupMockService(http.StatusOK, "[]")
 
-	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/trafficflow", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
 
-	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
-
-	is.Equal(nr.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG") // body should only contain Csv Header
+	is.Equal(w.Code, http.StatusOK)                                                                                                                                         // return code must be 200, Status OK
+	is.Equal(w.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG") // body should only contain Csv Header
 }
 
 func TestGetTrafficFlowsHandlesSingleObservation(t *testing.T) {
 	is := is.New(t)
-	log := logging.NewLogger()
-
 	server := setupMockService(http.StatusOK, `[{
 		"@context": [
 		  "https://schema.lab.fiware.org/ld/context",
@@ -142,51 +112,43 @@ func TestGetTrafficFlowsHandlesSingleObservation(t *testing.T) {
 			}
 	}]`)
 
-	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/trafficflow", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
 
-	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
-
-	is.Equal(nr.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG\r\n2016-12-07T11:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;8;17.3;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0") // expected body to return values for intensity and average speed for only one observation
+	is.Equal(w.Code, http.StatusOK)                                                                                                                                                                                                                                                           // return code must be 200, Status OK
+	is.Equal(w.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG\r\n2016-12-07T11:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;8;17.3;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0") // expected body to return values for intensity and average speed for only one observation
 }
 
 func TestGetTrafficFlowsHandlesSameDateObservations(t *testing.T) {
 	is := is.New(t)
-	log := logging.NewLogger()
-
 	server := setupMockService(http.StatusOK, trafficFlowJson)
 
-	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/trafficflow", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
 
-	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
-
-	is.Equal(nr.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG\r\n2016-12-07T11:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;8;17.3;11;78.3;41;39.5;14;34.2;15;68.5;18;22.8;11;20.5;15;42.5") // expected body to return values for intensity and average speed for eight same date observations
+	is.Equal(w.Code, http.StatusOK)                                                                                                                                                                                                                                                                         // return code must be 200, Status OK
+	is.Equal(w.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG\r\n2016-12-07T11:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;8;17.3;11;78.3;41;39.5;14;34.2;15;68.5;18;22.8;11;20.5;15;42.5") // expected body to return values for intensity and average speed for eight same date observations
 }
 
 func TestGetTrafficFlowsHandlesDifferentDateObservations(t *testing.T) {
 	is := is.New(t)
-	log := logging.NewLogger()
-
 	server := setupMockService(http.StatusOK, differentDateTfos)
 
-	nr := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "https://localhost:8080/api/trafficflow", nil)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/trafficflow", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
 
-	is.Equal(nr.Code, http.StatusOK) // return code must be 200, Status OK
-
-	is.Equal(nr.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG\r\n2016-12-07T11:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;8;17.3;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0\r\n2016-12-07T13:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;0;0.0;0;0.0;0;0.0;3;25.4;0;0.0;0;0.0;0;0.0;0;0.0\r\n2016-12-07T18:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;0;0.0;0;0.0;0;0.0;3;25.4;0;0.0;0;0.0;0;0.0;0;0.0") // expected body to return values for intensity and average speed for two different date observations
+	is.Equal(w.Code, http.StatusOK)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               // return code must be 200, Status OK
+	is.Equal(w.Body.String(), "date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG\r\n2016-12-07T11:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;8;17.3;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0;0;0.0\r\n2016-12-07T13:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;0;0.0;0;0.0;0;0.0;3;25.4;0;0.0;0;0.0;0;0.0;0;0.0\r\n2016-12-07T18:10:00Z;urn:ngsi-ld:RoadSegment:19312:2860:35243;0;0.0;0;0.0;0;0.0;3;25.4;0;0.0;0;0.0;0;0.0;0;0.0") // expected body to return values for intensity and average speed for two different date observations
 }
 
 func TestGetTrafficFlowsHandlesDateObservationsFromTimeSpan(t *testing.T) {
 	is := is.New(t)
-	log := logging.NewLogger()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		is.Equal(r.URL.RequestURI(), "/ngsi-ld/v1/entities?type=TrafficFlowObserved&timerel=between&timeAt=2016-12-07T11:10:00Z&endTimeAt=2016-12-07T13:10:00Z")
@@ -196,10 +158,11 @@ func TestGetTrafficFlowsHandlesDateObservationsFromTimeSpan(t *testing.T) {
 		w.Write([]byte("[]"))
 	}))
 
-	nr := httptest.NewRecorder()
+	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, server.URL+"/api/trafficflows?from=2016-12-07T11:10:00Z&to=2016-12-07T13:10:00Z", nil)
 
-	datasets.NewRetrieveTrafficFlowsHandler(log, server.URL).ServeHTTP(nr, req)
+	handlers.NewRetrieveTrafficFlowsHandler(zerolog.Logger{}, server.URL).ServeHTTP(w, req)
+	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 
 }
 
@@ -668,87 +631,59 @@ const waterqualityJson string = `[{
 
 const beachesJson string = `[
 	{
-	  "@context": [
-		"https://schema.lab.fiware.org/ld/context",
-		"https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
-	  ],
-	  "dateCreated": {
-		"type": "Property",
-		"value": {
-		  "@type": "DateTime",
-		  "@value": "2018-06-21T14:47:44Z"
-		}
-	  },
-	  "dateModified": {
-		"type": "Property",
-		"value": {
-		  "@type": "DateTime",
-		  "@value": "2020-09-25T14:05:09Z"
-		}
-	  },
-	  "description": {
-		"type": "Property",
-		"value": "Slädavikens havsbad är en badstrand belägen på den östra sidan av Alnön, öppen maj-augusti. Sandstranden är långgrund och badet passar därför barnfamiljer. Det finns grillplats, omklädningshytt, WC och parkering för cirka 20 bilar. Vattenprover tas."
-	  },
+	  "dateCreated": "2018-06-21T14:47:44Z",
+	  "dateModified": "2020-09-25T14:05:09Z",
+	  "description": "Slädavikens havsbad är en badstrand belägen på den östra sidan av Alnön, öppen maj-augusti. Sandstranden är långgrund och badet passar därför barnfamiljer. Det finns grillplats, omklädningshytt, WC och parkering för cirka 20 bilar. Vattenprover tas.",
 	  "id": "urn:ngsi-ld:Beach:se:sundsvall:anlaggning:283",
 	  "location": {
-		"type": "GeoProperty",
-		"value": {
-		  "coordinates": [
+		"coordinates": [
+		[
 			[
-			  [
-				[
-				  17.47263962458644,
-				  62.435152221329254
-				],
-				[
-				  17.473786216873332,
-				  62.43536925656754
-				],
-				[
-				  17.474885857246488,
-				  62.43543825037522
-				],
-				[
-				  17.475474288895757,
-				  62.43457483986073
-				],
-				[
-				  17.474334094644085,
-				  62.43422493307671
-				],
-				[
-				  17.47407369318257,
-				  62.434225532314045
-				],
-				[
-				  17.473565135911233,
-				  62.43447998588642
-				],
-				[
-				  17.472995143072257,
-				  62.434936697524215
-				],
-				[
-				  17.47263962458644,
-				  62.435152221329254
-				]
-			  ]
+			[
+				17.47263962458644,
+				62.435152221329254
+			],
+			[
+				17.473786216873332,
+				62.43536925656754
+			],
+			[
+				17.474885857246488,
+				62.43543825037522
+			],
+			[
+				17.475474288895757,
+				62.43457483986073
+			],
+			[
+				17.474334094644085,
+				62.43422493307671
+			],
+			[
+				17.47407369318257,
+				62.434225532314045
+			],
+			[
+				17.473565135911233,
+				62.43447998588642
+			],
+			[
+				17.472995143072257,
+				62.434936697524215
+			],
+			[
+				17.47263962458644,
+				62.435152221329254
 			]
-		  ],
-		  "type": "MultiPolygon"
-		}
-	  },
-	  "name": {
-		"type": "Property",
-		"value": "Slädaviken"
-	  },
-	  "refSeeAlso": {
-		"object": [
+			]
+		]
+		],
+		"type": "MultiPolygon"
+	},
+	  "name": "Slädaviken",
+	  "refSeeAlso": [
 		  "https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/SE0712281000003473",
 		  "https://www.wikidata.org/wiki/Q10671745"
 		],
-		"type": "Relationship"
-	  },
 	  "type": "Beach"
 	}]`

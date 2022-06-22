@@ -6,12 +6,6 @@ services:
         context: ..
         dockerfile: ./deployments/Dockerfile
     restart: always
-    depends_on: 
-      - pointofinterest
-      - rabbitmq
-    links:
-      - pointofinterest
-      - rabbitmq
     environment: 
       DIWISE_CONTEXT_BROKER_URL: $DIWISE_CONTEXT_BROKER_URL
       WATER_QUALITY_QUERY_PARAMS: $WATER_QUALITY_QUERY_PARAMS
@@ -22,35 +16,4 @@ services:
       STRATSYS_DEFAULT_URL: $STRATSYS_DEFAULT_URL
     
     ports:
-      - '8282'
-
-  pointofinterest:
-    image: 'docker.pkg.github.com/diwise/api-pointofinterest/api-pointofinterest:prod-87b47abf442fe17cbbf783b4b6294902fb183666'
-    restart: always
-    links: 
-      - rabbitmq
-    environment: 
-      SOURCE_DATA_URL: $SOURCE_DATA_URL
-      RABBITMQ_HOST: 'rabbitmq'
-      RABBITMQ_USER: 'user'
-      RABBITMQ_PASS: 'bitnami'
-    
-    ports:
-      - '8585'
-
-  rabbitmq:
-    image: 'arm64v8/rabbitmq:3.8' #temporary image to work on Apple M1
-    environment:
-      RABBITMQ_DEFAULT_USER: 'user'
-      RABBITMQ_DEFAULT_PASS: 'bitnami'
-    ports:
-      - '4369'
-      - '5672'
-      - '25672'
-      - '15672'
-    volumes:
-      - 'rabbitmq_data:/bitnami'
-
-volumes:
-  rabbitmq_data:
-    driver: local
+      - '8088:8080'

@@ -1,6 +1,7 @@
-package datasets
+package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,14 +11,15 @@ import (
 
 	services "github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
-	"github.com/diwise/api-opendata/internal/pkg/infrastructure/logging"
 	"github.com/matryer/is"
+	"github.com/rs/zerolog"
 )
 
 func TestInvokeTempHandler(t *testing.T) {
 	is, log, rw := setup(t)
 	svc, tsqm := defaultTempServiceMock()
-	req, _ := http.NewRequest("GET", "http://diwise.io/api/temperatures", nil)
+	req, err := http.NewRequest("GET", "http://diwise.io/api/temperature/air?sensor=thatone", nil)
+	is.NoErr(err)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
 
@@ -41,7 +43,7 @@ func TestThatTimeSpanIsExtractedFromGetParameters(t *testing.T) {
 	svc, tsqm := defaultTempServiceMock()
 	from, _ := time.Parse(time.RFC3339, "2010-01-01T12:13:14Z")
 	to, _ := time.Parse(time.RFC3339, "2010-01-01T22:23:24Z")
-	getParams := fmt.Sprintf("?timeAt=%s&endTimeAt=%s", from.Format(time.RFC3339), to.Format(time.RFC3339))
+	getParams := fmt.Sprintf("?sensor=thatone&timeAt=%s&endTimeAt=%s", from.Format(time.RFC3339), to.Format(time.RFC3339))
 	req, _ := http.NewRequest("GET", getParams, nil)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
@@ -54,7 +56,7 @@ func TestThatTimeSpanIsExtractedFromGetParameters(t *testing.T) {
 func TestThatAggregationSettingsAreExtractedFromGetParameters(t *testing.T) {
 	is, log, rw := setup(t)
 	svc, tsqm := defaultTempServiceMock()
-	req, _ := http.NewRequest("GET", "?aggrMethods=avg,max,min&aggrPeriodDuration=P2H&options=aggregatedValues", nil)
+	req, _ := http.NewRequest("GET", "?sensor=thatone&aggrMethods=avg,max,min&aggrPeriodDuration=P2H&options=aggregatedValues", nil)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
 
@@ -66,18 +68,18 @@ func TestThatAggregationSettingsAreExtractedFromGetParameters(t *testing.T) {
 func TestThatBadStartTimeFails(t *testing.T) {
 	is, log, rw := setup(t)
 	svc, _ := defaultTempServiceMock()
-	req, _ := http.NewRequest("GET", "?timeAt=gurka", nil)
+	req, _ := http.NewRequest("GET", "?sensor=thatone&timeAt=gurka", nil)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
 
-	is.Equal(rw.Code, http.StatusInternalServerError) // response status should be 500 ISE
+	is.Equal(rw.Code, http.StatusBadRequest) // response status should be 400 bad request
 }
 
 func TestThatFailingGetGeneratesInternalServerError(t *testing.T) {
 	is, log, rw := setup(t)
 	svc, tsqm := defaultTempServiceMock()
-	tsqm.GetFunc = func() ([]domain.Sensor, error) { return nil, errors.New("failure") }
-	req, _ := http.NewRequest("GET", "", nil)
+	tsqm.GetFunc = func(context.Context, zerolog.Logger) ([]domain.Sensor, error) { return nil, errors.New("failure") }
+	req, _ := http.NewRequest("GET", "?sensor=thatone", nil)
 
 	NewRetrieveTemperaturesHandler(log, svc).ServeHTTP(rw, req)
 
@@ -98,11 +100,11 @@ func TestInvokeTempSensorsHandler(t *testing.T) {
 
 // #################################################
 
-func setup(t *testing.T) (*is.I, logging.Logger, *httptest.ResponseRecorder) {
-	return is.New(t), logging.NewLogger(), httptest.NewRecorder()
+func setup(t *testing.T) (*is.I, zerolog.Logger, *httptest.ResponseRecorder) {
+	return is.New(t), zerolog.Logger{}, httptest.NewRecorder()
 }
 
-func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server {
+/*func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(responseCode)
 		w.Header().Add("Content-Type", "application/ld+json")
@@ -110,11 +112,11 @@ func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server
 			w.Write([]byte(body))
 		}
 	}))
-}
+}*/
 
 func defaultTempServiceMock() (*services.TempServiceMock, *services.TempServiceQueryMock) {
 	tsqm := &services.TempServiceQueryMock{
-		GetFunc: func() ([]domain.Sensor, error) {
+		GetFunc: func(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, error) {
 			return []domain.Sensor{}, nil
 		},
 	}
