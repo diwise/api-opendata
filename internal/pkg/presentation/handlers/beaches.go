@@ -25,6 +25,7 @@ const (
 	NUTSCodePrefix      string = "https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/"
 	WikidataPrefix      string = "https://www.wikidata.org/wiki/"
 	YearMonthDayISO8601 string = "2006-01-02"
+	DefaultBrokerTenant string = "default"
 )
 
 func NewRetrieveBeachByIDHandler(logger zerolog.Logger, contextBroker, tenant string) http.HandlerFunc {
@@ -109,7 +110,10 @@ func getWaterQualitiesNearBeach(ctx context.Context, brokerURL, tenant string, l
 
 		req.Header.Add("Accept", "application/ld+json")
 		req.Header.Add("Link", "<https://schema.lab.fiware.org/ld/context>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"")
-		req.Header.Add("NGSILD-Tenant", tenant)
+
+		if tenant != DefaultBrokerTenant {
+			req.Header.Add("NGSILD-Tenant", tenant)
+		}
 
 		resp, err := httpClient.Do(req)
 		if err != nil {
@@ -150,7 +154,10 @@ func getWaterQualitiesNearBeach(ctx context.Context, brokerURL, tenant string, l
 
 	req.Header.Add("Accept", "application/ld+json")
 	req.Header.Add("Link", "<https://schema.lab.fiware.org/ld/context>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"")
-	req.Header.Add("NGSILD-Tenant", tenant)
+
+	if tenant != DefaultBrokerTenant {
+		req.Header.Add("NGSILD-Tenant", tenant)
+	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -296,7 +303,10 @@ func getBeachByIDFromContextBroker(ctx context.Context, logger zerolog.Logger, b
 
 	req.Header.Add("Accept", "application/ld+json")
 	req.Header.Add("Link", "<https://schema.lab.fiware.org/ld/context>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"")
-	req.Header.Add("NGSILD-Tenant", tenant)
+
+	if tenant != DefaultBrokerTenant {
+		req.Header.Add("NGSILD-Tenant", tenant)
+	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -349,7 +359,10 @@ func getBeachesFromContextBroker(ctx context.Context, logger zerolog.Logger, bro
 
 	req.Header.Add("Accept", "application/ld+json")
 	req.Header.Add("Link", "<https://schema.lab.fiware.org/ld/context>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"")
-	req.Header.Add("NGSILD-Tenant", tenant)
+
+	if tenant != DefaultBrokerTenant {
+		req.Header.Add("NGSILD-Tenant", tenant)
+	}
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
