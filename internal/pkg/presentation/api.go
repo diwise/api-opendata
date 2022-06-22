@@ -72,7 +72,7 @@ func (a *opendataAPI) Start(port string) error {
 
 func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	contextBrokerURL := env.GetVariableOrDie(log, "DIWISE_CONTEXT_BROKER_URL", "context broker URL")
-	contextBrokerTenant := env.GetVariableOrDefault(log, "DIWISE_CONTEXT_BROKER_TENANT", "default")
+	contextBrokerTenant := env.GetVariableOrDefault(log, "DIWISE_CONTEXT_BROKER_TENANT", handlers.DefaultBrokerTenant)
 
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
 
