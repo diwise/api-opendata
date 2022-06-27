@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
@@ -109,7 +110,8 @@ func getWaterQualitiesNearBeach(ctx context.Context, brokerURL, tenant string, l
 		}
 
 		req.Header.Add("Accept", "application/ld+json")
-		req.Header.Add("Link", "<https://schema.lab.fiware.org/ld/context>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"")
+		linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
+		req.Header.Add("Link", linkHeaderURL)
 
 		if tenant != DefaultBrokerTenant {
 			req.Header.Add("NGSILD-Tenant", tenant)
@@ -153,7 +155,8 @@ func getWaterQualitiesNearBeach(ctx context.Context, brokerURL, tenant string, l
 	}
 
 	req.Header.Add("Accept", "application/ld+json")
-	req.Header.Add("Link", "<https://schema.lab.fiware.org/ld/context>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"")
+	linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
+	req.Header.Add("Link", linkHeaderURL)
 
 	if tenant != DefaultBrokerTenant {
 		req.Header.Add("NGSILD-Tenant", tenant)
@@ -302,7 +305,8 @@ func getBeachByIDFromContextBroker(ctx context.Context, logger zerolog.Logger, b
 	}
 
 	req.Header.Add("Accept", "application/ld+json")
-	req.Header.Add("Link", "<https://schema.lab.fiware.org/ld/context>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"")
+	linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
+	req.Header.Add("Link", linkHeaderURL)
 
 	if tenant != DefaultBrokerTenant {
 		req.Header.Add("NGSILD-Tenant", tenant)
@@ -358,7 +362,8 @@ func getBeachesFromContextBroker(ctx context.Context, logger zerolog.Logger, bro
 	}
 
 	req.Header.Add("Accept", "application/ld+json")
-	req.Header.Add("Link", "<https://schema.lab.fiware.org/ld/context>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"")
+	linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
+	req.Header.Add("Link", linkHeaderURL)
 
 	if tenant != DefaultBrokerTenant {
 		req.Header.Add("NGSILD-Tenant", tenant)

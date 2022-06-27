@@ -3,6 +3,7 @@ module github.com/diwise/api-opendata
 go 1.18
 
 require (
+	github.com/diwise/context-broker v0.0.0-20220616115237-a37ada0d1edf
 	github.com/diwise/ngsi-ld-golang v0.0.0-20211028162007-fad13291cb5b
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/matryer/is v1.4.0
