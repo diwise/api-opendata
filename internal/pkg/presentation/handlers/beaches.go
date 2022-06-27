@@ -190,18 +190,26 @@ func getWaterQualitiesNearBeach(ctx context.Context, brokerURL, tenant string, l
 		return nil, err
 	}
 
-	var wqo []WaterQuality
+	var wqo []struct {
+		Temperature  float64  `json:"temperature"`
+		DateObserved DateTime `json:"dateObserved"`
+	}
 	err = json.Unmarshal(respBody, &wqo)
 	if err != nil {
 		err = fmt.Errorf("failed to unmarshal response: %s", err.Error())
 		return nil, err
 	}
 
-	for i, j := 0, len(wqo)-1; i < j; i, j = i+1, j-1 {
-		wqo[i], wqo[j] = wqo[j], wqo[i]
+	waterQualities := make([]WaterQuality, 0, len(wqo))
+
+	for i := len(wqo) - 1; i >= 0; i-- {
+		waterQualities = append(waterQualities, WaterQuality{
+			Temperature:  wqo[i].Temperature,
+			DateObserved: wqo[i].DateObserved.Value,
+		})
 	}
 
-	return wqo, nil
+	return waterQualities, nil
 }
 
 func NewRetrieveBeachesHandler(logger zerolog.Logger, contextBroker, tenant string) http.HandlerFunc {
@@ -417,11 +425,11 @@ func getNutsCodeFromBeach(b *beach) string {
 }
 
 func getDateModifiedFromBeach(b *beach) string {
-	if b.DateModified == "" {
+	if b.DateModified.Value == "" {
 		return ""
 	}
 
-	timestamp, err := time.Parse(time.RFC3339, b.DateModified)
+	timestamp, err := time.Parse(time.RFC3339, b.DateModified.Value)
 	if err != nil {
 		return ""
 	}
@@ -448,7 +456,7 @@ type beach struct {
 		Coordinates [][][][]float64 `json:"coordinates"`
 	} `json:"location"`
 	RefSeeAlso   []string `json:"refSeeAlso"`
-	DateModified string   `json:"dateModified"`
+	DateModified DateTime `json:"dateModified"`
 }
 
 func (b *beach) LatLon() (float64, float64) {
@@ -468,6 +476,11 @@ type BeachOut struct {
 	Location     Point          `json:"location"`
 	WaterQuality []WaterQuality `json:"waterquality"`
 	RefSeeAlso   []string       `json:"refSeeAlso"`
+}
+
+type DateTime struct {
+	Type  string `json:"@type"`
+	Value string `json:"@value"`
 }
 
 type Point struct {
