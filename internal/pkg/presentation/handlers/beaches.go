@@ -225,7 +225,7 @@ func NewRetrieveBeachesHandler(logger zerolog.Logger, contextBroker, tenant stri
 	})
 }
 
-const beachJSONFormat string = `{"id": "%s", "name": "%s", "location": {"type": "Point", "coordinates": [%f, %f]}}"`
+const beachJSONFormat string = `{"id": "%s", "name": "%s", "location": {"type": "Point", "coordinates": [%f, %f]}}`
 
 func serveBeachesAsJSON(logger zerolog.Logger, contextBroker, tenant string, w http.ResponseWriter, r *http.Request) {
 	var err error
