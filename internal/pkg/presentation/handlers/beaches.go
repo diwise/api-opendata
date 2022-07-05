@@ -364,7 +364,7 @@ func getBeachesFromContextBroker(ctx context.Context, logger zerolog.Logger, bro
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, brokerURL+"/ngsi-ld/v1/entities?type=Beach&options=keyValues", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, brokerURL+"/ngsi-ld/v1/entities?type=Beach&limit=100&options=keyValues", nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %s", err.Error())
 	}
