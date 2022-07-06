@@ -73,7 +73,7 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, contextBroker, tenant st
 			Description:  inBeach.Description,
 			Location:     *NewPoint(latitude, longitude),
 			WaterQuality: wq,
-			RefSeeAlso:   inBeach.RefSeeAlso,
+			RefSeeAlso:   inBeach.RefSeeAlso(),
 		}
 
 		json, err := json.MarshalIndent(outBeach, "", "  ")
@@ -141,7 +141,7 @@ func getWaterQualitiesNearBeach(ctx context.Context, brokerURL, tenant string, l
 		return []WaterQuality{}, err
 	}
 
-	const MaxTempCount int64 = 5
+	const MaxTempCount int64 = 12
 	requestURL := baseURL + "&options=keyValues"
 
 	if MaxTempCount < count {
@@ -415,7 +415,7 @@ func getBeachesFromContextBroker(ctx context.Context, logger zerolog.Logger, bro
 }
 
 func getNutsCodeFromBeach(b *beach) string {
-	for _, ref := range b.RefSeeAlso {
+	for _, ref := range b.RefSeeAlso() {
 		if strings.HasPrefix(ref, NUTSCodePrefix) {
 			return strings.TrimPrefix(ref, NUTSCodePrefix)
 		}
@@ -438,7 +438,7 @@ func getDateModifiedFromBeach(b *beach) string {
 }
 
 func getWikiRefFromBeach(b *beach) string {
-	for _, ref := range b.RefSeeAlso {
+	for _, ref := range b.RefSeeAlso() {
 		if strings.HasPrefix(ref, WikidataPrefix) {
 			return strings.TrimPrefix(ref, WikidataPrefix)
 		}
@@ -455,13 +455,29 @@ type beach struct {
 		Type        string          `json:"type"`
 		Coordinates [][][][]float64 `json:"coordinates"`
 	} `json:"location"`
-	RefSeeAlso   []string `json:"refSeeAlso"`
-	DateModified DateTime `json:"dateModified"`
+	Refs         json.RawMessage `json:"refSeeAlso"`
+	DateModified DateTime        `json:"dateModified"`
 }
 
 func (b *beach) LatLon() (float64, float64) {
 	// TODO: A more fancy calculation of midpoint or something?
 	return b.Location.Coordinates[0][0][0][1], b.Location.Coordinates[0][0][0][0]
+}
+
+func (b *beach) RefSeeAlso() []string {
+	refsAsArray := []string{}
+
+	if err := json.Unmarshal(b.Refs, &refsAsArray); err != nil {
+		var refsAsString string
+
+		if err = json.Unmarshal(b.Refs, &refsAsString); err != nil {
+			return []string{err.Error()}
+		}
+
+		return []string{refsAsString}
+	}
+
+	return refsAsArray
 }
 
 type WaterQuality struct {
