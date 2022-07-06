@@ -73,7 +73,11 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, contextBroker, tenant st
 			Description:  inBeach.Description,
 			Location:     *NewPoint(latitude, longitude),
 			WaterQuality: wq,
-			RefSeeAlso:   inBeach.RefSeeAlso(),
+		}
+
+		seeAlso := inBeach.SeeAlso()
+		if len(seeAlso) > 0 {
+			outBeach.SeeAlso = &seeAlso
 		}
 
 		json, err := json.MarshalIndent(outBeach, "", "  ")
@@ -415,7 +419,7 @@ func getBeachesFromContextBroker(ctx context.Context, logger zerolog.Logger, bro
 }
 
 func getNutsCodeFromBeach(b *beach) string {
-	for _, ref := range b.RefSeeAlso() {
+	for _, ref := range b.SeeAlso() {
 		if strings.HasPrefix(ref, NUTSCodePrefix) {
 			return strings.TrimPrefix(ref, NUTSCodePrefix)
 		}
@@ -438,7 +442,7 @@ func getDateModifiedFromBeach(b *beach) string {
 }
 
 func getWikiRefFromBeach(b *beach) string {
-	for _, ref := range b.RefSeeAlso() {
+	for _, ref := range b.SeeAlso() {
 		if strings.HasPrefix(ref, WikidataPrefix) {
 			return strings.TrimPrefix(ref, WikidataPrefix)
 		}
@@ -455,7 +459,7 @@ type beach struct {
 		Type        string          `json:"type"`
 		Coordinates [][][][]float64 `json:"coordinates"`
 	} `json:"location"`
-	Refs         json.RawMessage `json:"refSeeAlso"`
+	See          json.RawMessage `json:"seeAlso"`
 	DateModified DateTime        `json:"dateModified"`
 }
 
@@ -464,17 +468,19 @@ func (b *beach) LatLon() (float64, float64) {
 	return b.Location.Coordinates[0][0][0][1], b.Location.Coordinates[0][0][0][0]
 }
 
-func (b *beach) RefSeeAlso() []string {
+func (b *beach) SeeAlso() []string {
 	refsAsArray := []string{}
 
-	if err := json.Unmarshal(b.Refs, &refsAsArray); err != nil {
-		var refsAsString string
+	if len(b.See) > 0 {
+		if err := json.Unmarshal(b.See, &refsAsArray); err != nil {
+			var refsAsString string
 
-		if err = json.Unmarshal(b.Refs, &refsAsString); err != nil {
-			return []string{err.Error()}
+			if err = json.Unmarshal(b.See, &refsAsString); err != nil {
+				return []string{err.Error()}
+			}
+
+			return []string{refsAsString}
 		}
-
-		return []string{refsAsString}
 	}
 
 	return refsAsArray
@@ -491,7 +497,7 @@ type BeachOut struct {
 	Description  string         `json:"description"`
 	Location     Point          `json:"location"`
 	WaterQuality []WaterQuality `json:"waterquality"`
-	RefSeeAlso   []string       `json:"refSeeAlso"`
+	SeeAlso      *[]string      `json:"seeAlso,omitempty"`
 }
 
 type DateTime struct {

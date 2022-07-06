@@ -681,7 +681,7 @@ const beachesJson string = `[
 		"type": "MultiPolygon"
 	},
 	  "name": "Slädaviken",
-	  "refSeeAlso": [
+	  "seeAlso": [
 		  "https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/SE0712281000003473",
 		  "https://www.wikidata.org/wiki/Q10671745"
 		],

@@ -214,7 +214,7 @@
                             }
                           }
                         },
-                        "refSeeAlso": {
+                        "seeAlso": {
                           "type": "array",
                           "items": {
                             "type": "string",
