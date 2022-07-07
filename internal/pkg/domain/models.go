@@ -83,6 +83,7 @@ type Temperature struct {
 type WaterQuality struct {
 	Temperature  float64 `json:"temperature"`
 	DateObserved string  `json:"dateObserved"`
+	Source       *string `json:"source,omitempty"`
 }
 
 func (wq WaterQuality) Age() time.Duration {

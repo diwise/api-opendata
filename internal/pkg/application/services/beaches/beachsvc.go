@@ -380,6 +380,7 @@ func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, l
 	var wqo []struct {
 		Temperature  float64         `json:"temperature"`
 		DateObserved domain.DateTime `json:"dateObserved"`
+		Source       *string         `json:"source"`
 	}
 	err = json.Unmarshal(respBody, &wqo)
 	if err != nil {
@@ -404,6 +405,7 @@ func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, l
 		waterQualities = append(waterQualities, domain.WaterQuality{
 			Temperature:  observation.Temperature,
 			DateObserved: observation.DateObserved.Value,
+			Source:       observation.Source,
 		})
 
 		previousTime = observation.DateObserved.Value
