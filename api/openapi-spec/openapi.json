@@ -86,6 +86,25 @@
                                 "example": [17.454723, 62.266598]
                               }
                             }
+                          },
+                          "waterquality": {
+                            "type": "object",
+                            "description": "The most recent water quality value",
+                            "properties": {
+                              "temperature": {
+                                "type": "number",
+                                "example": 11.7
+                              },
+                              "source": {
+                                "type": "string",
+                                "format": "uri",
+                                "example": "https://badplatsen.havochvatten.se/"
+                              },
+                              "dateObserved": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            }
                           }
                         }
                       }
@@ -166,7 +185,7 @@
                                 "type": "number",
                                 "example": 11.7
                               },
-                              "dataProvider": {
+                              "source": {
                                 "type": "string",
                                 "format": "uri",
                                 "example": "https://badplatsen.havochvatten.se/"
@@ -202,7 +221,7 @@
                                 "minimum": 0,
                                 "example": 6
                               },
-                              "dataProvider": {
+                              "source": {
                                 "type": "string",
                                 "format": "uri",
                                 "example": "https://www.smhi.se/"
