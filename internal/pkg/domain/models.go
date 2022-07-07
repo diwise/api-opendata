@@ -85,6 +85,16 @@ type WaterQuality struct {
 	DateObserved string  `json:"dateObserved"`
 }
 
+func (wq WaterQuality) Age() time.Duration {
+	observedAt, err := time.Parse(time.RFC3339, wq.DateObserved)
+	if err != nil {
+		// Pretend it was almost 100 years ago
+		return 100 * 365 * 24 * time.Hour
+	}
+
+	return time.Since(observedAt)
+}
+
 type DateTime struct {
 	Type  string `json:"@type"`
 	Value string `json:"@value"`

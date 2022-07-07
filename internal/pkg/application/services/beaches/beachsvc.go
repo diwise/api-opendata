@@ -177,7 +177,10 @@ func (svc *beachSvc) refresh() error {
 		}
 
 		if details.WaterQuality != nil && len(*details.WaterQuality) > 0 {
-			beach.WaterQuality = &(*details.WaterQuality)[0]
+			mostRecentWQ := (*details.WaterQuality)[0]
+			if mostRecentWQ.Age() < 24*time.Hour {
+				beach.WaterQuality = &mostRecentWQ
+			}
 		}
 
 		beaches = append(beaches, beach)
