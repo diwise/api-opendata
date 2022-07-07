@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
@@ -74,6 +75,9 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	contextBrokerURL := env.GetVariableOrDie(log, "DIWISE_CONTEXT_BROKER_URL", "context broker URL")
 	contextBrokerTenant := env.GetVariableOrDefault(log, "DIWISE_CONTEXT_BROKER_TENANT", handlers.DefaultBrokerTenant)
 
+	beachService := beaches.NewBeachService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
+	beachService.Start()
+
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
 
 	stratsysEnabled := (env.GetVariableOrDefault(log, "STRATSYS_ENABLED", "true") != "false")
@@ -89,11 +93,11 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	)
 	r.Get(
 		"/api/beaches",
-		handlers.NewRetrieveBeachesHandler(log, contextBrokerURL, contextBrokerTenant),
+		handlers.NewRetrieveBeachesHandler(log, beachService),
 	)
 	r.Get(
 		"/api/beaches/{id}",
-		handlers.NewRetrieveBeachByIDHandler(log, contextBrokerURL, contextBrokerTenant),
+		handlers.NewRetrieveBeachByIDHandler(log, beachService),
 	)
 	r.Get(
 		"/api/temperature/air",

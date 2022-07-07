@@ -10,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -42,8 +43,12 @@ func TestGetBeaches(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/api/beaches", nil)
+	req.Header.Add("Accept", "application/json")
 
-	handlers.NewRetrieveBeachesHandler(zerolog.Logger{}, server.URL, "default").ServeHTTP(w, req)
+	beachSvc := beaches.NewBeachService(context.Background(), zerolog.Logger{}, server.URL, "default")
+	defer beachSvc.Shutdown()
+
+	handlers.NewRetrieveBeachesHandler(zerolog.Logger{}, beachSvc).ServeHTTP(w, req)
 	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 
