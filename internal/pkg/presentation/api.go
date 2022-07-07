@@ -6,6 +6,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
@@ -74,8 +75,14 @@ func (a *opendataAPI) Start(port string) error {
 func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	contextBrokerURL := env.GetVariableOrDie(log, "DIWISE_CONTEXT_BROKER_URL", "context broker URL")
 	contextBrokerTenant := env.GetVariableOrDefault(log, "DIWISE_CONTEXT_BROKER_TENANT", handlers.DefaultBrokerTenant)
+	maxWQODistStr := env.GetVariableOrDefault(log, "WATER_QUALITY_MAX_DISTANCE", "1000")
 
-	beachService := beaches.NewBeachService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
+	maxWQODistance, err := strconv.ParseInt(maxWQODistStr, 10, 32)
+	if err != nil {
+		maxWQODistance = 1000
+	}
+
+	beachService := beaches.NewBeachService(context.Background(), log, contextBrokerURL, contextBrokerTenant, int(maxWQODistance))
 	beachService.Start()
 
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")

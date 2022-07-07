@@ -45,7 +45,7 @@ func TestGetBeaches(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/api/beaches", nil)
 	req.Header.Add("Accept", "application/json")
 
-	beachSvc := beaches.NewBeachService(context.Background(), zerolog.Logger{}, server.URL, "default")
+	beachSvc := beaches.NewBeachService(context.Background(), zerolog.Logger{}, server.URL, "default", 500)
 	defer beachSvc.Shutdown()
 
 	handlers.NewRetrieveBeachesHandler(zerolog.Logger{}, beachSvc).ServeHTTP(w, req)

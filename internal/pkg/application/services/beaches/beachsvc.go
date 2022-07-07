@@ -40,15 +40,16 @@ type BeachService interface {
 	Shutdown()
 }
 
-func NewBeachService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string) BeachService {
+func NewBeachService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string, maxWQODistance int) BeachService {
 	svc := &beachSvc{
-		ctx:              ctx,
-		beaches:          []byte("[]"),
-		beachDetails:     map[string][]byte{},
-		contextBrokerURL: contextBrokerURL,
-		tenant:           tenant,
-		log:              logger,
-		keepRunning:      true,
+		ctx:                 ctx,
+		beaches:             []byte("[]"),
+		beachDetails:        map[string][]byte{},
+		beachMaxWQODistance: maxWQODistance,
+		contextBrokerURL:    contextBrokerURL,
+		tenant:              tenant,
+		log:                 logger,
+		keepRunning:         true,
 	}
 
 	return svc
@@ -58,9 +59,10 @@ type beachSvc struct {
 	contextBrokerURL string
 	tenant           string
 
-	beachMutex   sync.Mutex
-	beaches      []byte
-	beachDetails map[string][]byte
+	beachMutex          sync.Mutex
+	beaches             []byte
+	beachDetails        map[string][]byte
+	beachMaxWQODistance int
 
 	ctx context.Context
 	log zerolog.Logger
@@ -280,8 +282,8 @@ func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, l
 	}
 
 	baseURL := fmt.Sprintf(
-		"%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near%%3BmaxDistance==500&geometry=Point&coordinates=[%f,%f]",
-		svc.contextBrokerURL, longitude, latitude,
+		"%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near%%3BmaxDistance==%d&geometry=Point&coordinates=[%f,%f]",
+		svc.contextBrokerURL, svc.beachMaxWQODistance, longitude, latitude,
 	)
 
 	count, err := func() (int64, error) {
@@ -303,6 +305,8 @@ func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, l
 		if svc.tenant != DefaultBrokerTenant {
 			req.Header.Add("NGSILD-Tenant", svc.tenant)
 		}
+
+		svc.log.Debug().Msgf("calling %s", requestURL)
 
 		resp, err := httpClient.Do(req)
 		if err != nil {
@@ -348,6 +352,8 @@ func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, l
 	if svc.tenant != DefaultBrokerTenant {
 		req.Header.Add("NGSILD-Tenant", svc.tenant)
 	}
+
+	svc.log.Debug().Msgf("calling %s", requestURL)
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -427,8 +433,18 @@ type beachDTO struct {
 }
 
 func (b *beachDTO) LatLon() (float64, float64) {
-	// TODO: A more fancy calculation of midpoint or something?
-	return b.Location.Coordinates[0][0][0][1], b.Location.Coordinates[0][0][0][0]
+	latSum := 0.0
+	lonSum := 0.0
+
+	for idx, pair := range b.Location.Coordinates[0][0] {
+		if idx > 0 {
+			lonSum = lonSum + pair[0]
+			latSum = latSum + pair[1]
+		}
+	}
+
+	numPairs := len(b.Location.Coordinates[0][0])
+	return latSum / (float64(numPairs - 1)), lonSum / (float64(numPairs - 1))
 }
 
 func (b *beachDTO) SeeAlso() []string {
