@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/http/httputil"
 	"sort"
@@ -432,6 +433,10 @@ type beachDTO struct {
 	DateModified domain.DateTime `json:"dateModified"`
 }
 
+func round(v float64) float64 {
+	return math.Round(v*1000000) / 1000000
+}
+
 func (b *beachDTO) LatLon() (float64, float64) {
 	latSum := 0.0
 	lonSum := 0.0
@@ -444,7 +449,7 @@ func (b *beachDTO) LatLon() (float64, float64) {
 	}
 
 	numPairs := len(b.Location.Coordinates[0][0])
-	return latSum / (float64(numPairs - 1)), lonSum / (float64(numPairs - 1))
+	return round(latSum / (float64(numPairs - 1))), round(lonSum / (float64(numPairs - 1)))
 }
 
 func (b *beachDTO) SeeAlso() []string {
