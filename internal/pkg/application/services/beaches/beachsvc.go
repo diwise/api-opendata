@@ -410,7 +410,7 @@ func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, l
 		}
 
 		waterQualities = append(waterQualities, domain.WaterQuality{
-			Temperature:  observation.Temperature,
+			Temperature:  math.Round(observation.Temperature*10) / 10,
 			DateObserved: observation.DateObserved.Value,
 			Source:       observation.Source,
 		})
