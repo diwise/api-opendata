@@ -118,6 +118,10 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 		"/api/trafficflow",
 		handlers.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
 	)
+	r.Get(
+		"api/roadworks",
+		handlers.NewRetrieveRoadWorksHandler(log, contextBrokerURL),
+	)
 
 	if stratsysEnabled {
 		r.Get(
