@@ -31,6 +31,7 @@ type CityworkService interface {
 	Tenant() string
 
 	GetAll() []byte
+	GetByID(id string) ([]byte, error)
 
 	Start()
 	Shutdown()
@@ -38,11 +39,13 @@ type CityworkService interface {
 
 func NewCityworkService(ctx context.Context, logger zerolog.Logger, contextBrokerUrl, tenant string) CityworkService {
 	svc := &cityworkSvc{
-		ctx:              ctx,
-		log:              logger,
+		ctx: ctx,
+
 		citywork:         []byte("[]"),
-		tenant:           tenant,
+		cityworkDetails:  map[string][]byte{},
 		contextBrokerURL: contextBrokerUrl,
+		tenant:           tenant,
+		log:              logger,
 
 		keepRunning: true,
 	}
@@ -54,8 +57,9 @@ type cityworkSvc struct {
 	contextBrokerURL string
 	tenant           string
 
-	cityworkMutex sync.Mutex
-	citywork      []byte
+	cityworkMutex   sync.Mutex
+	citywork        []byte
+	cityworkDetails map[string][]byte
 
 	ctx context.Context
 	log zerolog.Logger
@@ -76,6 +80,18 @@ func (svc *cityworkSvc) GetAll() []byte {
 	defer svc.cityworkMutex.Unlock()
 
 	return svc.citywork
+}
+
+func (svc *cityworkSvc) GetByID(id string) ([]byte, error) {
+	svc.cityworkMutex.Lock()
+	defer svc.cityworkMutex.Unlock()
+
+	body, ok := svc.cityworkDetails[id]
+	if !ok {
+		return []byte{}, fmt.Errorf("no such citywork")
+	}
+
+	return body, nil
 }
 
 func (svc *cityworkSvc) Start() {
@@ -119,13 +135,40 @@ func (svc *cityworkSvc) refresh() error {
 
 	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
 
-	citywork := []domain.Citywork{}
+	cityworks := []domain.Citywork{}
 
-	err = svc.getCityworkFromContextBroker(ctx, func(r cityworkDTO) {
-		// do we need a callback function here? saving this and filling in bit more until i'm sure i need this
+	err = svc.getCityworkFromContextBroker(ctx, func(c cityworkDTO) {
+		location := *domain.NewPoint(c.Location.Coordinates[0], c.Location.Coordinates[1])
+
+		details := domain.CityworkDetails{
+			ID:           c.ID,
+			Location:     location,
+			Description:  c.Description,
+			DateCreated:  c.DateCreated,
+			DateModified: c.DateModified,
+			StartDate:    c.StartDate,
+			EndDate:      c.EndDate,
+		}
+
+		jsonBytes, err := json.MarshalIndent(details, "  ", "  ")
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to marshal citywork to json")
+			return
+		}
+
+		svc.storeCityworkDetails(c.ID, jsonBytes)
+
+		cw := domain.Citywork{
+			ID:          c.ID,
+			Location:    location,
+			DateCreated: c.DateCreated,
+		}
+
+		cityworks = append(cityworks, cw)
+
 	})
 
-	jsonBytes, err := json.MarshalIndent(citywork, "  ", "  ")
+	jsonBytes, err := json.MarshalIndent(cityworks, "  ", "  ")
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to marshal citywork to json")
 		return err
@@ -136,6 +179,13 @@ func (svc *cityworkSvc) refresh() error {
 	return err
 }
 
+func (svc *cityworkSvc) storeCityworkDetails(id string, body []byte) {
+	svc.cityworkMutex.Lock()
+	defer svc.cityworkMutex.Unlock()
+
+	svc.cityworkDetails[id] = body
+}
+
 func (svc *cityworkSvc) storeCityworkList(body []byte) {
 	svc.cityworkMutex.Lock()
 	defer svc.cityworkMutex.Unlock()
@@ -143,7 +193,7 @@ func (svc *cityworkSvc) storeCityworkList(body []byte) {
 	svc.citywork = body
 }
 
-func (svc *cityworkSvc) getCityworkFromContextBroker(ctx context.Context, callback func(r cityworkDTO)) error {
+func (svc *cityworkSvc) getCityworkFromContextBroker(ctx context.Context, callback func(c cityworkDTO)) error {
 	var err error
 
 	logger := logging.GetFromContext(ctx)
@@ -153,7 +203,7 @@ func (svc *cityworkSvc) getCityworkFromContextBroker(ctx context.Context, callba
 	}
 
 	//unsure if below url suffix is correct
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, svc.contextBrokerURL+"/ngsi-ld/v1/entities?type=RoadWork&limit=100&options=keyValues", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, svc.contextBrokerURL+"/ngsi-ld/v1/entities?type=CityWork&limit=100&options=keyValues", nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %s", err.Error())
 	}
@@ -196,12 +246,22 @@ func (svc *cityworkSvc) getCityworkFromContextBroker(ctx context.Context, callba
 		return fmt.Errorf("failed to unmarshal repsonse: %s", err.Error())
 	}
 
-	for _, r := range citywork {
-		callback(r)
+	for _, c := range citywork {
+		callback(c)
 	}
 
 	return nil
 }
 
 type cityworkDTO struct {
+	ID       string `json:"id"`
+	Location struct {
+		Type        string     `json:"type"`
+		Coordinates [2]float64 `json:"coordinates"`
+	} `json:"location"`
+	Description  string          `json:"description"`
+	DateCreated  domain.DateTime `json:"dateCreated"`
+	DateModified domain.DateTime `json:"dateModified"`
+	StartDate    domain.DateTime `json:"startDate"`
+	EndDate      domain.DateTime `json:"endDate"`
 }

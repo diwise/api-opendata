@@ -86,6 +86,9 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	beachService := beaches.NewBeachService(context.Background(), log, contextBrokerURL, contextBrokerTenant, int(maxWQODistance))
 	beachService.Start()
 
+	cityworkService := citywork.NewCityworkService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
+	cityworkService.Start()
+
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
 
 	stratsysEnabled := (env.GetVariableOrDefault(log, "STRATSYS_ENABLED", "true") != "false")
@@ -121,7 +124,11 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	)
 	r.Get(
 		"api/citywork",
-		handlers.NewRetrieveCityworkHandler(log, contextBrokerURL, citywork.NewCityworkService(context.Background(), log, contextBrokerURL, contextBrokerTenant)),
+		handlers.NewRetrieveCityworkHandler(log, cityworkService),
+	)
+	r.Get(
+		"api/citywork/{id}",
+		handlers.NewRetrieveCityworkHandler(log, cityworkService),
 	)
 
 	if stratsysEnabled {

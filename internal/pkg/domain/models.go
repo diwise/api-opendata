@@ -97,6 +97,19 @@ func (wq WaterQuality) Age() time.Duration {
 }
 
 type Citywork struct {
+	ID          string   `json:"id"`
+	Location    Point    `json:"location"`
+	DateCreated DateTime `json:"dateCreated"`
+}
+
+type CityworkDetails struct {
+	ID           string   `json:"id"`
+	Location     Point    `json:"location"`
+	Description  string   `json:"description"`
+	DateCreated  DateTime `json:"dateCreated"`
+	DateModified DateTime `json:"dateModified"`
+	StartDate    DateTime `json:"startDate"`
+	EndDate      DateTime `json:"endDate"`
 }
 
 type DateTime struct {

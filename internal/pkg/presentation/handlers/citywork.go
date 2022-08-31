@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func NewRetrieveCityworkHandler(logger zerolog.Logger, ctxBrokerURL string, cityworkSvc citywork.CityworkService) http.HandlerFunc {
+func NewRetrieveCityworkHandler(logger zerolog.Logger, cityworkSvc citywork.CityworkService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body := cityworkSvc.GetAll()
 
@@ -16,5 +16,11 @@ func NewRetrieveCityworkHandler(logger zerolog.Logger, ctxBrokerURL string, city
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=3600")
 		w.Write([]byte(roadworksJSON))
+	})
+}
+
+func NewRetrieveCityworkByIDHandler(logger zerolog.Logger, cityworkSvc citywork.CityworkService) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 	})
 }
