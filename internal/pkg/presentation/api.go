@@ -128,7 +128,7 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	)
 	r.Get(
 		"api/citywork/{id}",
-		handlers.NewRetrieveCityworkHandler(log, cityworkService),
+		handlers.NewRetrieveCityworkByIDHandler(log, cityworkService),
 	)
 
 	if stratsysEnabled {
