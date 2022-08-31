@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-//Catalog ..
+// Catalog ..
 type Catalog struct {
 	About       string
 	Title       string
@@ -12,7 +12,7 @@ type Catalog struct {
 	Dataset     Dataset
 }
 
-//Dataset ...
+// Dataset ...
 type Dataset struct {
 	About        string
 	Title        string
@@ -22,21 +22,21 @@ type Dataset struct {
 	Organization string //Organization
 }
 
-//Distribution ...
+// Distribution ...
 type Distribution struct {
 	About       string
 	AccessUrl   string
 	DataService string //DataService
 }
 
-//DataService ...
+// DataService ...
 type DataService struct {
 	About       string
 	Title       string
 	EndpointURL string
 }
 
-//Agent ...
+// Agent ...
 type Agent struct {
 	About string
 	Name  string
@@ -94,6 +94,9 @@ func (wq WaterQuality) Age() time.Duration {
 	}
 
 	return time.Since(observedAt)
+}
+
+type Citywork struct {
 }
 
 type DateTime struct {

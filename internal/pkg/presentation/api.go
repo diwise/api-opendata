@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
@@ -119,8 +120,8 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 		handlers.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
 	)
 	r.Get(
-		"api/roadworks",
-		handlers.NewRetrieveRoadWorksHandler(log, contextBrokerURL),
+		"api/citywork",
+		handlers.NewRetrieveCityworkHandler(log, contextBrokerURL, citywork.NewCityworkService(context.Background(), log, contextBrokerURL, contextBrokerTenant)),
 	)
 
 	if stratsysEnabled {
