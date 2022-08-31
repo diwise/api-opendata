@@ -52,6 +52,5 @@ func NewRetrieveCityworkByIDHandler(logger zerolog.Logger, cityworkSvc citywork.
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=600")
 		w.Write(body)
-
 	})
 }

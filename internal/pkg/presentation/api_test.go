@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -35,6 +36,21 @@ func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.
 	defer resp.Body.Close()
 
 	return resp, string(respBody)
+}
+
+func TestGetCitywork(t *testing.T) {
+	is := is.New(t)
+	server := setupMockService(http.StatusOK, beachesJson)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/citywork", nil)
+	req.Header.Add("Accept", "application/json")
+
+	cityworkSvc := citywork.NewCityworkService(context.Background(), zerolog.Logger{}, server.URL, "default")
+	defer cityworkSvc.Shutdown()
+
+	handlers.NewRetrieveBeachesHandler(zerolog.Logger{}, cityworkSvc).ServeHTTP(w, req)
+	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 
 func TestGetBeaches(t *testing.T) {
