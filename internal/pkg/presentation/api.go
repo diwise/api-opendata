@@ -10,6 +10,7 @@ import (
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/exercisetrails"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
@@ -86,6 +87,9 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	beachService := beaches.NewBeachService(context.Background(), log, contextBrokerURL, contextBrokerTenant, int(maxWQODistance))
 	beachService.Start()
 
+	trailService := exercisetrails.NewExerciseTrailService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
+	trailService.Start()
+
 	cityworkService := citywork.NewCityworksService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
 	cityworkService.Start()
 
@@ -109,6 +113,14 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	r.Get(
 		"/api/beaches/{id}",
 		handlers.NewRetrieveBeachByIDHandler(log, beachService),
+	)
+	r.Get(
+		"/api/exercisetrails",
+		handlers.NewRetrieveExerciseTrailsHandler(log, trailService),
+	)
+	r.Get(
+		"/api/exercisetrails/{id}",
+		handlers.NewRetrieveExerciseTrailByIDHandler(log, trailService),
 	)
 	r.Get(
 		"/api/temperature/air",

@@ -64,6 +64,27 @@ type BeachDetails struct {
 	SeeAlso      *[]string       `json:"seeAlso,omitempty"`
 }
 
+type ExerciseTrail struct {
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	Location   Point    `json:"location"`
+	Categories []string `json:"categories"`
+	Length     float64  `json:"length"`
+	Status     string   `json:"status"`
+}
+
+type ExerciseTrailDetails struct {
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Location    LineString `json:"location"`
+	Categories  []string   `json:"categories"`
+	Length      float64    `json:"length"`
+	Status      string     `json:"status"`
+	Source      string     `json:"source"`
+	AreaServed  string     `json:"areaServed"`
+}
+
 type Sensor struct {
 	Id           string
 	Temperatures []Temperature
@@ -123,8 +144,14 @@ type Point struct {
 }
 
 func NewPoint(latitude, longitude float64) *Point {
-	return &Point{
-		"Point",
-		[]float64{longitude, latitude},
-	}
+	return &Point{"Point", []float64{longitude, latitude}}
+}
+
+type LineString struct {
+	Type        string      `json:"type"`
+	Coordinates [][]float64 `json:"coordinates"`
+}
+
+func NewLineString(coordinates [][]float64) *LineString {
+	return &LineString{"LineString", coordinates}
 }
