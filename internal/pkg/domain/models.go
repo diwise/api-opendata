@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-//Catalog ..
+// Catalog ..
 type Catalog struct {
 	About       string
 	Title       string
@@ -12,7 +12,7 @@ type Catalog struct {
 	Dataset     Dataset
 }
 
-//Dataset ...
+// Dataset ...
 type Dataset struct {
 	About        string
 	Title        string
@@ -22,21 +22,21 @@ type Dataset struct {
 	Organization string //Organization
 }
 
-//Distribution ...
+// Distribution ...
 type Distribution struct {
 	About       string
 	AccessUrl   string
 	DataService string //DataService
 }
 
-//DataService ...
+// DataService ...
 type DataService struct {
 	About       string
 	Title       string
 	EndpointURL string
 }
 
-//Agent ...
+// Agent ...
 type Agent struct {
 	About string
 	Name  string
@@ -62,6 +62,27 @@ type BeachDetails struct {
 	Location     Point           `json:"location"`
 	WaterQuality *[]WaterQuality `json:"waterquality,omitempty"`
 	SeeAlso      *[]string       `json:"seeAlso,omitempty"`
+}
+
+type ExerciseTrail struct {
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	Location   Point    `json:"location"`
+	Categories []string `json:"categories"`
+	Length     float64  `json:"length"`
+	Status     string   `json:"status"`
+}
+
+type ExerciseTrailDetails struct {
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Location    LineString `json:"location"`
+	Categories  []string   `json:"categories"`
+	Length      float64    `json:"length"`
+	Status      string     `json:"status"`
+	Source      string     `json:"source"`
+	AreaServed  string     `json:"areaServed"`
 }
 
 type Sensor struct {
@@ -107,8 +128,14 @@ type Point struct {
 }
 
 func NewPoint(latitude, longitude float64) *Point {
-	return &Point{
-		"Point",
-		[]float64{longitude, latitude},
-	}
+	return &Point{"Point", []float64{longitude, latitude}}
+}
+
+type LineString struct {
+	Type        string      `json:"type"`
+	Coordinates [][]float64 `json:"coordinates"`
+}
+
+func NewLineString(coordinates [][]float64) *LineString {
+	return &LineString{"LineString", coordinates}
 }

@@ -9,6 +9,7 @@ import (
 
 	presentation "github.com/diwise/api-opendata/internal/pkg/presentation"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
+	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/go-chi/chi/v5"
@@ -81,10 +82,7 @@ func main() {
 			}
 		}
 
-		port := os.Getenv("SERVICE_PORT")
-		if port == "" {
-			port = "8080"
-		}
+		port := env.GetVariableOrDefault(log, "SERVICE_PORT", "8080")
 
 		r := chi.NewRouter()
 
