@@ -37,8 +37,19 @@ type RoadAccidentService interface {
 	Shutdown()
 }
 
-func NewRoadAccidentService() RoadAccidentService {
-	svc := &roadAccidentSvc{}
+func NewRoadAccidentService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string) RoadAccidentService {
+	svc := &roadAccidentSvc{
+		contextBrokerURL: contextBrokerURL,
+		tenant:           tenant,
+
+		roadAccidents:       []byte("[]"),
+		roadAccidentDetails: map[string][]byte{},
+
+		ctx: ctx,
+		log: logger,
+
+		keepRunning: true,
+	}
 
 	return svc
 }
