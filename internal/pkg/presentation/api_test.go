@@ -43,13 +43,13 @@ func TestGetCitywork(t *testing.T) {
 	server := setupMockService(http.StatusOK, beachesJson)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/api/citywork", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/cityworks", nil)
 	req.Header.Add("Accept", "application/json")
 
-	cityworkSvc := citywork.NewCityworkService(context.Background(), zerolog.Logger{}, server.URL, "default")
+	cityworkSvc := citywork.NewCityworksService(context.Background(), zerolog.Logger{}, server.URL, "default")
 	defer cityworkSvc.Shutdown()
 
-	handlers.NewRetrieveBeachesHandler(zerolog.Logger{}, cityworkSvc).ServeHTTP(w, req)
+	handlers.NewRetrieveCityworksHandler(zerolog.Logger{}, cityworkSvc).ServeHTTP(w, req)
 	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 

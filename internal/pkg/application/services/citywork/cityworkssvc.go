@@ -20,13 +20,13 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
-var tracer = otel.Tracer("api-opendata/svcs/citywork")
+var tracer = otel.Tracer("api-opendata/svcs/cityworks")
 
 const (
 	DefaultBrokerTenant string = "default"
 )
 
-type CityworkService interface {
+type CityworksService interface {
 	Broker() string
 	Tenant() string
 
@@ -37,12 +37,12 @@ type CityworkService interface {
 	Shutdown()
 }
 
-func NewCityworkService(ctx context.Context, logger zerolog.Logger, contextBrokerUrl, tenant string) CityworkService {
-	svc := &cityworkSvc{
+func NewCityworksService(ctx context.Context, logger zerolog.Logger, contextBrokerUrl, tenant string) CityworksService {
+	svc := &cityworksSvc{
 		ctx: ctx,
 
-		citywork:         []byte("[]"),
-		cityworkDetails:  map[string][]byte{},
+		cityworks:        []byte("[]"),
+		cityworksDetails: map[string][]byte{},
 		contextBrokerURL: contextBrokerUrl,
 		tenant:           tenant,
 		log:              logger,
@@ -53,13 +53,13 @@ func NewCityworkService(ctx context.Context, logger zerolog.Logger, contextBroke
 	return svc
 }
 
-type cityworkSvc struct {
+type cityworksSvc struct {
 	contextBrokerURL string
 	tenant           string
 
-	cityworkMutex   sync.Mutex
-	citywork        []byte
-	cityworkDetails map[string][]byte
+	cityworksMutex   sync.Mutex
+	cityworks        []byte
+	cityworksDetails map[string][]byte
 
 	ctx context.Context
 	log zerolog.Logger
@@ -67,53 +67,53 @@ type cityworkSvc struct {
 	keepRunning bool
 }
 
-func (svc *cityworkSvc) Broker() string {
+func (svc *cityworksSvc) Broker() string {
 	return svc.contextBrokerURL
 }
 
-func (svc *cityworkSvc) Tenant() string {
+func (svc *cityworksSvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *cityworkSvc) GetAll() []byte {
-	svc.cityworkMutex.Lock()
-	defer svc.cityworkMutex.Unlock()
+func (svc *cityworksSvc) GetAll() []byte {
+	svc.cityworksMutex.Lock()
+	defer svc.cityworksMutex.Unlock()
 
-	return svc.citywork
+	return svc.cityworks
 }
 
-func (svc *cityworkSvc) GetByID(id string) ([]byte, error) {
-	svc.cityworkMutex.Lock()
-	defer svc.cityworkMutex.Unlock()
+func (svc *cityworksSvc) GetByID(id string) ([]byte, error) {
+	svc.cityworksMutex.Lock()
+	defer svc.cityworksMutex.Unlock()
 
-	body, ok := svc.cityworkDetails[id]
+	body, ok := svc.cityworksDetails[id]
 	if !ok {
-		return []byte{}, fmt.Errorf("no such citywork")
+		return []byte{}, fmt.Errorf("no such cityworks")
 	}
 
 	return body, nil
 }
 
-func (svc *cityworkSvc) Start() {
-	svc.log.Info().Msg("starting citywork service")
+func (svc *cityworksSvc) Start() {
+	svc.log.Info().Msg("starting cityworks service")
 	go svc.run()
 }
 
-func (svc *cityworkSvc) Shutdown() {
-	svc.log.Info().Msg("shutting down citywork service")
+func (svc *cityworksSvc) Shutdown() {
+	svc.log.Info().Msg("shutting down cityworks service")
 	svc.keepRunning = false
 }
 
-func (svc *cityworkSvc) run() {
+func (svc *cityworksSvc) run() {
 	nextRefreshTime := time.Now()
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing roadwork info")
+			svc.log.Info().Msg("refreshing cityworks info")
 			err := svc.refresh()
 
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh citywork")
+				svc.log.Error().Err(err).Msg("failed to refresh cityworks")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
@@ -125,22 +125,22 @@ func (svc *cityworkSvc) run() {
 		time.Sleep(1 * time.Second)
 	}
 
-	svc.log.Info().Msg("citywork service exiting")
+	svc.log.Info().Msg("cityworks service exiting")
 }
 
-func (svc *cityworkSvc) refresh() error {
+func (svc *cityworksSvc) refresh() error {
 	var err error
-	ctx, span := tracer.Start(svc.ctx, "refresh-citywork")
+	ctx, span := tracer.Start(svc.ctx, "refresh-cityworks")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
 
-	cityworks := []domain.Citywork{}
+	cityworks := []domain.Cityworks{}
 
-	err = svc.getCityworkFromContextBroker(ctx, func(c cityworkDTO) {
+	err = svc.getCityworksFromContextBroker(ctx, func(c cityworksDTO) {
 		location := *domain.NewPoint(c.Location.Coordinates[0], c.Location.Coordinates[1])
 
-		details := domain.CityworkDetails{
+		details := domain.CityworksDetails{
 			ID:           c.ID,
 			Location:     location,
 			Description:  c.Description,
@@ -152,13 +152,13 @@ func (svc *cityworkSvc) refresh() error {
 
 		jsonBytes, err := json.MarshalIndent(details, "  ", "  ")
 		if err != nil {
-			logger.Error().Err(err).Msg("failed to marshal citywork to json")
+			logger.Error().Err(err).Msg("failed to marshal cityworks to json")
 			return
 		}
 
-		svc.storeCityworkDetails(c.ID, jsonBytes)
+		svc.storeCityworksDetails(c.ID, jsonBytes)
 
-		cw := domain.Citywork{
+		cw := domain.Cityworks{
 			ID:          c.ID,
 			Location:    location,
 			DateCreated: c.DateCreated,
@@ -170,30 +170,30 @@ func (svc *cityworkSvc) refresh() error {
 
 	jsonBytes, err := json.MarshalIndent(cityworks, "  ", "  ")
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to marshal citywork to json")
+		logger.Error().Err(err).Msg("failed to marshal cityworks to json")
 		return err
 	}
 
-	svc.storeCityworkList(jsonBytes)
+	svc.storeCityworksList(jsonBytes)
 
 	return err
 }
 
-func (svc *cityworkSvc) storeCityworkDetails(id string, body []byte) {
-	svc.cityworkMutex.Lock()
-	defer svc.cityworkMutex.Unlock()
+func (svc *cityworksSvc) storeCityworksDetails(id string, body []byte) {
+	svc.cityworksMutex.Lock()
+	defer svc.cityworksMutex.Unlock()
 
-	svc.cityworkDetails[id] = body
+	svc.cityworksDetails[id] = body
 }
 
-func (svc *cityworkSvc) storeCityworkList(body []byte) {
-	svc.cityworkMutex.Lock()
-	defer svc.cityworkMutex.Unlock()
+func (svc *cityworksSvc) storeCityworksList(body []byte) {
+	svc.cityworksMutex.Lock()
+	defer svc.cityworksMutex.Unlock()
 
-	svc.citywork = body
+	svc.cityworks = body
 }
 
-func (svc *cityworkSvc) getCityworkFromContextBroker(ctx context.Context, callback func(c cityworkDTO)) error {
+func (svc *cityworksSvc) getCityworksFromContextBroker(ctx context.Context, callback func(c cityworksDTO)) error {
 	var err error
 
 	logger := logging.GetFromContext(ctx)
@@ -202,7 +202,6 @@ func (svc *cityworkSvc) getCityworkFromContextBroker(ctx context.Context, callba
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
-	//unsure if below url suffix is correct
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, svc.contextBrokerURL+"/ngsi-ld/v1/entities?type=CityWork&limit=100&options=keyValues", nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %s", err.Error())
@@ -240,7 +239,7 @@ func (svc *cityworkSvc) getCityworkFromContextBroker(ctx context.Context, callba
 		return fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", resp.StatusCode, contentType, string(respBody))
 	}
 
-	var citywork []cityworkDTO
+	var citywork []cityworksDTO
 	err = json.Unmarshal(respBody, &citywork)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal repsonse: %s", err.Error())
@@ -253,7 +252,7 @@ func (svc *cityworkSvc) getCityworkFromContextBroker(ctx context.Context, callba
 	return nil
 }
 
-type cityworkDTO struct {
+type cityworksDTO struct {
 	ID       string `json:"id"`
 	Location struct {
 		Type        string     `json:"type"`

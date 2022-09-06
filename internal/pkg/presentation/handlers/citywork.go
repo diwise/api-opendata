@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func NewRetrieveCityworkHandler(logger zerolog.Logger, cityworkSvc citywork.CityworkService) http.HandlerFunc {
+func NewRetrieveCityworksHandler(logger zerolog.Logger, cityworkSvc citywork.CityworksService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body := cityworkSvc.GetAll()
 
@@ -24,17 +24,17 @@ func NewRetrieveCityworkHandler(logger zerolog.Logger, cityworkSvc citywork.City
 	})
 }
 
-func NewRetrieveCityworkByIDHandler(logger zerolog.Logger, cityworkSvc citywork.CityworkService) http.HandlerFunc {
+func NewRetrieveCityworksByIDHandler(logger zerolog.Logger, cityworkSvc citywork.CityworksService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
-		ctx, span := tracer.Start(r.Context(), "retrieve-citywork-by-id")
+		ctx, span := tracer.Start(r.Context(), "retrieve-cityworks-by-id")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		cityworkID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if cityworkID == "" {
-			err = fmt.Errorf("no citywork id supplied in query")
+			err = fmt.Errorf("no cityworks id supplied in query")
 			log.Error().Err(err).Msg("bad request")
 			w.WriteHeader(http.StatusBadRequest)
 			return

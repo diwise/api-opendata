@@ -96,13 +96,13 @@ func (wq WaterQuality) Age() time.Duration {
 	return time.Since(observedAt)
 }
 
-type Citywork struct {
+type Cityworks struct {
 	ID          string   `json:"id"`
 	Location    Point    `json:"location"`
 	DateCreated DateTime `json:"dateCreated"`
 }
 
-type CityworkDetails struct {
+type CityworksDetails struct {
 	ID           string   `json:"id"`
 	Location     Point    `json:"location"`
 	Description  string   `json:"description"`
