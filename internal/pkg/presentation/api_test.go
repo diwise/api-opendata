@@ -40,7 +40,7 @@ func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.
 
 func TestGetCitywork(t *testing.T) {
 	is := is.New(t)
-	server := setupMockService(http.StatusOK, beachesJson)
+	server := setupMockService(http.StatusOK, "")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/api/cityworks", nil)
