@@ -47,7 +47,7 @@ func TestGetCitywork(t *testing.T) {
 	req.Header.Add("Accept", "application/json")
 
 	cityworkSvc := citywork.NewCityworksService(context.Background(), zerolog.Logger{}, server.URL, "default")
-	defer cityworkSvc.Shutdown()
+	cityworkSvc.Start()
 
 	handlers.NewRetrieveCityworksHandler(zerolog.Logger{}, cityworkSvc).ServeHTTP(w, req)
 	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"sync"
@@ -138,7 +138,7 @@ func (svc *cityworksSvc) refresh() error {
 	cityworks := []domain.Cityworks{}
 
 	err = svc.getCityworksFromContextBroker(ctx, func(c cityworksDTO) {
-		location := *domain.NewPoint(c.Location.Coordinates[0], c.Location.Coordinates[1])
+		location := *domain.NewPoint(c.Location.Coordinates[1], c.Location.Coordinates[0])
 
 		details := domain.CityworksDetails{
 			ID:           c.ID,
@@ -221,7 +221,7 @@ func (svc *cityworksSvc) getCityworksFromContextBroker(ctx context.Context, call
 	}
 	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %s", err.Error())
 	}

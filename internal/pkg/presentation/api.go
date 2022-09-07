@@ -135,11 +135,11 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 		handlers.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
 	)
 	r.Get(
-		"api/cityworks",
+		"/api/cityworks",
 		handlers.NewRetrieveCityworksHandler(log, cityworkService),
 	)
 	r.Get(
-		"api/cityworks/{id}",
+		"/api/cityworks/{id}",
 		handlers.NewRetrieveCityworksByIDHandler(log, cityworkService),
 	)
 
