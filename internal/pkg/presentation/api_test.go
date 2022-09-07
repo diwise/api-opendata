@@ -40,7 +40,7 @@ func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.
 
 func TestGetRoadAccidents(t *testing.T) {
 	is := is.New(t)
-	server := setupMockService(http.StatusOK, beachesJson)
+	server := setupMockService(http.StatusOK, "")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/api/roadaccidents", nil)
@@ -49,7 +49,7 @@ func TestGetRoadAccidents(t *testing.T) {
 	roadAccidentSvc := roadaccidents.NewRoadAccidentService(context.Background(), zerolog.Logger{}, server.URL, "default")
 	defer roadAccidentSvc.Shutdown()
 
-	handlers.NewRetrieveBeachesHandler(zerolog.Logger{}, roadAccidentSvc).ServeHTTP(w, req)
+	handlers.NewRetrieveRoadAccidentsHandler(zerolog.Logger{}, roadAccidentSvc).ServeHTTP(w, req)
 	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 
