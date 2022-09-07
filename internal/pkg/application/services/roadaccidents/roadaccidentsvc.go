@@ -145,7 +145,7 @@ func (svc *roadAccidentSvc) refresh() error {
 		details := domain.RoadAccidentDetails{
 			ID:           r.ID,
 			Description:  r.Description,
-			Location:     *domain.NewPoint(r.Location.Coordinates[0], r.Location.Coordinates[1]),
+			Location:     *domain.NewPoint(r.Location.Coordinates[1], r.Location.Coordinates[0]),
 			DateCreated:  r.DateCreated,
 			DateModified: r.DateModified,
 			Status:       r.Status,

@@ -47,7 +47,7 @@ func TestGetRoadAccidents(t *testing.T) {
 	req.Header.Add("Accept", "application/json")
 
 	roadAccidentSvc := roadaccidents.NewRoadAccidentService(context.Background(), zerolog.Logger{}, server.URL, "default")
-	defer roadAccidentSvc.Shutdown()
+	roadAccidentSvc.Start()
 
 	handlers.NewRetrieveRoadAccidentsHandler(zerolog.Logger{}, roadAccidentSvc).ServeHTTP(w, req)
 	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
