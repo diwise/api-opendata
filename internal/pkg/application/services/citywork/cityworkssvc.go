@@ -246,7 +246,7 @@ func (svc *cityworksSvc) getCityworksFromContextBroker(ctx context.Context, call
 	var citywork []cityworksDTO
 	err = json.Unmarshal(respBody, &citywork)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal repsonse: %s", err.Error())
+		return fmt.Errorf("failed to unmarshal response: %s", err.Error())
 	}
 
 	for _, c := range citywork {
