@@ -167,6 +167,10 @@ func (svc *roadAccidentSvc) refresh() error {
 
 		roadAccidents = append(roadAccidents, roadAccident)
 	})
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to retrieve cityworks from context broker")
+		return err
+	}
 
 	jsonBytes, err := json.MarshalIndent(roadAccidents, "  ", "  ")
 	if err != nil {

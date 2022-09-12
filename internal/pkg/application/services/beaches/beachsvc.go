@@ -188,6 +188,10 @@ func (svc *beachSvc) refresh() error {
 
 		beaches = append(beaches, beach)
 	})
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to retrieve beaches from context broker")
+		return err
+	}
 
 	jsonBytes, err := json.MarshalIndent(beaches, "  ", "  ")
 	if err != nil {

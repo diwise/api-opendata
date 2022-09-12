@@ -167,8 +167,8 @@ func (svc *cityworksSvc) refresh() error {
 		cityworks = append(cityworks, cw)
 
 	})
-
-	if len(cityworks) < 1 {
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to retrieve cityworks from context broker")
 		return err
 	}
 
