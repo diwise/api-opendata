@@ -168,6 +168,10 @@ func (svc *cityworksSvc) refresh() error {
 
 	})
 
+	if len(cityworks) < 1 {
+		return err
+	}
+
 	jsonBytes, err := json.MarshalIndent(cityworks, "  ", "  ")
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to marshal cityworks to json")
