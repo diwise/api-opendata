@@ -11,6 +11,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/exercisetrails"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/roadaccidents"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
@@ -93,6 +94,9 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	cityworkService := citywork.NewCityworksService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
 	cityworkService.Start()
 
+	roadAccidentSvc := roadaccidents.NewRoadAccidentService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
+	roadAccidentSvc.Start()
+
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
 
 	stratsysEnabled := (env.GetVariableOrDefault(log, "STRATSYS_ENABLED", "true") != "false")
@@ -141,6 +145,14 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	r.Get(
 		"/api/cityworks/{id}",
 		handlers.NewRetrieveCityworksByIDHandler(log, cityworkService),
+	)
+	r.Get(
+		"/api/roadaccidents",
+		handlers.NewRetrieveRoadAccidentsHandler(log, roadAccidentSvc),
+	)
+	r.Get(
+		"/api/roadaccidents/{id}",
+		handlers.NewRetrieveRoadAccidentByIDHandler(log, roadAccidentSvc),
 	)
 
 	if stratsysEnabled {

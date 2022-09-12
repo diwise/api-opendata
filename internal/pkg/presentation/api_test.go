@@ -12,6 +12,7 @@ import (
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/roadaccidents"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -36,6 +37,21 @@ func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.
 	defer resp.Body.Close()
 
 	return resp, string(respBody)
+}
+
+func TestGetRoadAccidents(t *testing.T) {
+	is := is.New(t)
+	server := setupMockService(http.StatusOK, "")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/roadaccidents", nil)
+	req.Header.Add("Accept", "application/json")
+
+	roadAccidentSvc := roadaccidents.NewRoadAccidentService(context.Background(), zerolog.Logger{}, server.URL, "default")
+	roadAccidentSvc.Start()
+
+	handlers.NewRetrieveRoadAccidentsHandler(zerolog.Logger{}, roadAccidentSvc).ServeHTTP(w, req)
+	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 
 func TestGetCitywork(t *testing.T) {
