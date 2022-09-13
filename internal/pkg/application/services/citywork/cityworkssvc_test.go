@@ -19,7 +19,7 @@ func TestThatRefreshReturnsErrorOnNoValidHostNotFound(t *testing.T) {
 	is.True(ok)
 
 	err := svc.refresh()
-	is.True(err != nil) //should return err due to invalid host
+	is.True(err != nil) // should return err due to invalid host
 }
 
 func TestThatRefreshFailsOnEmptyResponseBody(t *testing.T) {
