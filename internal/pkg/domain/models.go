@@ -118,19 +118,19 @@ func (wq WaterQuality) Age() time.Duration {
 }
 
 type Cityworks struct {
-	ID          string   `json:"id"`
-	Location    Point    `json:"location"`
-	DateCreated DateTime `json:"dateCreated"`
+	ID        string `json:"id"`
+	Location  Point  `json:"location"`
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
 }
 
 type CityworksDetails struct {
-	ID           string   `json:"id"`
-	Location     Point    `json:"location"`
-	Description  string   `json:"description"`
-	DateCreated  DateTime `json:"dateCreated"`
-	DateModified DateTime `json:"dateModified"`
-	StartDate    DateTime `json:"startDate"`
-	EndDate      DateTime `json:"endDate"`
+	ID           string `json:"id"`
+	Location     Point  `json:"location"`
+	Description  string `json:"description"`
+	DateModified string `json:"dateModified,omitempty"`
+	StartDate    string `json:"startDate"`
+	EndDate      string `json:"endDate"`
 }
 
 type DateTime struct {
@@ -157,16 +157,16 @@ func NewLineString(coordinates [][]float64) *LineString {
 }
 
 type RoadAccident struct {
-	ID           string   `json:"id"`
-	AccidentDate DateTime `json:"accidentDate"`
-	Location     Point    `json:"location"`
+	ID           string `json:"id"`
+	AccidentDate string `json:"accidentDate"`
+	Location     Point  `json:"location"`
 }
 
 type RoadAccidentDetails struct {
-	ID           string   `json:"id"`
-	Description  string   `json:"description"`
-	Location     Point    `json:"location"`
-	DateCreated  DateTime `json:"dateCreated"`
-	DateModified DateTime `json:"dateModified"`
-	Status       string   `json:"status"`
+	ID           string `json:"id"`
+	Description  string `json:"description"`
+	Location     Point  `json:"location"`
+	DateCreated  string `json:"dateCreated"`
+	DateModified string `json:"dateModified,omitempty"`
+	Status       string `json:"status"`
 }

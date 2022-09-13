@@ -83,10 +83,7 @@ const testData string = `[
 			"@type":"Property",
 			"@value":"2016-12-07T11:10:00Z"
 		},
-		"description":{
-			"type":"Property",
-			"value":"cityworks0"
-		},
+		"description": "cityworks0",
 		"startDate":{
 			"@type":"Property",
 			"@value":"2016-12-07T11:10:00Z"
@@ -109,10 +106,7 @@ const testData string = `[
 			"@type":"Property",
 			"@value":"2016-12-07T11:10:01Z"
 		},
-		"description":{
-			"type":"Property",
-			"value":"cityworks"
-		},
+		"description": "cityworks",
 		"startDate":{
 			"@type":"Property",
 			"@value":"2022-12-07T11:10:01Z"

@@ -146,8 +146,8 @@ func (svc *roadAccidentSvc) refresh() error {
 			ID:           r.ID,
 			Description:  r.Description.Value,
 			Location:     *domain.NewPoint(r.Location.Coordinates[1], r.Location.Coordinates[0]),
-			DateCreated:  r.DateCreated,
-			DateModified: r.DateModified,
+			DateCreated:  r.DateCreated.Value,
+			DateModified: r.DateModified.Value,
 			Status:       r.Status,
 		}
 
@@ -162,7 +162,7 @@ func (svc *roadAccidentSvc) refresh() error {
 		roadAccident := domain.RoadAccident{
 			ID:           r.ID,
 			Location:     details.Location,
-			AccidentDate: r.AccidentDate,
+			AccidentDate: r.AccidentDate.Value,
 		}
 
 		roadAccidents = append(roadAccidents, roadAccident)

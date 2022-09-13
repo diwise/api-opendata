@@ -143,11 +143,10 @@ func (svc *cityworksSvc) refresh() error {
 		details := domain.CityworksDetails{
 			ID:           c.ID,
 			Location:     location,
-			Description:  c.Description.Value,
-			DateCreated:  c.DateCreated,
-			DateModified: c.DateModified,
-			StartDate:    c.StartDate,
-			EndDate:      c.EndDate,
+			Description:  c.Description,
+			DateModified: c.DateModified.Value,
+			StartDate:    c.StartDate.Value,
+			EndDate:      c.EndDate.Value,
 		}
 
 		jsonBytes, err := json.MarshalIndent(details, "  ", "  ")
@@ -159,9 +158,10 @@ func (svc *cityworksSvc) refresh() error {
 		svc.storeCityworksDetails(c.ID, jsonBytes)
 
 		cw := domain.Cityworks{
-			ID:          c.ID,
-			Location:    location,
-			DateCreated: c.DateCreated,
+			ID:        c.ID,
+			Location:  location,
+			StartDate: c.StartDate.Value,
+			EndDate:   c.EndDate.Value,
 		}
 
 		cityworks = append(cityworks, cw)
@@ -262,10 +262,7 @@ type cityworksDTO struct {
 		Type        string    `json:"type"`
 		Coordinates []float64 `json:"coordinates"`
 	} `json:"location"`
-	Description struct {
-		Type  string `json:"type"`
-		Value string `json:"value"`
-	} `json:"description"`
+	Description  string          `json:"description"`
 	DateCreated  domain.DateTime `json:"dateCreated"`
 	DateModified domain.DateTime `json:"dateModified"`
 	StartDate    domain.DateTime `json:"startDate"`
