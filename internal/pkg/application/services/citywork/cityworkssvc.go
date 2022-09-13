@@ -143,7 +143,7 @@ func (svc *cityworksSvc) refresh() error {
 		details := domain.CityworksDetails{
 			ID:           c.ID,
 			Location:     location,
-			Description:  c.Description,
+			Description:  c.Description.Value,
 			DateCreated:  c.DateCreated,
 			DateModified: c.DateModified,
 			StartDate:    c.StartDate,
@@ -259,10 +259,13 @@ func (svc *cityworksSvc) getCityworksFromContextBroker(ctx context.Context, call
 type cityworksDTO struct {
 	ID       string `json:"id"`
 	Location struct {
-		Type        string     `json:"type"`
-		Coordinates [2]float64 `json:"coordinates"`
+		Type        string    `json:"type"`
+		Coordinates []float64 `json:"coordinates"`
 	} `json:"location"`
-	Description  string          `json:"description"`
+	Description struct {
+		Type  string `json:"type"`
+		Value string `json:"value"`
+	} `json:"description"`
 	DateCreated  domain.DateTime `json:"dateCreated"`
 	DateModified domain.DateTime `json:"dateModified"`
 	StartDate    domain.DateTime `json:"startDate"`
