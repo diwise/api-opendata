@@ -166,6 +166,7 @@ type RoadAccidentDetails struct {
 	ID           string `json:"id"`
 	Description  string `json:"description"`
 	Location     Point  `json:"location"`
+	AccidentDate string `json:"accidentDate"`
 	DateCreated  string `json:"dateCreated"`
 	DateModified string `json:"dateModified,omitempty"`
 	Status       string `json:"status"`

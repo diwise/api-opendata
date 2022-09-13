@@ -144,9 +144,10 @@ func (svc *roadAccidentSvc) refresh() error {
 
 		details := domain.RoadAccidentDetails{
 			ID:           r.ID,
-			Description:  r.Description.Value,
+			Description:  r.Description,
 			Location:     *domain.NewPoint(r.Location.Coordinates[1], r.Location.Coordinates[0]),
 			DateCreated:  r.DateCreated.Value,
+			AccidentDate: r.AccidentDate.Value,
 			DateModified: r.DateModified.Value,
 			Status:       r.Status,
 		}
@@ -261,11 +262,8 @@ func (svc *roadAccidentSvc) getRoadAccidentsFromContextBroker(ctx context.Contex
 type roadAccidentDTO struct {
 	ID           string          `json:"id"`
 	AccidentDate domain.DateTime `json:"accidentDate"`
-	Description  struct {
-		Type  string `json:"type"`
-		Value string `json:"value"`
-	} `json:"description"`
-	Location struct {
+	Description  string          `json:"description"`
+	Location     struct {
 		Type        string     `json:"type"`
 		Coordinates [2]float64 `json:"coordinates"`
 	} `json:"location"`
