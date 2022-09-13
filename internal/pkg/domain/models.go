@@ -117,6 +117,22 @@ func (wq WaterQuality) Age() time.Duration {
 	return time.Since(observedAt)
 }
 
+type Cityworks struct {
+	ID        string `json:"id"`
+	Location  Point  `json:"location"`
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
+}
+
+type CityworksDetails struct {
+	ID           string `json:"id"`
+	Location     Point  `json:"location"`
+	Description  string `json:"description"`
+	DateModified string `json:"dateModified,omitempty"`
+	StartDate    string `json:"startDate"`
+	EndDate      string `json:"endDate"`
+}
+
 type DateTime struct {
 	Type  string `json:"@type"`
 	Value string `json:"@value"`
@@ -138,4 +154,20 @@ type LineString struct {
 
 func NewLineString(coordinates [][]float64) *LineString {
 	return &LineString{"LineString", coordinates}
+}
+
+type RoadAccident struct {
+	ID           string `json:"id"`
+	AccidentDate string `json:"accidentDate"`
+	Location     Point  `json:"location"`
+}
+
+type RoadAccidentDetails struct {
+	ID           string `json:"id"`
+	Description  string `json:"description"`
+	Location     Point  `json:"location"`
+	AccidentDate string `json:"accidentDate"`
+	DateCreated  string `json:"dateCreated"`
+	DateModified string `json:"dateModified,omitempty"`
+	Status       string `json:"status"`
 }
