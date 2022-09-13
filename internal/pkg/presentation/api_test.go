@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/roadaccidents"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -31,10 +32,44 @@ func NewAppForTesting() (zerolog.Logger, *opendataAPI) {
 func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.Reader) (*http.Response, string) {
 	req, _ := http.NewRequest(method, ts.URL+path, body)
 	resp, _ := http.DefaultClient.Do(req)
-	respBody, _ := ioutil.ReadAll(resp.Body)
+	respBody, _ := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
 
 	return resp, string(respBody)
+}
+
+func TestGetRoadAccidents(t *testing.T) {
+	is := is.New(t)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/roadaccidents", nil)
+	req.Header.Add("Accept", "application/json")
+
+	roadAccidentSvc := &roadaccidents.RoadAccidentServiceMock{
+		GetAllFunc: func() []byte {
+			return nil
+		},
+	}
+
+	handlers.NewRetrieveRoadAccidentsHandler(zerolog.Logger{}, roadAccidentSvc).ServeHTTP(w, req)
+	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
+}
+
+func TestGetCitywork(t *testing.T) {
+	is := is.New(t)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/cityworks", nil)
+	req.Header.Add("Accept", "application/json")
+
+	cityworkSvc := &citywork.CityworksServiceMock{
+		GetAllFunc: func() []byte {
+			return nil
+		},
+	}
+
+	handlers.NewRetrieveCityworksHandler(zerolog.Logger{}, cityworkSvc).ServeHTTP(w, req)
+	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 
 func TestGetBeaches(t *testing.T) {
