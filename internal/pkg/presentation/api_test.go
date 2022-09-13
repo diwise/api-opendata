@@ -41,14 +41,16 @@ func NewTestRequest(is *is.I, ts *httptest.Server, method, path string, body io.
 
 func TestGetRoadAccidents(t *testing.T) {
 	is := is.New(t)
-	server := setupMockService(http.StatusOK, "")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/api/roadaccidents", nil)
 	req.Header.Add("Accept", "application/json")
 
-	roadAccidentSvc := roadaccidents.NewRoadAccidentService(context.Background(), zerolog.Logger{}, server.URL, "default")
-	roadAccidentSvc.Start()
+	roadAccidentSvc := &roadaccidents.RoadAccidentServiceMock{
+		GetAllFunc: func() []byte {
+			return nil
+		},
+	}
 
 	handlers.NewRetrieveRoadAccidentsHandler(zerolog.Logger{}, roadAccidentSvc).ServeHTTP(w, req)
 	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
@@ -56,14 +58,16 @@ func TestGetRoadAccidents(t *testing.T) {
 
 func TestGetCitywork(t *testing.T) {
 	is := is.New(t)
-	server := setupMockService(http.StatusOK, "")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/api/cityworks", nil)
 	req.Header.Add("Accept", "application/json")
 
-	cityworkSvc := citywork.NewCityworksService(context.Background(), zerolog.Logger{}, server.URL, "default")
-	cityworkSvc.Start()
+	cityworkSvc := &citywork.CityworksServiceMock{
+		GetAllFunc: func() []byte {
+			return nil
+		},
+	}
 
 	handlers.NewRetrieveCityworksHandler(zerolog.Logger{}, cityworkSvc).ServeHTTP(w, req)
 	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
