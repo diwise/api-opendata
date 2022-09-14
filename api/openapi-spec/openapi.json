@@ -254,6 +254,474 @@
         }
       }
     },
+    "/cityworks": {
+      "get": {
+        "operationId": "getCityWorks",
+        "description": "Get information on a published citywork",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "The ID of this citywork",
+                            "example": "urn:ngsi-ld:CityWork:se:sundsvall:facilities:553"
+                          },
+                          "location": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["Point"]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "description": "WGS84 longitude and latitude",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number"
+                                },
+                                "example": [17.454723, 62.266598]
+                              }
+                            }
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cityworks/{id}": {
+      "get": {
+        "operationId": "getCityWorksByID",
+        "description": "Get information on single published citywork",
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "schema": {
+            "type": "string"
+          },
+          "required": true,
+          "description": "ID of the citywork to retrieve"
+        }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "The ID of this citywork",
+                          "example": "urn:ngsi-ld:CityWork:se:sundsvall:facilities:553"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "The description of this citywork",
+                          "example": "Road closed until 22-02-2022"
+                        },
+                        "location": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["Point"]
+                            },
+                            "coordinates": {
+                              "type": "array",
+                              "description": "WGS84 longitude and latitude",
+                              "minItems": 2,
+                              "maxItems": 3,
+                              "items": {
+                                "type": "number"
+                              },
+                              "example": [17.454723, 62.266598]
+                            }
+                          }
+                        },
+                        "dateModified": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exercisetrails": {
+      "get": {
+        "operationId": "getExerciseTrails",
+        "description": "Get information on a published exercise trails",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "The ID of this exercise trail",
+                            "example": "urn:ngsi-ld:ExerciseTrail:se:sundsvall:facilities:553"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "The name of this exercise trail",
+                            "example": "Hotellslingan 5K"
+                          },
+                          "location": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["Point"]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "description": "WGS84 longitude and latitude",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number"
+                                },
+                                "example": [17.454723, 62.266598]
+                              }
+                            }
+                          },
+                          "categories": {
+                            "type": "array",
+                            "description": "List of exercise trail categories",
+                            "items": {
+                              "type": "string"
+                            },
+                            "example": ["skidspar", "elljusspar"]
+                          },
+                          "status": {
+                            "type": "string",
+                            "description": "The status of this exercise trail",
+                            "example": "Open"
+                          },
+                          "length": {
+                            "type": "number",
+                            "format": "float"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exercisetrails/{id}": {
+      "get": {
+        "operationId": "getExerciseTrailsByID",
+        "description": "Get information on a single published citywork",
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "schema": {
+            "type": "string"
+          },
+          "required": true,
+          "description": "ID of the citywork to retrieve"
+        }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "The ID of this exercise trail",
+                          "example": "urn:ngsi-ld:ExerciseTrail:se:sundsvall:facilities:553"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "The name of this exercise trail",
+                          "example": "Hotellslingan 5K"
+                        },
+                        "location": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["Point"]
+                            },
+                            "coordinates": {
+                              "type": "array",
+                              "description": "WGS84 longitude and latitude",
+                              "minItems": 2,
+                              "maxItems": 3,
+                              "items": {
+                                "type": "number"
+                              },
+                              "example": [17.454723, 62.266598]
+                            }
+                          }
+                        },
+                        "categories": {
+                          "type": "array",
+                          "description": "List of exercise trail categories",
+                          "items": {
+                            "type": "string"
+                          },
+                          "example": ["floodlit", "ski-classic", "ski-skate"]
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "The status of this exercise trail",
+                          "example": "Open"
+                        },
+                        "length": {
+                          "type": "number",
+                          "format": "float"
+                        },
+                        "source": {
+                          "type": "string",
+                          "description": "The source of this exercise trail",
+                          "example": "http://awebsiteforexercisetrails.com/"
+                        },
+                        "areaServed": {
+                          "type": "string",
+                          "description": "The status of this exercise trail",
+                          "example": "Open"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roadaccidents": {
+      "get": {
+        "operationId": "getRoadAccidents",
+        "description": "Get published road accidents from Trafikverket",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "The ID of this road accident",
+                            "example": "urn:ngsi-ld:RoadAccident:se:sundsvall:facilities:553"
+                          },
+                          "location": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["Point"]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "description": "WGS84 longitude and latitude",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number"
+                                },
+                                "example": [17.454723, 62.266598]
+                              }
+                            }
+                          },
+                          "accidentDate": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roadaccidents/{id}": {
+      "get": {
+        "operationId": "getRoadAccidentsByID",
+        "description": "Get single published road accident from Trafikverket",
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "schema": {
+            "type": "string"
+          },
+          "required": true,
+          "description": "ID of the road accident to retrieve"
+        }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "The ID of this road accident",
+                          "example": "urn:ngsi-ld:RoadAccident:se:sundsvall:facilities:553"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "The description of this road accident",
+                          "example": "Passenger car broken down in left lane."
+                        },
+                        "location": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["Point"]
+                            },
+                            "coordinates": {
+                              "type": "array",
+                              "description": "WGS84 longitude and latitude",
+                              "minItems": 2,
+                              "maxItems": 3,
+                              "items": {
+                                "type": "number"
+                              },
+                              "example": [17.454723, 62.266598]
+                            }
+                          }
+                        },
+                        "accidentDate": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "dateCreated": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "dateModified": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "The status of this road accident",
+                          "example": "Ongoing"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stratsys/publishedreports": {
+      "get": {
+        "operationId": "getStratsysReports",
+        "description": "Get published reports from stratsys.se.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/stratsys/publishedreports/{reportId}": {
+      "get": {
+        "operationId": "getStratsysReportByID",
+        "description": "Get a published report by ID from stratsys.se.",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "description": "ID of the report to be retrieved",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/temperature/air": {
       "get": {
         "operationId": "getAirTemperatures",
@@ -348,39 +816,6 @@
       "get": {
         "operationId": "getTrafficFlow",
         "description": "Get traffic flow information.",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/stratsys/publishedreports": {
-      "get": {
-        "operationId": "getStratsysReports",
-        "description": "Get published reports from stratsys.se.",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/stratsys/publishedreports/{reportId}": {
-      "get": {
-        "operationId": "getStratsysReportByID",
-        "description": "Get a published report by ID from stratsys.se.",
-        "parameters": [
-          {
-            "name": "reportId",
-            "in": "path",
-            "description": "ID of the report to be retrieved",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "OK"
