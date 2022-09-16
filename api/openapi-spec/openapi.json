@@ -26,10 +26,6 @@
     {
       "url": "https://api-test.sundsvall.se/opendata/1.0",
       "description": "test environment"
-    },
-    {
-      "url": "https://test.diwise.io/api/opendata",
-      "description": "test environment"
     }
   ],
   "paths": {
