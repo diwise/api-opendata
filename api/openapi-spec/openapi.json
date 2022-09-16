@@ -26,6 +26,10 @@
     {
       "url": "https://api-test.sundsvall.se/opendata/1.0",
       "description": "test environment"
+    },
+    {
+      "url": "https://test.diwise.io/api/opendata",
+      "description": "test environment"
     }
   ],
   "paths": {
@@ -257,7 +261,7 @@
     "/cityworks": {
       "get": {
         "operationId": "getCityWorks",
-        "description": "Get information on a published citywork",
+        "description": "Get information abouit ongoing or planned citywork",
         "responses": {
           "200": {
             "description": "OK",
@@ -273,7 +277,7 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "description": "The ID of this citywork",
+                            "description": "The ID of this citywork instance",
                             "example": "urn:ngsi-ld:CityWork:se:sundsvall:facilities:553"
                           },
                           "location": {
@@ -317,7 +321,7 @@
     "/cityworks/{id}": {
       "get": {
         "operationId": "getCityWorksByID",
-        "description": "Get information on single published citywork",
+        "description": "Get information about a specific citywork instance",
         "parameters": [{
           "in": "path",
           "name": "id",
@@ -325,7 +329,7 @@
             "type": "string"
           },
           "required": true,
-          "description": "ID of the citywork to retrieve"
+          "description": "ID of the citywork instance to retrieve"
         }],
         "responses": {
           "200": {
@@ -340,13 +344,13 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "description": "The ID of this citywork",
+                          "description": "The ID of this citywork instance",
                           "example": "urn:ngsi-ld:CityWork:se:sundsvall:facilities:553"
                         },
                         "description": {
                           "type": "string",
-                          "description": "The description of this citywork",
-                          "example": "Road closed until 22-02-2022"
+                          "description": "A description containing a reason, and contact information about this citywork instance",
+                          "example": "Road closed until 2022-02-22"
                         },
                         "location": {
                           "type": "object",
@@ -392,7 +396,7 @@
     "/exercisetrails": {
       "get": {
         "operationId": "getExerciseTrails",
-        "description": "Get information on a published exercise trails",
+        "description": "Get information about published exercise trails",
         "responses": {
           "200": {
             "description": "OK",
@@ -441,15 +445,16 @@
                             "items": {
                               "type": "string"
                             },
-                            "example": ["skidspar", "elljusspar"]
+                            "example": ["floodlit", "ski-classic"]
                           },
                           "status": {
                             "type": "string",
                             "description": "The status of this exercise trail",
-                            "example": "Open"
+                            "enum": ["open", "closed"]
                           },
                           "length": {
                             "type": "number",
+                            "description": "The length of this trail in kilometers",
                             "format": "float"
                           }
                         }
@@ -466,7 +471,7 @@
     "/exercisetrails/{id}": {
       "get": {
         "operationId": "getExerciseTrailsByID",
-        "description": "Get information on a single published citywork",
+        "description": "Get information on a single published exercise trail",
         "parameters": [{
           "in": "path",
           "name": "id",
@@ -474,7 +479,7 @@
             "type": "string"
           },
           "required": true,
-          "description": "ID of the citywork to retrieve"
+          "description": "ID of the exercise trail to be retrieved"
         }],
         "responses": {
           "200": {
@@ -502,17 +507,20 @@
                           "properties": {
                             "type": {
                               "type": "string",
-                              "enum": ["Point"]
+                              "enum": ["LineString"]
                             },
                             "coordinates": {
-                              "type": "array",
-                              "description": "WGS84 longitude and latitude",
-                              "minItems": 2,
-                              "maxItems": 3,
                               "items": {
-                                "type": "number"
+                                "type": "array",
+                                "description": "WGS84 longitude and latitude",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number"
+                                }
                               },
-                              "example": [17.454723, 62.266598]
+                              "minItems": 2,
+                              "example": [[17.308707,62.366359],[17.308765,62.366428],[17.308771,62.366531]]
                             }
                           }
                         },
@@ -527,11 +535,12 @@
                         "status": {
                           "type": "string",
                           "description": "The status of this exercise trail",
-                          "example": "Open"
+                          "enum": ["closed", "open"]
                         },
                         "length": {
                           "type": "number",
-                          "format": "float"
+                          "format": "float",
+                          "example": 5.0
                         },
                         "source": {
                           "type": "string",
@@ -540,8 +549,8 @@
                         },
                         "areaServed": {
                           "type": "string",
-                          "description": "The status of this exercise trail",
-                          "example": "Open"
+                          "description": "Grouping of related exercise trails",
+                          "example": "Motionsspår Södra spårområdet"
                         }
                       }
                     }
