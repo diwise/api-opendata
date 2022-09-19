@@ -88,18 +88,6 @@ func TestThatFailingGetGeneratesInternalServerError(t *testing.T) {
 
 // #################################################
 
-func TestInvokeTempSensorsHandler(t *testing.T) {
-	is, log, rw := setup(t)
-	//svc := setupMockServiceThatReturns(http.StatusOK, "[]")
-	req, _ := http.NewRequest("GET", "http://diwise.io/api/temperature/air/sensors", nil)
-
-	NewRetrieveTemperatureSensorsHandler(log /*svc.URL*/, "https://diwise.io").ServeHTTP(rw, req)
-
-	is.Equal(rw.Code, http.StatusOK) // response status should be 200 OK
-}
-
-// #################################################
-
 func setup(t *testing.T) (*is.I, zerolog.Logger, *httptest.ResponseRecorder) {
 	return is.New(t), zerolog.Logger{}, httptest.NewRecorder()
 }

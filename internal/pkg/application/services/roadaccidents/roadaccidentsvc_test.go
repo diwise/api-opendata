@@ -72,6 +72,7 @@ func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, zerolo
 const testData string = `[
 	{
 		"id":"urn:ngsi-ld:RoadAccident:RoadAccident0",
+		"type":"RoadAccident",
 		"location":{
 			"type":"Point",
 			"coordinates":[
@@ -83,10 +84,7 @@ const testData string = `[
 			"@type":"Property",
 			"@value":"2016-12-07T11:10:00Z"
 		},
-		"description":{
-			"type":"Property",
-			"value":"RoadAccidents0"
-		},
+		"description": "RoadAccidents0",
 		"accidentDate":{
 			"@type":"Property",
 			"@value":"2016-12-07T11:10:00Z"
@@ -99,6 +97,7 @@ const testData string = `[
 	},
 	{
 		"id":"urn:ngsi-ld:RoadAccident:RoadAccident1",
+		"type":"RoadAccident",
 		"location":{
 			"type":"Point",
 			"coordinates":[
@@ -110,10 +109,7 @@ const testData string = `[
 			"@type":"Property",
 			"@value":"2016-12-07T11:10:01Z"
 		},
-		"description":{
-			"type":"Property",
-			"value":"RoadAccidents"
-		},
+		"description":"RoadAccidents",
 		"accidentDate":{
 			"@type":"Property",
 			"@value":"2022-12-07T11:10:01Z"

@@ -139,18 +139,19 @@ func (svc *exerciseTrailSvc) refresh() error {
 
 	err = svc.getExerciseTrailsFromContextBroker(ctx, func(t trailDTO) {
 		details := domain.ExerciseTrailDetails{
-			ID:          t.ID,
-			Name:        t.Name,
-			Description: t.Description,
-			Categories:  t.Categories(),
-			Location:    *domain.NewLineString(t.Location.Coordinates),
-			Length:      t.Length,
-			Status:      t.Status,
-			Source:      t.Source,
-			AreaServed:  t.AreaServed,
+			ID:                  t.ID,
+			Name:                t.Name,
+			Description:         t.Description,
+			Categories:          t.Categories(),
+			Location:            *domain.NewLineString(t.Location.Coordinates),
+			Length:              t.Length,
+			Status:              t.Status,
+			DateLastPreparation: t.DateLastPreparation.Value,
+			Source:              t.Source,
+			AreaServed:          t.AreaServed,
 		}
 
-		jsonBytes, err := json.MarshalIndent(details, "  ", "  ")
+		jsonBytes, err := json.Marshal(details)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to marshal exercise trail to json")
 			return
@@ -160,12 +161,13 @@ func (svc *exerciseTrailSvc) refresh() error {
 
 		lat, lon := t.LatLon()
 		trail := domain.ExerciseTrail{
-			ID:         t.ID,
-			Name:       t.Name,
-			Categories: t.Categories(),
-			Location:   *domain.NewPoint(lat, lon),
-			Length:     t.Length,
-			Status:     t.Status,
+			ID:                  t.ID,
+			Name:                t.Name,
+			Categories:          t.Categories(),
+			Location:            *domain.NewPoint(lat, lon),
+			Length:              t.Length,
+			Status:              t.Status,
+			DateLastPreparation: t.DateLastPreparation.Value,
 		}
 
 		trails = append(trails, trail)
@@ -175,7 +177,7 @@ func (svc *exerciseTrailSvc) refresh() error {
 		return err
 	}
 
-	jsonBytes, err := json.MarshalIndent(trails, "  ", "  ")
+	jsonBytes, err := json.Marshal(trails)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to marshal exercise trails to json")
 		return err
@@ -268,11 +270,12 @@ type trailDTO struct {
 		Type        string      `json:"type"`
 		Coordinates [][]float64 `json:"coordinates"`
 	} `json:"location"`
-	Length       float64         `json:"length"`
-	Source       string          `json:"source"`
-	Status       string          `json:"status"`
-	AreaServed   string          `json:"areaServed"`
-	DateModified domain.DateTime `json:"dateModified"`
+	Length              float64         `json:"length"`
+	Source              string          `json:"source"`
+	Status              string          `json:"status"`
+	AreaServed          string          `json:"areaServed"`
+	DateModified        domain.DateTime `json:"dateModified"`
+	DateLastPreparation domain.DateTime `json:"dateLastPreparation"`
 }
 
 // LatLon tries to guess a suitable location point by assuming that the

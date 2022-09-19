@@ -65,24 +65,26 @@ type BeachDetails struct {
 }
 
 type ExerciseTrail struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	Location   Point    `json:"location"`
-	Categories []string `json:"categories"`
-	Length     float64  `json:"length"`
-	Status     string   `json:"status"`
+	ID                  string   `json:"id"`
+	Name                string   `json:"name"`
+	Location            Point    `json:"location"`
+	Categories          []string `json:"categories"`
+	Length              float64  `json:"length"`
+	Status              string   `json:"status"`
+	DateLastPreparation string   `json:"dateLastPreparation"`
 }
 
 type ExerciseTrailDetails struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	Location    LineString `json:"location"`
-	Categories  []string   `json:"categories"`
-	Length      float64    `json:"length"`
-	Status      string     `json:"status"`
-	Source      string     `json:"source"`
-	AreaServed  string     `json:"areaServed"`
+	ID                  string     `json:"id"`
+	Name                string     `json:"name"`
+	Description         string     `json:"description"`
+	Location            LineString `json:"location"`
+	Categories          []string   `json:"categories"`
+	Length              float64    `json:"length"`
+	Status              string     `json:"status"`
+	DateLastPreparation string     `json:"dateLastPreparation"`
+	Source              string     `json:"source"`
+	AreaServed          string     `json:"areaServed"`
 }
 
 type Sensor struct {
