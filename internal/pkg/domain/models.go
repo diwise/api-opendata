@@ -71,7 +71,7 @@ type ExerciseTrail struct {
 	Categories          []string `json:"categories"`
 	Length              float64  `json:"length"`
 	Status              string   `json:"status"`
-	DateLastPreparation string   `json:"dateLastPreparation"`
+	DateLastPreparation string   `json:"dateLastPreparation,omitempty"`
 }
 
 type ExerciseTrailDetails struct {
@@ -82,7 +82,7 @@ type ExerciseTrailDetails struct {
 	Categories          []string   `json:"categories"`
 	Length              float64    `json:"length"`
 	Status              string     `json:"status"`
-	DateLastPreparation string     `json:"dateLastPreparation"`
+	DateLastPreparation string     `json:"dateLastPreparation,omitempty"`
 	Source              string     `json:"source"`
 	AreaServed          string     `json:"areaServed"`
 }
