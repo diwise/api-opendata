@@ -439,19 +439,26 @@
                             "type": "array",
                             "description": "List of exercise trail categories",
                             "items": {
-                              "type": "string"
+                              "type": "string",
+                              "enum": ["bike-track", "floodlit", "ice-skating", "ski-classic", "ski-skate"]
                             },
                             "example":  ["floodlit", "ski-classic"]
+                          },
+                          "length": {
+                            "type": "number",
+                            "description": "The length of this trail in kilometers",
+                            "format": "float",
+                            "example": 5
                           },
                           "status": {
                             "type": "string",
                             "description": "The status of this exercise trail",
                             "enum": ["open", "closed"]
                           },
-                          "length": {
-                            "type": "number",
-                            "description": "The length of this trail in kilometers",
-                            "format": "float"
+                          "dateLastPreparation": {
+                            "type": "string",
+                            "description": "Time of last preparation",
+                            "example": "2022-10-02T03:27:18Z"
                           }
                         }
                       }
@@ -524,7 +531,8 @@
                           "type": "array",
                           "description": "List of exercise trail categories",
                           "items": {
-                            "type": "string"
+                            "type": "string",
+                            "enum": ["bike-track", "floodlit", "ice-skating", "ski-classic", "ski-skate"]
                           },
                           "example": ["floodlit", "ski-classic", "ski-skate"]
                         },
@@ -541,12 +549,17 @@
                         "source": {
                           "type": "string",
                           "description": "The source of this exercise trail",
-                          "example": "http://awebsiteforexercisetrails.com/"
+                          "example": "https://api.sundsvall.se/facilities/2.1/get/775"
                         },
                         "areaServed": {
                           "type": "string",
                           "description": "Grouping of related exercise trails",
                           "example": "Motionsspår Södra spårområdet"
+                        },
+                        "dateLastPreparation": {
+                          "type": "string",
+                          "description": "Time of last preparation",
+                          "example": "2022-10-02T03:27:18Z"
                         }
                       }
                     }
