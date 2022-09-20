@@ -257,7 +257,7 @@
     "/cityworks": {
       "get": {
         "operationId": "getCityWorks",
-        "description": "Get information abouit ongoing or planned citywork",
+        "description": "Get information about ongoing or planned cityworks",
         "responses": {
           "200": {
             "description": "OK",
@@ -274,7 +274,7 @@
                           "id": {
                             "type": "string",
                             "description": "The ID of this citywork instance",
-                            "example": "urn:ngsi-ld:CityWork:se:sundsvall:facilities:553"
+                            "example": "urn:ngsi-ld:CityWork:se:sundsvall:cityworks"
                           },
                           "location": {
                             "type": "object",
@@ -325,7 +325,7 @@
             "type": "string"
           },
           "required": true,
-          "description": "ID of the citywork instance to retrieve"
+          "description": "ID of the citywork to retrieve"
         }],
         "responses": {
           "200": {
@@ -341,7 +341,7 @@
                         "id": {
                           "type": "string",
                           "description": "The ID of this citywork instance",
-                          "example": "urn:ngsi-ld:CityWork:se:sundsvall:facilities:553"
+                          "example": "urn:ngsi-ld:CityWork:se:sundsvall:cityworks"
                         },
                         "description": {
                           "type": "string",
@@ -392,7 +392,7 @@
     "/exercisetrails": {
       "get": {
         "operationId": "getExerciseTrails",
-        "description": "Get information about published exercise trails",
+        "description": "Get information on a published exercise trails",
         "responses": {
           "200": {
             "description": "OK",
@@ -409,7 +409,7 @@
                           "id": {
                             "type": "string",
                             "description": "The ID of this exercise trail",
-                            "example": "urn:ngsi-ld:ExerciseTrail:se:sundsvall:facilities:553"
+                            "example": "urn:ngsi-ld:ExerciseTrail:se:sundsvall:facilities:123"
                           },
                           "name": {
                             "type": "string",
@@ -441,7 +441,7 @@
                             "items": {
                               "type": "string"
                             },
-                            "example": ["floodlit", "ski-classic"]
+                            "example":  ["floodlit", "ski-classic"]
                           },
                           "status": {
                             "type": "string",
@@ -491,7 +491,7 @@
                         "id": {
                           "type": "string",
                           "description": "The ID of this exercise trail",
-                          "example": "urn:ngsi-ld:ExerciseTrail:se:sundsvall:facilities:553"
+                          "example": "urn:ngsi-ld:ExerciseTrail:se:sundsvall:facilities:775"
                         },
                         "name": {
                           "type": "string",
@@ -578,7 +578,7 @@
                           "id": {
                             "type": "string",
                             "description": "The ID of this road accident",
-                            "example": "urn:ngsi-ld:RoadAccident:se:sundsvall:facilities:553"
+                            "example": "urn:ngsi-ld:RoadAccident:se:sundsvall:roadaccidents"
                           },
                           "location": {
                             "type": "object",
