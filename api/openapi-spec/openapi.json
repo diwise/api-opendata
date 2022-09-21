@@ -392,7 +392,21 @@
     "/exercisetrails": {
       "get": {
         "operationId": "getExerciseTrails",
-        "description": "Get information on a published exercise trails",
+        "description": "Get information about published exercise trails",
+        "parameters": [{
+          "in": "query",
+          "name": "fields",
+          "explode": false,
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["areaserved", "datelastpreparation", "description", "location", "source", "status"]
+            }
+          },
+          "required": false,
+          "description": "Filter the returned properties per entry"
+        }],
         "responses": {
           "200": {
             "description": "OK",
@@ -488,6 +502,74 @@
           "200": {
             "description": "OK",
             "content": {
+              "application/gpx+xml": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "creator": {
+                      "type": "string",
+                      "xml": {
+                        "attribute": true
+                      },
+                      "example": "diwise cip"
+                    },
+                    "xmlns:xsi": {
+                      "type": "string",
+                      "xml": {
+                        "attribute": true
+                      },
+                      "example": "http://www.w3.org/2001/XMLSchema-instance"
+                    },
+                    "xsi:schemaLocation": {
+                      "type": "string",
+                      "xml": {
+                        "attribute": true
+                      },
+                      "example": "http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd"
+                    },
+                    "trk": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "example": "Hotellslingan 5K"
+                        },
+                        "trkseg": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "trkpt": {
+                                "type": "object",
+                                "properties": {
+                                  "lat": {
+                                    "type": "number",
+                                    "xml": {
+                                      "attribute": true
+                                    },
+                                    "example": 62.366359
+                                  },
+                                  "lon": {
+                                    "type": "number",
+                                    "xml": {
+                                      "attribute": true
+                                    },
+                                    "example": 17.308707
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "xml": {
+                    "name": "gpx",
+                    "namespace": "http://www.topografix.com/GPX/1/1"
+                  }
+                }
+              },
               "application/json": {
                 "schema": {
                   "type": "object",

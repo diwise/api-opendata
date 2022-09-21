@@ -30,8 +30,8 @@ type ExerciseTrailService interface {
 	Broker() string
 	Tenant() string
 
-	GetAll() []byte
-	GetByID(id string) ([]byte, error)
+	GetAll() []domain.ExerciseTrail
+	GetByID(id string) (*domain.ExerciseTrail, error)
 
 	Start()
 	Shutdown()
@@ -40,8 +40,8 @@ type ExerciseTrailService interface {
 func NewExerciseTrailService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string) ExerciseTrailService {
 	svc := &exerciseTrailSvc{
 		ctx:              ctx,
-		trails:           []byte("[]"),
-		trailDetails:     map[string][]byte{},
+		trails:           []domain.ExerciseTrail{},
+		trailDetails:     map[string]int{},
 		contextBrokerURL: contextBrokerURL,
 		tenant:           tenant,
 		log:              logger,
@@ -56,8 +56,8 @@ type exerciseTrailSvc struct {
 	tenant           string
 
 	trailMutex   sync.Mutex
-	trails       []byte
-	trailDetails map[string][]byte
+	trails       []domain.ExerciseTrail
+	trailDetails map[string]int
 
 	ctx context.Context
 	log zerolog.Logger
@@ -73,23 +73,23 @@ func (svc *exerciseTrailSvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *exerciseTrailSvc) GetAll() []byte {
+func (svc *exerciseTrailSvc) GetAll() []domain.ExerciseTrail {
 	svc.trailMutex.Lock()
 	defer svc.trailMutex.Unlock()
 
 	return svc.trails
 }
 
-func (svc *exerciseTrailSvc) GetByID(id string) ([]byte, error) {
+func (svc *exerciseTrailSvc) GetByID(id string) (*domain.ExerciseTrail, error) {
 	svc.trailMutex.Lock()
 	defer svc.trailMutex.Unlock()
 
-	body, ok := svc.trailDetails[id]
+	index, ok := svc.trailDetails[id]
 	if !ok {
-		return []byte{}, fmt.Errorf("no such exercisetrail")
+		return nil, fmt.Errorf("no such exercisetrail")
 	}
 
-	return body, nil
+	return &svc.trails[index], nil
 }
 
 func (svc *exerciseTrailSvc) Start() {
@@ -133,12 +133,12 @@ func (svc *exerciseTrailSvc) refresh() error {
 	ctx, span := tracer.Start(svc.ctx, "refresh-trails")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
+	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
 
 	trails := []domain.ExerciseTrail{}
 
 	err = svc.getExerciseTrailsFromContextBroker(ctx, func(t trailDTO) {
-		details := domain.ExerciseTrailDetails{
+		trail := domain.ExerciseTrail{
 			ID:                  t.ID,
 			Name:                t.Name,
 			Description:         t.Description,
@@ -151,25 +151,6 @@ func (svc *exerciseTrailSvc) refresh() error {
 			AreaServed:          t.AreaServed,
 		}
 
-		jsonBytes, err := json.Marshal(details)
-		if err != nil {
-			logger.Error().Err(err).Msg("failed to marshal exercise trail to json")
-			return
-		}
-
-		svc.storeExerciseTrailDetails(t.ID, jsonBytes)
-
-		lat, lon := t.LatLon()
-		trail := domain.ExerciseTrail{
-			ID:                  t.ID,
-			Name:                t.Name,
-			Categories:          t.Categories(),
-			Location:            *domain.NewPoint(lat, lon),
-			Length:              t.Length,
-			Status:              t.Status,
-			DateLastPreparation: t.DateLastPreparation.Value,
-		}
-
 		trails = append(trails, trail)
 	})
 
@@ -177,29 +158,21 @@ func (svc *exerciseTrailSvc) refresh() error {
 		return err
 	}
 
-	jsonBytes, err := json.Marshal(trails)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to marshal exercise trails to json")
-		return err
-	}
-
-	svc.storeExerciseTrailList(jsonBytes)
+	svc.storeExerciseTrailList(trails)
 
 	return err
 }
 
-func (svc *exerciseTrailSvc) storeExerciseTrailDetails(id string, body []byte) {
+func (svc *exerciseTrailSvc) storeExerciseTrailList(list []domain.ExerciseTrail) {
 	svc.trailMutex.Lock()
 	defer svc.trailMutex.Unlock()
 
-	svc.trailDetails[id] = body
-}
+	svc.trails = list
+	svc.trailDetails = map[string]int{}
 
-func (svc *exerciseTrailSvc) storeExerciseTrailList(body []byte) {
-	svc.trailMutex.Lock()
-	defer svc.trailMutex.Unlock()
-
-	svc.trails = body
+	for index := range list {
+		svc.trailDetails[list[index].ID] = index
+	}
 }
 
 func (svc *exerciseTrailSvc) getExerciseTrailsFromContextBroker(ctx context.Context, callback func(b trailDTO)) error {
