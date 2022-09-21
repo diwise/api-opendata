@@ -392,7 +392,21 @@
     "/exercisetrails": {
       "get": {
         "operationId": "getExerciseTrails",
-        "description": "Get information on a published exercise trails",
+        "description": "Get information about published exercise trails",
+        "parameters": [{
+          "in": "query",
+          "name": "fields",
+          "explode": false,
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["areaserved", "datelastpreparation", "description", "location", "source", "status"]
+            }
+          },
+          "required": false,
+          "description": "Filter the returned properties per entry"
+        }],
         "responses": {
           "200": {
             "description": "OK",

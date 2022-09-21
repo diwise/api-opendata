@@ -65,16 +65,6 @@ type BeachDetails struct {
 }
 
 type ExerciseTrail struct {
-	ID                  string   `json:"id"`
-	Name                string   `json:"name"`
-	Location            Point    `json:"location"`
-	Categories          []string `json:"categories"`
-	Length              float64  `json:"length"`
-	Status              string   `json:"status"`
-	DateLastPreparation string   `json:"dateLastPreparation,omitempty"`
-}
-
-type ExerciseTrailDetails struct {
 	ID                  string     `json:"id"`
 	Name                string     `json:"name"`
 	Description         string     `json:"description"`

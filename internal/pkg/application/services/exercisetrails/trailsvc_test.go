@@ -2,6 +2,7 @@ package exercisetrails
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,8 +23,10 @@ func TestSomething(t *testing.T) {
 	err := svc.refresh()
 	is.NoErr(err)
 
-	output, err := svc.GetByID("urn:ngsi-ld:ExerciseTrail:se:sundsvall:facilities:650")
+	trail, err := svc.GetByID("urn:ngsi-ld:ExerciseTrail:se:sundsvall:facilities:650")
 	is.NoErr(err)
+
+	output, _ := json.Marshal(trail)
 
 	is.Equal(expectedOutput, string(output))
 }
