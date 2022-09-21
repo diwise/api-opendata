@@ -40,18 +40,40 @@ func NewRetrieveExerciseTrailByIDHandler(logger zerolog.Logger, trailService exe
 			return
 		}
 
-		trailJSON, err := json.Marshal(trail)
-		if err != nil {
-			log.Error().Err(err).Msg("failed to marshal trail to json")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		const gpxContentType string = "application/gpx+xml"
+
+		acceptedContentType := "application/json"
+		acceptHeader := r.Header["Accept"][0]
+		if acceptHeader != "" && strings.HasPrefix(acceptHeader, gpxContentType) {
+			acceptedContentType = gpxContentType
 		}
 
-		body := []byte("{\"data\":" + string(trailJSON) + "}")
+		responseBody := []byte{}
 
-		w.Header().Add("Content-Type", "application/json")
+		if acceptedContentType == "application/json" {
+			responseBody, err = json.Marshal(trail)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to marshal trail to json")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			responseBody = []byte("{\"data\":" + string(responseBody) + "}")
+		} else if acceptedContentType == gpxContentType {
+			responseBody, err = convertTrailToGPX(trail)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to create gpx file from trail")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			filename := strings.ReplaceAll(strings.ToLower(trail.Name), " ", "_")
+			w.Header().Add("Content-Disposition", "attachment; filename=\""+filename+".gpx\"")
+		}
+
+		w.Header().Add("Content-Type", acceptedContentType)
 		w.Header().Add("Cache-Control", "max-age=600")
-		w.Write(body)
+		w.Write(responseBody)
 	})
 }
 
