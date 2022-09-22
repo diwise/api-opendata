@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httputil"
 	"sync"
@@ -144,7 +145,8 @@ func (svc *exerciseTrailSvc) refresh() error {
 			Description:         t.Description,
 			Categories:          t.Categories(),
 			Location:            *domain.NewLineString(t.Location.Coordinates),
-			Length:              t.Length,
+			Length:              math.Round(t.Length*10) / 10,
+			Difficulty:          math.Round(t.Difficulty*100) / 100,
 			Status:              t.Status,
 			DateLastPreparation: t.DateLastPreparation.Value,
 			Source:              t.Source,
@@ -244,6 +246,7 @@ type trailDTO struct {
 		Coordinates [][]float64 `json:"coordinates"`
 	} `json:"location"`
 	Length              float64         `json:"length"`
+	Difficulty          float64         `json:"difficulty"`
 	Source              string          `json:"source"`
 	Status              string          `json:"status"`
 	AreaServed          string          `json:"areaServed"`

@@ -71,6 +71,7 @@ type ExerciseTrail struct {
 	Location            LineString `json:"location"`
 	Categories          []string   `json:"categories"`
 	Length              float64    `json:"length"`
+	Difficulty          float64    `json:"difficulty"`
 	Status              string     `json:"status"`
 	DateLastPreparation string     `json:"dateLastPreparation,omitempty"`
 	Source              string     `json:"source"`
