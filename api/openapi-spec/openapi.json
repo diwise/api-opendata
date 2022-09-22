@@ -401,7 +401,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["areaserved", "datelastpreparation", "description", "location", "source", "status"]
+              "enum": ["areaserved", "datelastpreparation", "description", "difficulty", "location", "source", "status"]
             }
           },
           "required": false,
@@ -463,6 +463,12 @@
                             "description": "The length of this trail in kilometers",
                             "format": "float",
                             "example": 5
+                          },
+                          "difficulty": {
+                            "type": "number",
+                            "description": "A difficulty rating in the range [0.0 1.0] where 0 is easy and 1 is very hard",
+                            "format": "float",
+                            "example": 0.5
                           },
                           "status": {
                             "type": "string",
@@ -627,6 +633,12 @@
                           "type": "number",
                           "format": "float",
                           "example": 5.0
+                        },
+                        "difficulty": {
+                          "type": "number",
+                          "description": "A difficulty rating in the range [0.0 1.0] where 0 is easy and 1 is very hard",
+                          "format": "float",
+                          "example": 0.5
                         },
                         "source": {
                           "type": "string",
