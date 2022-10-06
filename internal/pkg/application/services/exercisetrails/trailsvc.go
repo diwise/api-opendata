@@ -139,6 +139,11 @@ func (svc *exerciseTrailSvc) refresh() error {
 	trails := []domain.ExerciseTrail{}
 
 	err = svc.getExerciseTrailsFromContextBroker(ctx, func(t trailDTO) {
+		boolMap := map[string]bool{
+			"yes": true,
+			"no":  false,
+		}
+
 		trail := domain.ExerciseTrail{
 			ID:                  t.ID,
 			Name:                t.Name,
@@ -147,7 +152,7 @@ func (svc *exerciseTrailSvc) refresh() error {
 			Location:            *domain.NewLineString(t.Location.Coordinates),
 			Length:              math.Round(t.Length*10) / 10,
 			Difficulty:          math.Round(t.Difficulty*100) / 100,
-			PaymentRequired:     t.PaymentRequired,
+			PaymentRequired:     boolMap[t.PaymentRequired],
 			Status:              t.Status,
 			DateLastPreparation: t.DateLastPreparation.Value,
 			Source:              t.Source,
@@ -248,7 +253,7 @@ type trailDTO struct {
 	} `json:"location"`
 	Length              float64         `json:"length"`
 	Difficulty          float64         `json:"difficulty"`
-	PaymentRequired     bool            `json:"paymentRequired"`
+	PaymentRequired     string          `json:"paymentRequired"`
 	Source              string          `json:"source"`
 	Status              string          `json:"status"`
 	AreaServed          string          `json:"areaServed"`
