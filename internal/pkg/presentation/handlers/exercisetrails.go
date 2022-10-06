@@ -125,14 +125,15 @@ func newTrailMapper(extraFields []string, location func(*domain.ExerciseTrail) a
 	}
 
 	mappers := map[string]func(*domain.ExerciseTrail) (string, any){
-		"id":          func(t *domain.ExerciseTrail) (string, any) { return "id", t.ID },
-		"name":        func(t *domain.ExerciseTrail) (string, any) { return "name", t.Name },
-		"description": func(t *domain.ExerciseTrail) (string, any) { return "description", t.Description },
-		"location":    func(t *domain.ExerciseTrail) (string, any) { return "location", location(t) },
-		"categories":  func(t *domain.ExerciseTrail) (string, any) { return "categories", t.Categories },
-		"length":      func(t *domain.ExerciseTrail) (string, any) { return "length", t.Length },
-		"difficulty":  func(t *domain.ExerciseTrail) (string, any) { return "difficulty", t.Difficulty },
-		"status":      func(t *domain.ExerciseTrail) (string, any) { return "status", t.Status },
+		"id":              func(t *domain.ExerciseTrail) (string, any) { return "id", t.ID },
+		"name":            func(t *domain.ExerciseTrail) (string, any) { return "name", t.Name },
+		"description":     func(t *domain.ExerciseTrail) (string, any) { return "description", t.Description },
+		"location":        func(t *domain.ExerciseTrail) (string, any) { return "location", location(t) },
+		"categories":      func(t *domain.ExerciseTrail) (string, any) { return "categories", t.Categories },
+		"length":          func(t *domain.ExerciseTrail) (string, any) { return "length", t.Length },
+		"difficulty":      func(t *domain.ExerciseTrail) (string, any) { return "difficulty", t.Difficulty },
+		"paymentrequired": func(t *domain.ExerciseTrail) (string, any) { return "paymentRequired", t.PaymentRequired },
+		"status":          func(t *domain.ExerciseTrail) (string, any) { return "status", t.Status },
 		"datelastpreparation": func(t *domain.ExerciseTrail) (string, any) {
 			return "dateLastPreparation", omitempty(t.DateLastPreparation)
 		},

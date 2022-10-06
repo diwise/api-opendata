@@ -470,6 +470,10 @@
                             "format": "float",
                             "example": 0.5
                           },
+                          "paymentRequired": {
+                            "type": "boolean",
+                            "description": "A value determining if payment is required to use the trail"
+                          },
                           "status": {
                             "type": "string",
                             "description": "The status of this exercise trail",
@@ -639,6 +643,10 @@
                           "description": "A difficulty rating in the range [0.0 1.0] where 0 is easy and 1 is very hard",
                           "format": "float",
                           "example": 0.5
+                        },
+                        "paymentRequired": {
+                          "type": "boolean",
+                          "description": "A value determining if payment is required to use the trail"
                         },
                         "source": {
                           "type": "string",
