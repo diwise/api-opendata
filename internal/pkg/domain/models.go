@@ -74,7 +74,7 @@ type ExerciseTrail struct {
 	Categories          []string   `json:"categories"`
 	Length              float64    `json:"length"`
 	Difficulty          float64    `json:"difficulty"`
-	PaymentRequired     string     `json:"paymentRequired"`
+	PaymentRequired     bool       `json:"paymentRequired"`
 	Status              string     `json:"status"`
 	DateLastPreparation string     `json:"dateLastPreparation,omitempty"`
 	Source              string     `json:"source"`

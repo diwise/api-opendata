@@ -248,7 +248,7 @@ type trailDTO struct {
 	} `json:"location"`
 	Length              float64         `json:"length"`
 	Difficulty          float64         `json:"difficulty"`
-	PaymentRequired     string          `json:"paymentRequired"`
+	PaymentRequired     bool            `json:"paymentRequired"`
 	Source              string          `json:"source"`
 	Status              string          `json:"status"`
 	AreaServed          string          `json:"areaServed"`
