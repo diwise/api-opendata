@@ -148,7 +148,7 @@ func (svc *exerciseTrailSvc) refresh() error {
 			Location:            *domain.NewLineString(t.Location.Coordinates),
 			Length:              math.Round(t.Length*10) / 10,
 			Difficulty:          math.Round(t.Difficulty*100) / 100,
-			PaymentRequired:     t.PaymentRequired == "true",
+			PaymentRequired:     t.PaymentRequired == "yes",
 			Status:              t.Status,
 			DateLastPreparation: t.DateLastPreparation.Value,
 			Source:              t.Source,
