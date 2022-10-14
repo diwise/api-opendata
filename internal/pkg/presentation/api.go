@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/airquality"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/exercisetrails"
@@ -85,6 +86,9 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 		maxWQODistance = 1000
 	}
 
+	airQualitySvc := airquality.NewAirQualityService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
+	airQualitySvc.Start()
+
 	beachService := beaches.NewBeachService(context.Background(), log, contextBrokerURL, contextBrokerTenant, int(maxWQODistance))
 	beachService.Start()
 
@@ -109,6 +113,14 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	r.Get(
 		"/api/temperature/water",
 		handlers.NewRetrieveWaterQualityHandler(log, contextBrokerURL, waterQualityQueryParams),
+	)
+	r.Get(
+		"/api/airquality",
+		handlers.NewRetrieveAirQualitiesHandler(log, airQualitySvc),
+	)
+	r.Get(
+		"/api/airquality/{id}",
+		handlers.NewRetrieveAirQualityByIDHandler(log, airQualitySvc),
 	)
 	r.Get(
 		"/api/beaches",
