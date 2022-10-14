@@ -50,6 +50,30 @@ type Organization struct {
 	HasEmail string
 }
 
+type AirQuality struct {
+	ID       string `json:"id"`
+	Location Point  `json:"location"`
+}
+
+type AirQualityDetails struct {
+	ID                        string  `json:"id"`
+	Location                  Point   `json:"location"`
+	AtmosphericPressure       float64 `json:"atmosphericPressure"`
+	Temperature               float64 `json:"temperature"`
+	RelativeHumidity          float64 `json:"relativeHumidity"`
+	ParticleCount             float64 `json:"particleCount"`
+	PM1                       float64 `json:"PM1"`
+	PM4                       float64 `json:"PM4"`
+	PM10                      float64 `json:"PM10"`
+	PM25                      float64 `json:"PM25"`
+	TotalSuspendedParticulate float64 `json:"totalSuspendedParticulate"`
+	CO2                       float64 `json:"CO2"`
+	NO                        float64 `json:"NO"`
+	NO2                       float64 `json:"NO2"`
+	NOx                       float64 `json:"NOx"`
+	Voltage                   float64 `json:"voltage"`
+}
+
 type Beach struct {
 	ID           string        `json:"id"`
 	Name         string        `json:"name"`
