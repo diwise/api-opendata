@@ -109,7 +109,7 @@ func (svc *exerciseTrailSvc) run() {
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing execise trail info")
+			svc.log.Info().Msg("refreshing exercise trail info")
 			err := svc.refresh()
 
 			if err != nil {
