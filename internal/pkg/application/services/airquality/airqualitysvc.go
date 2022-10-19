@@ -31,7 +31,7 @@ type AirQualityService interface {
 	Tenant() string
 
 	GetAll() []byte
-	GetByID(id string) (*domain.AirQuality, error)
+	GetByID(id string) ([]byte, error)
 
 	Start()
 	Shutdown()
@@ -78,8 +78,16 @@ func (svc *aqsvc) GetAll() []byte {
 	return svc.aqo
 }
 
-func (svc *aqsvc) GetByID(id string) (*domain.AirQuality, error) {
-	return nil, nil
+func (svc *aqsvc) GetByID(id string) ([]byte, error) {
+	svc.aqoMutex.Lock()
+	defer svc.aqoMutex.Unlock()
+
+	body, ok := svc.aqoDetails[id]
+	if !ok {
+		return []byte{}, fmt.Errorf("no such air quality")
+	}
+
+	return body, nil
 }
 
 func (svc *aqsvc) Start() {
@@ -110,7 +118,12 @@ func (svc *aqsvc) run() {
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
 			}
 		}
+
+		// TODO: Use blocking channels instead of sleeps
+		time.Sleep(1 * time.Second)
 	}
+
+	svc.log.Info().Msg("exercise trail service exiting")
 }
 
 func (svc *aqsvc) refresh() error {
