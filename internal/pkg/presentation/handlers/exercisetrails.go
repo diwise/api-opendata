@@ -27,7 +27,7 @@ func NewRetrieveExerciseTrailByIDHandler(logger zerolog.Logger, trailService exe
 
 		trailID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if trailID == "" {
-			err = fmt.Errorf("no exerciset trail id supplied in query")
+			err = fmt.Errorf("no exercise trail is supplied in query")
 			log.Error().Err(err).Msg("bad request")
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -85,6 +85,8 @@ func NewRetrieveExerciseTrailsHandler(logger zerolog.Logger, trailService exerci
 		ctx, span := tracer.Start(r.Context(), "retrieve-trails")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
+		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+
 		requestedFields := r.URL.Query().Get("fields")
 		fields := []string{}
 		if requestedFields != "" {
@@ -92,29 +94,86 @@ func NewRetrieveExerciseTrailsHandler(logger zerolog.Logger, trailService exerci
 		}
 
 		trails := trailService.GetAll()
-		locationMapper := func(t *domain.ExerciseTrail) any {
-			return domain.NewPoint(t.Location.Coordinates[0][1], t.Location.Coordinates[0][0])
+
+		const geoJSONContentType string = "application/geo+json"
+
+		acceptedContentType := "application/json"
+		if len(r.Header["Accept"]) > 0 {
+			acceptHeader := r.Header["Accept"][0]
+			if acceptHeader != "" && strings.HasPrefix(acceptHeader, geoJSONContentType) {
+				acceptedContentType = geoJSONContentType
+			}
 		}
-		trailsJSON, err := marshalTrailsToJSON(trails, newTrailMapper(fields, locationMapper))
 
-		if err != nil {
-			_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
-			log.Error().Err(err).Msg("failed to marshal trail list to json")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		if acceptedContentType == geoJSONContentType {
+			locationMapper := func(t *domain.ExerciseTrail) any { return t.Location }
+
+			fields := append([]string{"type", "name", "categories", "length"}, fields...)
+			trailsGeoJSON, err := marshalTrailsToJSON(
+				trails,
+				newGeoJSONMapper(
+					newTrailMapper(fields, locationMapper),
+				))
+			if err != nil {
+				log.Error().Err(err).Msg("failed to marshal trail list to geo json")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			response := "{\"type\":\"FeatureCollection\", \"features\": " + string(trailsGeoJSON) + "}"
+
+			w.Header().Add("Content-Type", acceptedContentType)
+			w.Header().Add("Cache-Control", "max-age=600")
+			w.Write([]byte(response))
+		} else {
+			locationMapper := func(t *domain.ExerciseTrail) any {
+				return domain.NewPoint(t.Location.Coordinates[0][1], t.Location.Coordinates[0][0])
+			}
+
+			fields := append([]string{"id", "name", "categories", "length"}, fields...)
+			trailsJSON, err := marshalTrailsToJSON(trails, newTrailMapper(fields, locationMapper))
+
+			if err != nil {
+				log.Error().Err(err).Msg("failed to marshal trail list to json")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			response := "{\"data\":" + string(trailsJSON) + "}"
+
+			w.Header().Add("Content-Type", "application/json")
+			w.Header().Add("Cache-Control", "max-age=3600")
+			w.Write([]byte(response))
 		}
-
-		response := "{\"data\":" + string(trailsJSON) + "}"
-
-		w.Header().Add("Content-Type", "application/json")
-		w.Header().Add("Cache-Control", "max-age=3600")
-		w.Write([]byte(response))
 	})
 }
 
 type TrailMapperFunc func(*domain.ExerciseTrail) ([]byte, error)
 
-func newTrailMapper(extraFields []string, location func(*domain.ExerciseTrail) any) TrailMapperFunc {
+func newGeoJSONMapper(baseMapper TrailMapperFunc) TrailMapperFunc {
+
+	return func(t *domain.ExerciseTrail) ([]byte, error) {
+		body, err := baseMapper(t)
+		if err != nil {
+			return nil, err
+		}
+
+		var props any
+		json.Unmarshal(body, &props)
+
+		feature := struct {
+			Type       string `json:"type"`
+			ID         string `json:"id"`
+			Geometry   any    `json:"geometry"`
+			Properties any    `json:"properties"`
+		}{"Feature", t.ID, t.Location, props}
+
+		return json.Marshal(&feature)
+	}
+
+}
+
+func newTrailMapper(fields []string, location func(*domain.ExerciseTrail) any) TrailMapperFunc {
 
 	omitempty := func(s string) any {
 		if s == "" {
@@ -126,6 +185,7 @@ func newTrailMapper(extraFields []string, location func(*domain.ExerciseTrail) a
 
 	mappers := map[string]func(*domain.ExerciseTrail) (string, any){
 		"id":              func(t *domain.ExerciseTrail) (string, any) { return "id", t.ID },
+		"type":            func(t *domain.ExerciseTrail) (string, any) { return "type", "ExerciseTrail" },
 		"name":            func(t *domain.ExerciseTrail) (string, any) { return "name", t.Name },
 		"description":     func(t *domain.ExerciseTrail) (string, any) { return "description", t.Description },
 		"location":        func(t *domain.ExerciseTrail) (string, any) { return "location", location(t) },
@@ -140,11 +200,6 @@ func newTrailMapper(extraFields []string, location func(*domain.ExerciseTrail) a
 		"source":     func(t *domain.ExerciseTrail) (string, any) { return "source", t.Source },
 		"areaserved": func(t *domain.ExerciseTrail) (string, any) { return "areaServed", t.AreaServed },
 	}
-
-	fields := append(
-		[]string{"id", "name", "categories", "length"},
-		extraFields...,
-	)
 
 	return func(t *domain.ExerciseTrail) ([]byte, error) {
 		result := map[string]any{}
