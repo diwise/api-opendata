@@ -51,27 +51,32 @@ type Organization struct {
 }
 
 type AirQuality struct {
-	ID       string `json:"id"`
-	Location Point  `json:"location"`
+	ID       string        `json:"id"`
+	Location LocationPoint `json:"location"`
+}
+
+type LocationPoint struct {
+	Type  string `json:"type"`
+	Value Point  `json:"value"`
 }
 
 type AirQualityDetails struct {
-	ID                        string `json:"id"`
-	Location                  Point  `json:"location"`
-	AtmosphericPressure       Number `json:"atmosphericPressure,omitempty"`
-	Temperature               Number `json:"temperature,omitempty"`
-	RelativeHumidity          Number `json:"relativeHumidity,omitempty"`
-	ParticleCount             Number `json:"particleCount,omitempty"`
-	PM1                       Number `json:"PM1,omitempty"`
-	PM4                       Number `json:"PM4,omitempty"`
-	PM10                      Number `json:"PM10,omitempty"`
-	PM25                      Number `json:"PM25,omitempty"`
-	TotalSuspendedParticulate Number `json:"totalSuspendedParticulate,omitempty"`
-	CO2                       Number `json:"CO2,omitempty"`
-	NO                        Number `json:"NO,omitempty"`
-	NO2                       Number `json:"NO2,omitempty"`
-	NOx                       Number `json:"NOx,omitempty"`
-	Voltage                   Number `json:"voltage,omitempty"`
+	ID                        string        `json:"id"`
+	Location                  LocationPoint `json:"location"`
+	AtmosphericPressure       *Number       `json:"atmosphericPressure,omitempty"`
+	Temperature               *Number       `json:"temperature,omitempty"`
+	RelativeHumidity          *Number       `json:"relativeHumidity,omitempty"`
+	ParticleCount             *Number       `json:"particleCount,omitempty"`
+	PM1                       *Number       `json:"PM1,omitempty"`
+	PM4                       *Number       `json:"PM4,omitempty"`
+	PM10                      *Number       `json:"PM10,omitempty"`
+	PM25                      *Number       `json:"PM25,omitempty"`
+	TotalSuspendedParticulate *Number       `json:"totalSuspendedParticulate,omitempty"`
+	CO2                       *Number       `json:"CO2,omitempty"`
+	NO                        *Number       `json:"NO,omitempty"`
+	NO2                       *Number       `json:"NO2,omitempty"`
+	NOx                       *Number       `json:"NOx,omitempty"`
+	Voltage                   *Number       `json:"voltage,omitempty"`
 }
 
 type Number struct {
@@ -79,6 +84,7 @@ type Number struct {
 	Value    float64 `json:"value"`
 	UnitCode string  `json:"unitCode"`
 }
+
 type Beach struct {
 	ID           string        `json:"id"`
 	Name         string        `json:"name"`

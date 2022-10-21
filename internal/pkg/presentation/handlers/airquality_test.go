@@ -40,21 +40,30 @@ func TestRetrieveAirQualityByID(t *testing.T) {
 	is.Equal(responseBody, expectedOutput)
 }
 
-const expectedOutput string = "{\n  \"data\": {\"id\":\"aq0\",\"location\":{\"type\":\"Point\",\"coordinates\":[17,62]}}\n}"
+const expectedOutput string = "{\n  \"data\": {\"id\":\"aq1\",\"location\":{\"type\":\"GeoProperty\",\"value\":{\"type\":\"Point\",\"coordinates\":[17.1,62.1]}}}\n}"
 
 func defaultAirQualityMock() *services.AirQualityServiceMock {
 	aqList := []domain.AirQuality{
 		{
-			ID:       "aq0",
-			Location: *domain.NewPoint(62.0, 17.0),
+			ID: "aq1",
+			Location: domain.LocationPoint{
+				Type:  "GeoProperty",
+				Value: *domain.NewPoint(62.1, 17.1),
+			},
 		},
 		{
-			ID:       "aq1",
-			Location: *domain.NewPoint(62.1, 17.1),
+			ID: "aq2",
+			Location: domain.LocationPoint{
+				Type:  "GeoProperty",
+				Value: *domain.NewPoint(62.2, 17.2),
+			},
 		},
 		{
-			ID:       "aq2",
-			Location: *domain.NewPoint(62.2, 17.2),
+			ID: "aq3",
+			Location: domain.LocationPoint{
+				Type:  "GeoProperty",
+				Value: *domain.NewPoint(62.3, 17.3),
+			},
 		},
 	}
 

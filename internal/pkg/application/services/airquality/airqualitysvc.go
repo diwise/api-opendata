@@ -137,8 +137,21 @@ func (svc *aqsvc) refresh() error {
 
 	err = svc.getAirQualitiesFromContextBroker(ctx, func(a airqualityDTO) {
 		details := domain.AirQualityDetails{
-			ID:       a.ID,
-			Location: *domain.NewPoint(a.Location.Coordinates[0], a.Location.Coordinates[1]),
+			ID:                        a.ID,
+			Location:                  a.Location,
+			AtmosphericPressure:       a.AtmosphericPressure,
+			Temperature:               a.Temperature,
+			RelativeHumidity:          a.RelativeHumidity,
+			ParticleCount:             a.ParticleCount,
+			PM1:                       a.PM1,
+			PM4:                       a.PM4,
+			PM10:                      a.PM10,
+			PM25:                      a.PM25,
+			TotalSuspendedParticulate: a.TotalSuspendedParticulate,
+			CO2:                       a.CO2,
+			NO:                        a.NO,
+			NO2:                       a.NO2,
+			NOx:                       a.NOx,
 		}
 
 		jsonBytes, err := json.MarshalIndent(details, "  ", "  ")
@@ -155,7 +168,6 @@ func (svc *aqsvc) refresh() error {
 		}
 
 		airqualities = append(airqualities, aq)
-
 	})
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to retrieve air qualities from context broker")
@@ -249,21 +261,21 @@ func (svc *aqsvc) getAirQualitiesFromContextBroker(ctx context.Context, callback
 type airqualityDTO struct {
 	ID       string `json:"id"`
 	Location struct {
-		Type        string     `json:"type"`
-		Coordinates [2]float64 `json:"coordinates"`
+		Type  string       `json:"type"`
+		Value domain.Point `json:"value"`
 	} `json:"location"`
-	AtmosphericPressure       domain.Number `json:"atmosphericPressure"`
-	Temperature               domain.Number `json:"temperature"`
-	RelativeHumidity          domain.Number `json:"relativeHumidity"`
-	ParticleCount             domain.Number `json:"particleCount"`
-	PM1                       domain.Number `json:"PM1"`
-	PM4                       domain.Number `json:"PM4"`
-	PM10                      domain.Number `json:"PM10"`
-	PM25                      domain.Number `json:"PM25"`
-	TotalSuspendedParticulate domain.Number `json:"totalSuspendedParticulate"`
-	CO2                       domain.Number `json:"CO2"`
-	NO                        domain.Number `json:"NO"`
-	NO2                       domain.Number `json:"NO2"`
-	NOx                       domain.Number `json:"NOx"`
-	Voltage                   domain.Number `json:"voltage"`
+	AtmosphericPressure       *domain.Number `json:"atmosphericPressure"`
+	Temperature               *domain.Number `json:"temperature"`
+	RelativeHumidity          *domain.Number `json:"relativeHumidity"`
+	ParticleCount             *domain.Number `json:"particleCount"`
+	PM1                       *domain.Number `json:"PM1"`
+	PM4                       *domain.Number `json:"PM4"`
+	PM10                      *domain.Number `json:"PM10"`
+	PM25                      *domain.Number `json:"PM25"`
+	TotalSuspendedParticulate *domain.Number `json:"totalSuspendedParticulate"`
+	CO2                       *domain.Number `json:"CO2"`
+	NO                        *domain.Number `json:"NO"`
+	NO2                       *domain.Number `json:"NO2"`
+	NOx                       *domain.Number `json:"NOx"`
+	Voltage                   *domain.Number `json:"voltage"`
 }

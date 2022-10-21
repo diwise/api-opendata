@@ -4,14 +4,14 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 )
 
-// tests for aq service...
-func TestXxx(t *testing.T) {
+func TestGetByID(t *testing.T) {
 	is := is.New(t)
 	broker := setupMockServiceThatReturns(http.StatusOK, testData)
 	defer broker.Close()
@@ -26,7 +26,7 @@ func TestXxx(t *testing.T) {
 	aq, err := svc.GetByID("urn:ngsi-ld:AirQualityObserved:888100")
 	is.NoErr(err)
 
-	is.Equal(expectedOutput, string(aq))
+	is.True(strings.Contains(string(aq), "urn:ngsi-ld:AirQualityObserved:888100"))
 }
 
 func setupMockServiceThatReturns(responseCode int, body string, headers ...func(w http.ResponseWriter)) *httptest.Server {
@@ -201,5 +201,3 @@ const testData string = `[{"@context": [
 	}
   }
   ]`
-
-const expectedOutput string = ``
