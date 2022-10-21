@@ -489,6 +489,103 @@
                     }
                   }
                 }
+              },
+              "application/geo+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["FeatureCollection"]
+                    },
+                    "features": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "urn:ngsi-ld:ExerciseTrail:se:sundsvall:facilities:123"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": ["Feature"]
+                          },
+                          "geometry": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["LineString"]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "items": {
+                                  "type": "array",
+                                  "minItems": 2,
+                                  "maxItems": 3,
+                                  "items": {
+                                    "type": "number",
+                                    "description": "WGS84 longitude and latitude"
+                                  }
+                                },
+                                "example": [[17.454723, 62.266598], [17.454727, 62.266612]]
+                              }
+                            }
+                          },
+                          "properties": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["ExerciseTrail"]
+                              },
+                              "name": {
+                                "type": "string",
+                                "example": "Hotellslingan 5K"
+                              },
+                              "categories": {
+                                "type": "array",
+                                "description": "List of exercise trail categories",
+                                "items": {
+                                  "type": "string",
+                                  "enum": ["bike-track", "floodlit", "ice-skating", "ski-classic", "ski-skate"]
+                                },
+                                "example":  ["floodlit", "ski-classic"]
+                              },
+                              "length": {
+                                "type": "number",
+                                "description": "The length of this trail in kilometers",
+                                "format": "float",
+                                "example": 5
+                              },
+                              "difficulty": {
+                                "type": "number",
+                                "description": "A difficulty rating in the range [0.0 1.0] where 0 is easy and 1 is very hard",
+                                "format": "float",
+                                "example": 0.5
+                              },
+                              "paymentRequired": {
+                                "type": "boolean",
+                                "description": "A value determining if payment is required to use the trail"
+                              },
+                              "status": {
+                                "type": "string",
+                                "description": "The status of this exercise trail",
+                                "enum": ["open", "closed"]
+                              },
+                              "dateLastPreparation": {
+                                "type": "string",
+                                "description": "Time of last preparation",
+                                "example": "2022-10-02T03:27:18Z"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             }
           }

@@ -98,6 +98,20 @@ func TestGetExerciseTrailAsGPX(t *testing.T) {
 	is.Equal(responseBody, expectedGPXOutput)
 }
 
+const expectedGeoJSONOutput string = `{"type":"FeatureCollection", "features": [{"type":"Feature","id":"trail0","geometry":{"type":"LineString","coordinates":[[17.313069,62.368439,32.1],[17.313284,62.368418,42.5],[17.313413,62.368416,38.7]]},"properties":{"categories":["bike-track"],"length":7,"name":"test0","type":"ExerciseTrail"}}]}`
+
+func TestGetExerciseTrailAsGeoJSON(t *testing.T) {
+	is, r, ts := setupTest(t)
+
+	svc := defaultTrailsMock()
+
+	r.Get("/exercisetrails", NewRetrieveExerciseTrailsHandler(zerolog.Logger{}, svc))
+	response, responseBody := newGetRequest(is, ts, "application/geo+json", "/exercisetrails", nil)
+
+	is.Equal(response.StatusCode, http.StatusOK) // response status should be 200 OK
+	is.Equal(responseBody, expectedGeoJSONOutput)
+}
+
 func defaultTrailsMock() *services.ExerciseTrailServiceMock {
 	trail0 := domain.ExerciseTrail{
 		ID:          "trail0",
