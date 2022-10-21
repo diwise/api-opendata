@@ -56,24 +56,29 @@ type AirQuality struct {
 }
 
 type AirQualityDetails struct {
-	ID                        string  `json:"id"`
-	Location                  Point   `json:"location"`
-	AtmosphericPressure       float64 `json:"atmosphericPressure"`
-	Temperature               float64 `json:"temperature"`
-	RelativeHumidity          float64 `json:"relativeHumidity"`
-	ParticleCount             float64 `json:"particleCount"`
-	PM1                       float64 `json:"PM1"`
-	PM4                       float64 `json:"PM4"`
-	PM10                      float64 `json:"PM10"`
-	PM25                      float64 `json:"PM25"`
-	TotalSuspendedParticulate float64 `json:"totalSuspendedParticulate"`
-	CO2                       float64 `json:"CO2"`
-	NO                        float64 `json:"NO"`
-	NO2                       float64 `json:"NO2"`
-	NOx                       float64 `json:"NOx"`
-	Voltage                   float64 `json:"voltage"`
+	ID                        string `json:"id"`
+	Location                  Point  `json:"location"`
+	AtmosphericPressure       Number `json:"atmosphericPressure,omitempty"`
+	Temperature               Number `json:"temperature,omitempty"`
+	RelativeHumidity          Number `json:"relativeHumidity,omitempty"`
+	ParticleCount             Number `json:"particleCount,omitempty"`
+	PM1                       Number `json:"PM1,omitempty"`
+	PM4                       Number `json:"PM4,omitempty"`
+	PM10                      Number `json:"PM10,omitempty"`
+	PM25                      Number `json:"PM25,omitempty"`
+	TotalSuspendedParticulate Number `json:"totalSuspendedParticulate,omitempty"`
+	CO2                       Number `json:"CO2,omitempty"`
+	NO                        Number `json:"NO,omitempty"`
+	NO2                       Number `json:"NO2,omitempty"`
+	NOx                       Number `json:"NOx,omitempty"`
+	Voltage                   Number `json:"voltage,omitempty"`
 }
 
+type Number struct {
+	Type     string  `json:"type"`
+	Value    float64 `json:"value"`
+	UnitCode string  `json:"unitCode"`
+}
 type Beach struct {
 	ID           string        `json:"id"`
 	Name         string        `json:"name"`
