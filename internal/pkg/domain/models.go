@@ -51,8 +51,9 @@ type Organization struct {
 }
 
 type AirQuality struct {
-	ID       string        `json:"id"`
-	Location LocationPoint `json:"location"`
+	ID           string        `json:"id"`
+	Location     LocationPoint `json:"location"`
+	DateObserved DateTime      `json:"dateObserved"`
 }
 
 type LocationPoint struct {
@@ -63,6 +64,7 @@ type LocationPoint struct {
 type AirQualityDetails struct {
 	ID                        string        `json:"id"`
 	Location                  LocationPoint `json:"location"`
+	DateObserved              DateTime      `json:"dateObserved"`
 	AtmosphericPressure       *Number       `json:"atmosphericPressure,omitempty"`
 	Temperature               *Number       `json:"temperature,omitempty"`
 	RelativeHumidity          *Number       `json:"relativeHumidity,omitempty"`

@@ -136,9 +136,11 @@ func (svc *aqsvc) refresh() error {
 	airqualities := []domain.AirQuality{}
 
 	err = svc.getAirQualitiesFromContextBroker(ctx, func(a airqualityDTO) {
+
 		details := domain.AirQualityDetails{
 			ID:                        a.ID,
 			Location:                  a.Location,
+			DateObserved:              a.DateObserved,
 			AtmosphericPressure:       a.AtmosphericPressure,
 			Temperature:               a.Temperature,
 			RelativeHumidity:          a.RelativeHumidity,
@@ -154,7 +156,7 @@ func (svc *aqsvc) refresh() error {
 			NOx:                       a.NOx,
 		}
 
-		jsonBytes, err := json.MarshalIndent(details, "  ", "  ")
+		jsonBytes, err := json.Marshal(details)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to marshal air quality to json")
 			return
@@ -163,8 +165,9 @@ func (svc *aqsvc) refresh() error {
 		svc.storeAirQualityDetails(a.ID, jsonBytes)
 
 		aq := domain.AirQuality{
-			ID:       a.ID,
-			Location: details.Location,
+			ID:           a.ID,
+			Location:     details.Location,
+			DateObserved: details.DateObserved,
 		}
 
 		airqualities = append(airqualities, aq)
@@ -174,7 +177,7 @@ func (svc *aqsvc) refresh() error {
 		return err
 	}
 
-	jsonBytes, err := json.MarshalIndent(airqualities, "  ", "  ")
+	jsonBytes, err := json.Marshal(airqualities)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to marshal air qualities to json")
 		return err
@@ -208,7 +211,7 @@ func (svc *aqsvc) getAirQualitiesFromContextBroker(ctx context.Context, callback
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, svc.contextBrokerURL+"/ngsi-ld/v1/entities?type=AirQualityObserved&limit=100&options=keyValues", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, svc.contextBrokerURL+"/ngsi-ld/v1/entities?type=AirQualityObserved&limit=1000&options=keyValues", nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %s", err.Error())
 	}
@@ -264,18 +267,19 @@ type airqualityDTO struct {
 		Type  string       `json:"type"`
 		Value domain.Point `json:"value"`
 	} `json:"location"`
-	AtmosphericPressure       *domain.Number `json:"atmosphericPressure"`
-	Temperature               *domain.Number `json:"temperature"`
-	RelativeHumidity          *domain.Number `json:"relativeHumidity"`
-	ParticleCount             *domain.Number `json:"particleCount"`
-	PM1                       *domain.Number `json:"PM1"`
-	PM4                       *domain.Number `json:"PM4"`
-	PM10                      *domain.Number `json:"PM10"`
-	PM25                      *domain.Number `json:"PM25"`
-	TotalSuspendedParticulate *domain.Number `json:"totalSuspendedParticulate"`
-	CO2                       *domain.Number `json:"CO2"`
-	NO                        *domain.Number `json:"NO"`
-	NO2                       *domain.Number `json:"NO2"`
-	NOx                       *domain.Number `json:"NOx"`
-	Voltage                   *domain.Number `json:"voltage"`
+	DateObserved              domain.DateTime `json:"dateObserved"`
+	AtmosphericPressure       *domain.Number  `json:"atmosphericPressure"`
+	Temperature               *domain.Number  `json:"temperature"`
+	RelativeHumidity          *domain.Number  `json:"relativeHumidity"`
+	ParticleCount             *domain.Number  `json:"particleCount"`
+	PM1                       *domain.Number  `json:"PM1"`
+	PM4                       *domain.Number  `json:"PM4"`
+	PM10                      *domain.Number  `json:"PM10"`
+	PM25                      *domain.Number  `json:"PM25"`
+	TotalSuspendedParticulate *domain.Number  `json:"totalSuspendedParticulate"`
+	CO2                       *domain.Number  `json:"CO2"`
+	NO                        *domain.Number  `json:"NO"`
+	NO2                       *domain.Number  `json:"NO2"`
+	NOx                       *domain.Number  `json:"NOx"`
+	Voltage                   *domain.Number  `json:"voltage"`
 }
