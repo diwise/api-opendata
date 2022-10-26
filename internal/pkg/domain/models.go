@@ -81,9 +81,32 @@ type ExerciseTrail struct {
 	AreaServed          string     `json:"areaServed"`
 }
 
+type MultiPolygon struct {
+	Lines [][][][]float64
+}
+
 type Sensor struct {
 	Id           string
 	Temperatures []Temperature
+}
+
+type SportsField struct {
+	Name             string
+	Category         []string
+	Geometry         MultiPolygon
+	DateLastPrepared DateTime
+}
+
+type SportsFieldDetails struct {
+	ID               string
+	Name             string
+	Description      string
+	Category         []string
+	Geometry         MultiPolygon
+	DateCreated      DateTime
+	DateModified     DateTime
+	DateLastPrepared DateTime
+	Source           string
 }
 
 type Temperature struct {
