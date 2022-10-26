@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsfields"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -38,14 +37,6 @@ func NewRetrieveSportsFieldByIDHandler(logger zerolog.Logger, sfsvc sportsfields
 			return
 		}
 
-		const gpxContentType string = "application/gpx+xml"
-
-		acceptedContentType := "application/json"
-		acceptHeader := r.Header["Accept"][0]
-		if acceptHeader != "" && strings.HasPrefix(acceptHeader, gpxContentType) {
-			acceptedContentType = gpxContentType
-		}
-
 		responseBody, err := json.Marshal(sportsfield)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to marshal sportsfield to json")
@@ -55,7 +46,7 @@ func NewRetrieveSportsFieldByIDHandler(logger zerolog.Logger, sfsvc sportsfields
 
 		responseBody = []byte("{\"data\":" + string(responseBody) + "}")
 
-		w.Header().Add("Content-Type", acceptedContentType)
+		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=600")
 		w.Write(responseBody)
 	})
