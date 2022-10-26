@@ -15,7 +15,6 @@ import (
 
 func NewRetrieveSportsFieldByIDHandler(logger zerolog.Logger, sfsvc sportsfields.SportsFieldService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 		var err error
 		ctx, span := tracer.Start(r.Context(), "retrieve-sportsfield-by-id")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
@@ -31,7 +30,6 @@ func NewRetrieveSportsFieldByIDHandler(logger zerolog.Logger, sfsvc sportsfields
 		}
 
 		sportsfield, err := sfsvc.GetByID(sportsfieldID)
-
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -54,7 +52,16 @@ func NewRetrieveSportsFieldByIDHandler(logger zerolog.Logger, sfsvc sportsfields
 
 func NewRetrieveSportsFieldsHandler(logger zerolog.Logger, sfsvc sportsfields.SportsFieldService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		_, span := tracer.Start(r.Context(), "retrieve-sports-fields")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		//todo
+		body := sfsvc.GetAll()
+
+		sfJSON := "{\n  \"data\": " + string(body) + "\n}"
+
+		w.Header().Add("Content-Type", "application/json")
+		w.Header().Add("Cache-Control", "max-age=3600")
+		w.Write([]byte(sfJSON))
 	})
 }
