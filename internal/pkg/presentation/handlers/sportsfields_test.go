@@ -8,6 +8,7 @@ import (
 
 	services "github.com/diwise/api-opendata/internal/pkg/application/services/sportsfields"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
+	"github.com/rs/zerolog"
 )
 
 func TestInvokeSportsFieldsHandler(t *testing.T) {
@@ -27,15 +28,19 @@ func TestInvokeSportsFieldsHandler(t *testing.T) {
 }
 
 func TestInvokeSportsFieldsByIDHandler(t *testing.T) {
-	is, log, rw := setup(t)
+	is, r, ts := setupTest(t)
 	svc := defaultSportsFieldsMock()
-	req, err := http.NewRequest("GET", "/test0", nil)
-	is.NoErr(err)
+	oldfunc := svc.GetByIDFunc
+	svc.GetByIDFunc = func(id string) ([]byte, error) {
+		is.Equal(id, "test0")
+		return oldfunc(id)
+	}
 
-	NewRetrieveSportsFieldByIDHandler(log, svc).ServeHTTP(rw, req)
+	r.Get("/{id}", NewRetrieveSportsFieldByIDHandler(zerolog.Logger{}, svc))
+	response, _ := newGetRequest(is, ts, "application/ld+json", "/test0", nil)
 
-	is.Equal(rw.Code, http.StatusOK)     // response status should be 200 OK
-	is.Equal(len(svc.GetByIDCalls()), 1) // GetByID should have been called once
+	is.Equal(response.StatusCode, http.StatusOK)
+	is.Equal(len(svc.GetByIDCalls()), 1)
 }
 
 func defaultSportsFieldsMock() *services.SportsFieldServiceMock {
