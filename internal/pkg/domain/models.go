@@ -82,7 +82,8 @@ type ExerciseTrail struct {
 }
 
 type MultiPolygon struct {
-	Lines [][][][]float64
+	Type  string          `json:"type"`
+	Lines [][][][]float64 `json:"coordinates"`
 }
 
 type Sensor struct {
@@ -91,22 +92,32 @@ type Sensor struct {
 }
 
 type SportsField struct {
-	Name             string
-	Category         []string
-	Geometry         MultiPolygon
-	DateLastPrepared DateTime
+	Name             string       `json:"name"`
+	Categories       []string     `json:"categories"`
+	Geometry         MultiPolygon `json:"geometry"`
+	DateLastPrepared *string      `json:"dateLastPrepared,omitempty"`
 }
 
 type SportsFieldDetails struct {
-	ID               string
-	Name             string
-	Description      string
-	Category         []string
-	Geometry         MultiPolygon
-	DateCreated      DateTime
-	DateModified     DateTime
-	DateLastPrepared DateTime
-	Source           string
+	ID               string       `json:"id"`
+	Name             string       `json:"name"`
+	Description      string       `json:"description"`
+	Categories       []string     `json:"categories"`
+	Geometry         MultiPolygon `json:"geometry"`
+	DateCreated      *string      `json:"dateCreated,omitempty"`
+	DateModified     *string      `json:"dateModified,omitempty"`
+	DateLastPrepared *string      `json:"dateLastPrepared,omitempty"`
+	Source           Text         `json:"source"`
+}
+
+type Text struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+type TextList struct {
+	Type  string   `json:"type"`
+	Value []string `json:"value"`
 }
 
 type Temperature struct {
