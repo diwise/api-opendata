@@ -99,6 +99,7 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	roadAccidentSvc.Start()
 
 	sportsfieldsSvc := sportsfields.NewSportsFieldService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
+	sportsfieldsSvc.Start()
 
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
 
