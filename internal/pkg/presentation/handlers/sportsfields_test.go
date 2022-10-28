@@ -70,8 +70,8 @@ func defaultSportsFieldsMock() *services.SportsFieldServiceMock {
 				},
 			},
 		},
-		DateLastPrepared: &dlp,
-		Description:      "cool description",
+		DateLastPreparation: &dlp,
+		Description:         "cool description",
 	}
 	sf1 := domain.SportsField{
 		ID:         "id1",
@@ -87,8 +87,8 @@ func defaultSportsFieldsMock() *services.SportsFieldServiceMock {
 				},
 			},
 		},
-		DateLastPrepared: &dlp,
-		Description:      "even cooler description",
+		DateLastPreparation: &dlp,
+		Description:         "even cooler description",
 	}
 
 	list := []domain.SportsField{}

@@ -151,8 +151,8 @@ func (svc *sportsfieldSvc) refresh() error {
 		if sf.DateModified != nil {
 			sportsfield.DateModified = &sf.DateModified.Value.Value
 		}
-		if sf.DateLastPrepared != nil {
-			sportsfield.DateLastPrepared = &sf.DateLastPrepared.Value.Value
+		if sf.DateLastPreparation != nil {
+			sportsfield.DateLastPreparation = &sf.DateLastPreparation.Value.Value
 		}
 
 		sportsfields = append(sportsfields, sportsfield)
@@ -238,15 +238,15 @@ func (svc *sportsfieldSvc) storeSportsFieldList(list []domain.SportsField) {
 }
 
 type sportsFieldsDTO struct {
-	ID               string          `json:"id"`
-	Name             domain.Text     `json:"name"`
-	Description      domain.Text     `json:"description"`
-	Category         domain.TextList `json:"category"`
-	Location         Location        `json:"location"`
-	DateCreated      *DateTime       `json:"dateCreated"`
-	DateModified     *DateTime       `json:"dateModified,omitempty"`
-	DateLastPrepared *DateTime       `json:"dateLastPrepared,omitempty"`
-	Source           domain.Text     `json:"source"`
+	ID                  string          `json:"id"`
+	Name                domain.Text     `json:"name"`
+	Description         domain.Text     `json:"description"`
+	Category            domain.TextList `json:"category"`
+	Location            Location        `json:"location"`
+	DateCreated         *DateTime       `json:"dateCreated"`
+	DateModified        *DateTime       `json:"dateModified,omitempty"`
+	DateLastPreparation *DateTime       `json:"dateLastPreparation,omitempty"`
+	Source              domain.Text     `json:"source"`
 }
 
 type Location struct {

@@ -92,15 +92,15 @@ type Sensor struct {
 }
 
 type SportsField struct {
-	ID               string       `json:"id"`
-	Name             string       `json:"name"`
-	Description      string       `json:"description"`
-	Categories       []string     `json:"categories"`
-	Location         MultiPolygon `json:"location"`
-	DateCreated      *string      `json:"dateCreated,omitempty"`
-	DateModified     *string      `json:"dateModified,omitempty"`
-	DateLastPrepared *string      `json:"dateLastPrepared,omitempty"`
-	Source           Text         `json:"source"`
+	ID                  string       `json:"id"`
+	Name                string       `json:"name"`
+	Description         string       `json:"description"`
+	Categories          []string     `json:"categories"`
+	Location            MultiPolygon `json:"location"`
+	DateCreated         *string      `json:"dateCreated,omitempty"`
+	DateModified        *string      `json:"dateModified,omitempty"`
+	DateLastPreparation *string      `json:"dateLastPreparation,omitempty"`
+	Source              Text         `json:"source"`
 }
 
 type Text struct {

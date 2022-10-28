@@ -197,8 +197,8 @@ func newSportsFieldsMapper(fields []string, location func(*domain.SportsField) a
 		"description": func(sf *domain.SportsField) (string, any) { return "description", sf.Description },
 		"location":    func(sf *domain.SportsField) (string, any) { return "location", location(sf) },
 		"categories":  func(sf *domain.SportsField) (string, any) { return "categories", sf.Categories },
-		"dateLastPrepared": func(sf *domain.SportsField) (string, any) {
-			return "dateLastPrepared", omitempty(*sf.DateLastPrepared)
+		"datelastpreparation": func(sf *domain.SportsField) (string, any) {
+			return "datelastpreparation", omitempty(*sf.DateLastPreparation)
 		},
 		"source": func(t *domain.SportsField) (string, any) { return "source", t.Source },
 	}
