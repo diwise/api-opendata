@@ -142,7 +142,7 @@ func (svc *sportsfieldSvc) refresh() error {
 			Description: sf.Description.Value,
 			Categories:  sf.Category.Value,
 			Location:    sf.Location.Value,
-			Source:      sf.Source,
+			Source:      sf.Source.Value,
 		}
 
 		if sf.DateCreated != nil {

@@ -100,7 +100,7 @@ type SportsField struct {
 	DateCreated         *string      `json:"dateCreated,omitempty"`
 	DateModified        *string      `json:"dateModified,omitempty"`
 	DateLastPreparation *string      `json:"dateLastPreparation,omitempty"`
-	Source              Text         `json:"source"`
+	Source              string       `json:"source"`
 }
 
 type Text struct {
