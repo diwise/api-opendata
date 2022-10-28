@@ -182,6 +182,7 @@ func (svc *sportsfieldSvc) getSportsFieldsFromContextBroker(ctx context.Context,
 		return fmt.Errorf("failed to create request: %s", err.Error())
 	}
 
+	req.Header.Add("Accept", "application/ld+json")
 	req.Header.Add("Link", entities.LinkHeader)
 
 	if svc.tenant != DefaultBrokerTenant {
