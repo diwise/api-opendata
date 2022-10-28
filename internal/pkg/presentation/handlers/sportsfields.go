@@ -101,7 +101,7 @@ func NewRetrieveSportsFieldsHandler(logger zerolog.Logger, sfsvc sportsfields.Sp
 			w.Write([]byte(response))
 		} else {
 			locationMapper := func(t *domain.SportsField) any {
-				return domain.NewPoint(t.Location.Lines[0][0][0][1], t.Location.Lines[0][0][0][0])
+				return domain.NewPoint(t.Location.Coordinates[0][0][0][1], t.Location.Coordinates[0][0][0][0])
 			}
 
 			fields := append([]string{"id", "name", "categories"}, fields...)
@@ -195,7 +195,7 @@ func newSportsFieldsMapper(fields []string, location func(*domain.SportsField) a
 		"type":        func(sf *domain.SportsField) (string, any) { return "type", "SportsField" },
 		"name":        func(sf *domain.SportsField) (string, any) { return "name", sf.Name },
 		"description": func(sf *domain.SportsField) (string, any) { return "description", sf.Description },
-		"geometry":    func(sf *domain.SportsField) (string, any) { return "geometry", location(sf) },
+		"location":    func(sf *domain.SportsField) (string, any) { return "location", location(sf) },
 		"categories":  func(sf *domain.SportsField) (string, any) { return "categories", sf.Categories },
 		"dateLastPrepared": func(sf *domain.SportsField) (string, any) {
 			return "dateLastPrepared", omitempty(*sf.DateLastPrepared)

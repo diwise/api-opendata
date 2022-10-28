@@ -82,8 +82,8 @@ type ExerciseTrail struct {
 }
 
 type MultiPolygon struct {
-	Type  string          `json:"type"`
-	Lines [][][][]float64 `json:"coordinates"`
+	Type        string          `json:"type"`
+	Coordinates [][][][]float64 `json:"coordinates"`
 }
 
 type Sensor struct {

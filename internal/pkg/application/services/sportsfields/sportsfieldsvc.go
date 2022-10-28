@@ -230,6 +230,11 @@ func (svc *sportsfieldSvc) storeSportsFieldList(list []domain.SportsField) {
 	defer svc.sportsfieldsMutex.Unlock()
 
 	svc.sportsfields = list
+	svc.sportsfieldsDetails = map[string]int{}
+
+	for index := range list {
+		svc.sportsfieldsDetails[list[index].ID] = index
+	}
 }
 
 type sportsFieldsDTO struct {
