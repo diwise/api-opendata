@@ -30,8 +30,8 @@ type SportsFieldService interface {
 	Broker() string
 	Tenant() string
 
-	GetAll() []byte
-	GetByID(id string) ([]byte, error)
+	GetAll() []domain.SportsField
+	GetByID(id string) (*domain.SportsField, error)
 
 	Start()
 	Shutdown()
@@ -40,8 +40,8 @@ type SportsFieldService interface {
 func NewSportsFieldService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string) SportsFieldService {
 	svc := &sportsfieldSvc{
 		ctx:                 ctx,
-		sportsfields:        []byte{},
-		sportsfieldsDetails: map[string][]byte{},
+		sportsfields:        []domain.SportsField{},
+		sportsfieldsDetails: map[string]int{},
 		contextBrokerURL:    contextBrokerURL,
 		tenant:              tenant,
 		log:                 logger,
@@ -54,8 +54,8 @@ func NewSportsFieldService(ctx context.Context, logger zerolog.Logger, contextBr
 type sportsfieldSvc struct {
 	ctx                 context.Context
 	sportsfieldsMutex   sync.Mutex
-	sportsfields        []byte
-	sportsfieldsDetails map[string][]byte
+	sportsfields        []domain.SportsField
+	sportsfieldsDetails map[string]int
 	contextBrokerURL    string
 	tenant              string
 	log                 zerolog.Logger
@@ -70,27 +70,27 @@ func (svc *sportsfieldSvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *sportsfieldSvc) GetAll() []byte {
+func (svc *sportsfieldSvc) GetAll() []domain.SportsField {
 	svc.sportsfieldsMutex.Lock()
 	defer svc.sportsfieldsMutex.Unlock()
 
 	return svc.sportsfields
 }
 
-func (svc *sportsfieldSvc) GetByID(id string) ([]byte, error) {
+func (svc *sportsfieldSvc) GetByID(id string) (*domain.SportsField, error) {
 	svc.sportsfieldsMutex.Lock()
 	defer svc.sportsfieldsMutex.Unlock()
 
-	body, ok := svc.sportsfieldsDetails[id]
+	index, ok := svc.sportsfieldsDetails[id]
 	if !ok {
-		return nil, fmt.Errorf("no such sports field")
+		return nil, fmt.Errorf("no such sportsfield")
 	}
 
-	return body, nil
+	return &svc.sportsfields[index], nil
 }
 
 func (svc *sportsfieldSvc) Start() {
-	svc.log.Info().Msg("starting sports fields service")
+	svc.log.Info().Msg("starting sportsfields service")
 	// TODO: Prevent multiple starts on the same service
 	go svc.run()
 }
@@ -105,11 +105,11 @@ func (svc *sportsfieldSvc) run() {
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing sports field info")
+			svc.log.Info().Msg("refreshing sportsfield info")
 			err := svc.refresh()
 
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh sports fields")
+				svc.log.Error().Err(err).Msg("failed to refresh sportsfields")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
@@ -122,7 +122,7 @@ func (svc *sportsfieldSvc) run() {
 		time.Sleep(1 * time.Second)
 	}
 
-	svc.log.Info().Msg("sports fields service exiting")
+	svc.log.Info().Msg("sportsfields service exiting")
 }
 
 func (svc *sportsfieldSvc) refresh() error {
@@ -136,55 +136,34 @@ func (svc *sportsfieldSvc) refresh() error {
 
 	err = svc.getSportsFieldsFromContextBroker(ctx, func(sf sportsFieldsDTO) {
 
-		details := domain.SportsFieldDetails{
+		sportsfield := domain.SportsField{
 			ID:          sf.ID,
 			Name:        sf.Name.Value,
 			Description: sf.Description.Value,
 			Categories:  sf.Category.Value,
-			Geometry:    sf.Location.Value,
+			Location:    sf.Location.Value,
 			Source:      sf.Source,
 		}
 
 		if sf.DateCreated != nil {
-			details.DateCreated = &sf.DateCreated.Value.Value
+			sportsfield.DateCreated = &sf.DateCreated.Value.Value
 		}
 		if sf.DateModified != nil {
-			details.DateModified = &sf.DateModified.Value.Value
+			sportsfield.DateModified = &sf.DateModified.Value.Value
 		}
 		if sf.DateLastPrepared != nil {
-			details.DateLastPrepared = &sf.DateLastPrepared.Value.Value
+			sportsfield.DateLastPrepared = &sf.DateLastPrepared.Value.Value
 		}
 
-		jsonBytes, err := json.Marshal(details)
-		if err != nil {
-			logger.Error().Err(err).Msg("failed to marshal sports field details to json")
-			return
-		}
-		fmt.Printf("sportsfields details: %s", string(jsonBytes))
-
-		svc.storeSportsFieldDetails(sf.ID, jsonBytes)
-
-		sportfield := domain.SportsField{
-			Name:             sf.Name.Value,
-			Categories:       sf.Category.Value,
-			Geometry:         details.Geometry,
-			DateLastPrepared: details.DateLastPrepared,
-		}
-
-		sportsfields = append(sportsfields, sportfield)
+		sportsfields = append(sportsfields, sportsfield)
 	})
+
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to retrieve sports fields from context broker")
 		return err
 	}
 
-	jsonBytes, err := json.Marshal(sportsfields)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to marshal sports fields to json")
-		return err
-	}
-
-	svc.storeSportsFieldList(jsonBytes)
+	svc.storeSportsFieldList(sportsfields)
 
 	return err
 }
@@ -246,18 +225,11 @@ func (svc *sportsfieldSvc) getSportsFieldsFromContextBroker(ctx context.Context,
 	return nil
 }
 
-func (svc *sportsfieldSvc) storeSportsFieldDetails(id string, body []byte) {
+func (svc *sportsfieldSvc) storeSportsFieldList(list []domain.SportsField) {
 	svc.sportsfieldsMutex.Lock()
 	defer svc.sportsfieldsMutex.Unlock()
 
-	svc.sportsfieldsDetails[id] = body
-}
-
-func (svc *sportsfieldSvc) storeSportsFieldList(body []byte) {
-	svc.sportsfieldsMutex.Lock()
-	defer svc.sportsfieldsMutex.Unlock()
-
-	svc.sportsfields = body
+	svc.sportsfields = list
 }
 
 type sportsFieldsDTO struct {

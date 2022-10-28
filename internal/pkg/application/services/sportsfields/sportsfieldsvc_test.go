@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 )
@@ -27,7 +26,9 @@ func TestExpectedOutputOfGetByID(t *testing.T) {
 	sportsfield, err := svc.GetByID("urn:ngsi-ld:SportsField:se:sundsvall:facilities:796")
 	is.NoErr(err)
 
-	is.Equal(expectedOutput, string(sportsfield))
+	sportsfieldJSON, err := json.Marshal(sportsfield)
+
+	is.Equal(expectedOutput, string(sportsfieldJSON))
 }
 
 func TestExpectedOutputOfGetAll(t *testing.T) {
@@ -42,11 +43,7 @@ func TestExpectedOutputOfGetAll(t *testing.T) {
 	err := svc.refresh()
 	is.NoErr(err)
 
-	sportsfields := []domain.SportsField{}
-
-	body := svc.GetAll()
-	err = json.Unmarshal(body, &sportsfields)
-	is.NoErr(err)
+	sportsfields := svc.GetAll()
 
 	is.Equal(len(sportsfields), 1)
 }

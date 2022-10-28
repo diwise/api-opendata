@@ -4,6 +4,7 @@
 package sportsfields
 
 import (
+	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"sync"
 )
 
@@ -20,10 +21,10 @@ var _ SportsFieldService = &SportsFieldServiceMock{}
 // 			BrokerFunc: func() string {
 // 				panic("mock out the Broker method")
 // 			},
-// 			GetAllFunc: func() []byte {
+// 			GetAllFunc: func() []domain.SportsField {
 // 				panic("mock out the GetAll method")
 // 			},
-// 			GetByIDFunc: func(id string) ([]byte, error) {
+// 			GetByIDFunc: func(id string) (*domain.SportsField, error) {
 // 				panic("mock out the GetByID method")
 // 			},
 // 			ShutdownFunc: func()  {
@@ -46,10 +47,10 @@ type SportsFieldServiceMock struct {
 	BrokerFunc func() string
 
 	// GetAllFunc mocks the GetAll method.
-	GetAllFunc func() []byte
+	GetAllFunc func() []domain.SportsField
 
 	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(id string) ([]byte, error)
+	GetByIDFunc func(id string) (*domain.SportsField, error)
 
 	// ShutdownFunc mocks the Shutdown method.
 	ShutdownFunc func()
@@ -118,7 +119,7 @@ func (mock *SportsFieldServiceMock) BrokerCalls() []struct {
 }
 
 // GetAll calls GetAllFunc.
-func (mock *SportsFieldServiceMock) GetAll() []byte {
+func (mock *SportsFieldServiceMock) GetAll() []domain.SportsField {
 	if mock.GetAllFunc == nil {
 		panic("SportsFieldServiceMock.GetAllFunc: method is nil but SportsFieldService.GetAll was just called")
 	}
@@ -144,7 +145,7 @@ func (mock *SportsFieldServiceMock) GetAllCalls() []struct {
 }
 
 // GetByID calls GetByIDFunc.
-func (mock *SportsFieldServiceMock) GetByID(id string) ([]byte, error) {
+func (mock *SportsFieldServiceMock) GetByID(id string) (*domain.SportsField, error) {
 	if mock.GetByIDFunc == nil {
 		panic("SportsFieldServiceMock.GetByIDFunc: method is nil but SportsFieldService.GetByID was just called")
 	}
