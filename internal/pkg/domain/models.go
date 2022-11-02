@@ -103,16 +103,6 @@ type SportsField struct {
 	Source              string       `json:"source"`
 }
 
-type Text struct {
-	Type  string `json:"type"`
-	Value string `json:"value"`
-}
-
-type TextList struct {
-	Type  string   `json:"type"`
-	Value []string `json:"value"`
-}
-
 type Temperature struct {
 	Id      string
 	Average *float64
