@@ -138,21 +138,21 @@ func (svc *sportsfieldSvc) refresh() error {
 
 		sportsfield := domain.SportsField{
 			ID:          sf.ID,
-			Name:        sf.Name.Value,
-			Description: sf.Description.Value,
-			Categories:  sf.Category.Value,
-			Location:    sf.Location.Value,
-			Source:      sf.Source.Value,
+			Name:        sf.Name,
+			Description: sf.Description,
+			Categories:  sf.Category,
+			Location:    sf.Location,
+			Source:      sf.Source,
 		}
 
 		if sf.DateCreated != nil {
-			sportsfield.DateCreated = &sf.DateCreated.Value.Value
+			sportsfield.DateCreated = &sf.DateCreated.Value
 		}
 		if sf.DateModified != nil {
-			sportsfield.DateModified = &sf.DateModified.Value.Value
+			sportsfield.DateModified = &sf.DateModified.Value
 		}
 		if sf.DateLastPreparation != nil {
-			sportsfield.DateLastPreparation = &sf.DateLastPreparation.Value.Value
+			sportsfield.DateLastPreparation = &sf.DateLastPreparation.Value
 		}
 
 		sportsfields = append(sportsfields, sportsfield)
@@ -239,26 +239,13 @@ func (svc *sportsfieldSvc) storeSportsFieldList(list []domain.SportsField) {
 }
 
 type sportsFieldsDTO struct {
-	ID                  string          `json:"id"`
-	Name                domain.Text     `json:"name"`
-	Description         domain.Text     `json:"description"`
-	Category            domain.TextList `json:"category"`
-	Location            Location        `json:"location"`
-	DateCreated         *DateTime       `json:"dateCreated"`
-	DateModified        *DateTime       `json:"dateModified,omitempty"`
-	DateLastPreparation *DateTime       `json:"dateLastPreparation,omitempty"`
-	Source              domain.Text     `json:"source"`
-}
-
-type Location struct {
-	Type  string              `json:"type"`
-	Value domain.MultiPolygon `json:"value"`
-}
-
-type DateTime struct {
-	Type  string `json:"type"`
-	Value struct {
-		Type  string `json:"@type"`
-		Value string `json:"@value"`
-	} `json:"value"`
+	ID                  string              `json:"id"`
+	Name                string              `json:"name"`
+	Description         string              `json:"description"`
+	Category            []string            `json:"category"`
+	Location            domain.MultiPolygon `json:"location"`
+	DateCreated         *domain.DateTime    `json:"dateCreated"`
+	DateModified        *domain.DateTime    `json:"dateModified,omitempty"`
+	DateLastPreparation *domain.DateTime    `json:"dateLastPreparation,omitempty"`
+	Source              string              `json:"source"`
 }
