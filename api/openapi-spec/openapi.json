@@ -980,16 +980,6 @@
                             "description": "The description of this sportsfield",
                             "example": "7-manna grusplan intill skolan. Vintertid spolas och snöröjs isbanan en gång i veckan."
                           },
-                          "dateCreated": {
-                            "type": "string",
-                            "description": "Time of last preparation",
-                            "example": "2022-10-02T03:27:18Z"
-                          },
-                          "dateModified": {
-                            "type": "string",
-                            "description": "Time of last preparation",
-                            "example": "2022-10-02T03:27:18Z"
-                          },
                           "dateLastPreparation": {
                             "type": "string",
                             "description": "Time of last preparation",
@@ -1033,11 +1023,18 @@
                                 "type": "array",
                                 "items": {
                                   "type": "array",
-                                  "minItems": 2,
-                                  "maxItems": 3,
                                   "items": {
-                                    "type": "number",
-                                    "description": "WGS84 longitude and latitude"
+                                    "type": "array",
+                                    "minItems": 3,
+                                    "items": {
+                                      "type": "array",
+                                      "minItems": 2,
+                                      "maxItems": 3,
+                                      "items": {
+                                        "type": "number",
+                                        "description": "WGS84 longitude and latitude"
+                                      }
+                                    }
                                   }
                                 },
                                 "example": [[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]
@@ -1058,7 +1055,7 @@
                               "source": {
                                 "type": "string",
                                 "description": "The source of the data for this sportsfield",
-                                "example": "https://api.sundsvall.se/facilities/2.1/get/796"
+                                "example": "https://api.sundsvall.se/facilities/2.1/get/123"
                               },
                               "categories": {
                                 "type": "array",
@@ -1126,17 +1123,27 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": ["Point"]
+                          "enum": ["MultiPolygon"]
                         },
                         "coordinates": {
                           "type": "array",
-                          "description": "WGS84 longitude and latitude",
-                          "minItems": 2,
-                          "maxItems": 3,
                           "items": {
-                            "type": "number"
+                            "type": "array",
+                            "items": {
+                              "type": "array",
+                              "minItems": 3,
+                              "items": {
+                                "type": "array",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number",
+                                  "description": "WGS84 longitude and latitude"
+                                }
+                              }
+                            }
                           },
-                          "example": [17.454723, 62.266598]
+                          "example": [[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]
                         }
                       }
                     },
@@ -1156,12 +1163,12 @@
                     },
                     "dateCreated": {
                       "type": "string",
-                      "description": "Time of last preparation",
+                      "description": "Time of creation",
                       "example": "2022-10-02T03:27:18Z"
                     },
                     "dateModified": {
                       "type": "string",
-                      "description": "Time of last preparation",
+                      "description": "Time of last modification",
                       "example": "2022-10-02T03:27:18Z"
                     },
                     "dateLastPreparation": {
@@ -1172,7 +1179,7 @@
                     "source": {
                       "type": "string",
                       "description": "The source of the data for this sportsfield",
-                      "example": "https://api.sundsvall.se/facilities/2.1/get/796"
+                      "example": "https://api.sundsvall.se/facilities/2.1/get/123"
                     }
                   }
                 }
