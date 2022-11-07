@@ -971,7 +971,7 @@
                             "description": "List of sportsfield categories",
                             "items": {
                               "type": "string",
-                              "enum": ["skating", "hockey", "bandy", "ice-rink"]
+                              "enum": ["bandy", "hockey", "ice-rink", "skating", "floodlit"]
                             },
                             "example":  ["floodlit", "hockey"]
                           },
@@ -1062,7 +1062,7 @@
                                 "description": "List of sportsfield categories",
                                 "items": {
                                   "type": "string",
-                                  "enum": ["hockey", "bandy", "skating"]
+                                  "enum": ["bandy", "hockey", "ice-rink", "skating", "floodlit"]
                                 },
                                 "example":  ["floodlit", "skating"]
                               },
@@ -1152,7 +1152,7 @@
                       "description": "List of sportsfield categories",
                       "items": {
                         "type": "string",
-                        "enum": ["skating", "hockey", "bandy", "ice-rink"]
+                        "enum": ["bandy", "hockey", "ice-rink", "skating", "floodlit"]
                       },
                       "example":  ["floodlit", "hockey"]
                     },
