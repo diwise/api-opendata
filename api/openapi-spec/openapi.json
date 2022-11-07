@@ -906,6 +906,289 @@
         }
       }
     },
+    "/sportsfields": {
+      "get": {
+        "operationId": "getSportsFields",
+        "description": "Get information about published sportsfields",
+        "parameters": [{
+          "in": "query",
+          "name": "fields",
+          "explode": false,
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["datelastpreparation", "description", "location", "source"]
+            }
+          },
+          "required": false,
+          "description": "Filter the returned properties per entry"
+        }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "The ID of this sportsfield",
+                            "example": "urn:ngsi-ld:SportsField:se:sundsvall:facilities:123"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "The name of this sportsfield",
+                            "example": "Skolans grusplan och isbana"
+                          },
+                          "location": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["Point"]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "description": "WGS84 longitude and latitude",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number"
+                                },
+                                "example": [17.454723, 62.266598]
+                              }
+                            }
+                          },
+                          "categories": {
+                            "type": "array",
+                            "description": "List of sportsfield categories",
+                            "items": {
+                              "type": "string",
+                              "enum": ["skating", "hockey", "bandy", "ice-rink"]
+                            },
+                            "example":  ["floodlit", "hockey"]
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "The description of this sportsfield",
+                            "example": "7-manna grusplan intill skolan. Vintertid spolas och snöröjs isbanan en gång i veckan."
+                          },
+                          "dateLastPreparation": {
+                            "type": "string",
+                            "description": "Time of last preparation",
+                            "example": "2022-10-02T03:27:18Z"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "application/geo+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["FeatureCollection"]
+                    },
+                    "features": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "urn:ngsi-ld:SportsField:se:sundsvall:facilities:123"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": ["Feature"]
+                          },
+                          "geometry": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["MultiPolygon"]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "items": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "array",
+                                    "minItems": 3,
+                                    "items": {
+                                      "type": "array",
+                                      "minItems": 2,
+                                      "maxItems": 3,
+                                      "items": {
+                                        "type": "number",
+                                        "description": "WGS84 longitude and latitude"
+                                      }
+                                    }
+                                  }
+                                },
+                                "example": [[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]
+                              }
+                            }
+                          },
+                          "properties": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["SportsField"]
+                              },
+                              "name": {
+                                "type": "string",
+                                "example": "Skolans grusplan och isbana"
+                              },
+                              "source": {
+                                "type": "string",
+                                "description": "The source of the data for this sportsfield",
+                                "example": "https://api.sundsvall.se/facilities/2.1/get/123"
+                              },
+                              "categories": {
+                                "type": "array",
+                                "description": "List of sportsfield categories",
+                                "items": {
+                                  "type": "string",
+                                  "enum": ["hockey", "bandy", "skating"]
+                                },
+                                "example":  ["floodlit", "skating"]
+                              },
+                              "dateLastPreparation": {
+                                "type": "string",
+                                "description": "Time of last preparation",
+                                "example": "2022-10-02T03:27:18Z"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sportsfields/{id}": {
+      "get": {
+        "operationId": "getSportsFieldByID",
+        "description": "Get information about a single published sportsfield",
+        "parameters": [{
+          "in": "path",
+          "name": "id",
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "required": true,
+          "description": "ID of the sportsfield to be retrieved"
+        }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "The ID of this sportsfield",
+                      "example": "urn:ngsi-ld:SportsField:se:sundsvall:facilities:123"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "The name of this sportsfield",
+                      "example": "Skolans grusplan och isbana"
+                    },
+                    "location": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": ["MultiPolygon"]
+                        },
+                        "coordinates": {
+                          "type": "array",
+                          "items": {
+                            "type": "array",
+                            "items": {
+                              "type": "array",
+                              "minItems": 3,
+                              "items": {
+                                "type": "array",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number",
+                                  "description": "WGS84 longitude and latitude"
+                                }
+                              }
+                            }
+                          },
+                          "example": [[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]
+                        }
+                      }
+                    },
+                    "categories": {
+                      "type": "array",
+                      "description": "List of sportsfield categories",
+                      "items": {
+                        "type": "string",
+                        "enum": ["skating", "hockey", "bandy", "ice-rink"]
+                      },
+                      "example":  ["floodlit", "hockey"]
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "The description of this sportsfield",
+                      "example": "7-manna grusplan intill skolan. Vintertid spolas och snöröjs isbanan en gång i veckan."
+                    },
+                    "dateCreated": {
+                      "type": "string",
+                      "description": "Time of creation",
+                      "example": "2022-10-02T03:27:18Z"
+                    },
+                    "dateModified": {
+                      "type": "string",
+                      "description": "Time of last modification",
+                      "example": "2022-10-02T03:27:18Z"
+                    },
+                    "dateLastPreparation": {
+                      "type": "string",
+                      "description": "Time of last preparation",
+                      "example": "2022-10-02T03:27:18Z"
+                    },
+                    "source": {
+                      "type": "string",
+                      "description": "The source of the data for this sportsfield",
+                      "example": "https://api.sundsvall.se/facilities/2.1/get/123"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/stratsys/publishedreports": {
       "get": {
         "operationId": "getStratsysReports",
