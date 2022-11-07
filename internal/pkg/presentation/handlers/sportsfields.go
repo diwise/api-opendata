@@ -40,7 +40,7 @@ func NewRetrieveSportsFieldByIDHandler(logger zerolog.Logger, sfsvc sportsfields
 
 		responseBody, err := json.Marshal(sportsfield)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to marshal trail to json")
+			log.Error().Err(err).Msg("failed to marshal sports field to json")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
