@@ -182,12 +182,12 @@ func marshalSportsFieldsToJSON(sportsfields []domain.SportsField, mapper SportsF
 
 func newSportsFieldsMapper(fields []string, location func(*domain.SportsField) any) SportsFieldsMapperFunc {
 
-	omitempty := func(s string) any {
-		if s == "" {
+	omitempty := func(s *string) any {
+		if s == nil || *s == "" {
 			return nil
 		}
 
-		return s
+		return *s
 	}
 
 	mappers := map[string]func(*domain.SportsField) (string, any){
@@ -199,7 +199,7 @@ func newSportsFieldsMapper(fields []string, location func(*domain.SportsField) a
 		"categories":  func(sf *domain.SportsField) (string, any) { return "categories", sf.Categories },
 		"datecreated": func(sf *domain.SportsField) (string, any) { return "dateCreated", *sf.DateCreated },
 		"datelastpreparation": func(sf *domain.SportsField) (string, any) {
-			return "dateLastPreparation", omitempty(*sf.DateLastPreparation)
+			return "dateLastPreparation", omitempty(sf.DateLastPreparation)
 		},
 		"datemodified": func(sf *domain.SportsField) (string, any) { return "dateModified", *sf.DateModified },
 		"source":       func(t *domain.SportsField) (string, any) { return "source", t.Source },
