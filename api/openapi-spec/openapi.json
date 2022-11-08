@@ -401,7 +401,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["areaserved", "datelastpreparation", "description", "difficulty", "location", "source", "status"]
+              "enum": ["areaserved", "datelastpreparation", "description", "difficulty", "location", "paymentrequired", "source", "status"]
             }
           },
           "required": false,
