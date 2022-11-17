@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math"
 	"net/http"
 	"net/http/httputil"
@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
+	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -25,10 +26,6 @@ import (
 )
 
 var tracer = otel.Tracer("api-opendata/svcs/beaches")
-
-const (
-	DefaultBrokerTenant string = "default"
-)
 
 type BeachService interface {
 	Broker() string
@@ -115,13 +112,14 @@ func (svc *beachSvc) run() {
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
 			svc.log.Info().Msg("refreshing beach info")
-			err := svc.refresh()
+			count, err := svc.refresh()
 
 			if err != nil {
 				svc.log.Error().Err(err).Msg("failed to refresh beaches")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
+				svc.log.Info().Msgf("refreshed %d beaches", count)
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
 			}
@@ -134,8 +132,8 @@ func (svc *beachSvc) run() {
 	svc.log.Info().Msg("beach service exiting")
 }
 
-func (svc *beachSvc) refresh() error {
-	var err error
+func (svc *beachSvc) refresh() (count int, err error) {
+
 	ctx, span := tracer.Start(svc.ctx, "refresh-beaches")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
@@ -143,7 +141,7 @@ func (svc *beachSvc) refresh() error {
 
 	beaches := []domain.Beach{}
 
-	err = svc.getBeachesFromContextBroker(ctx, func(b beachDTO) {
+	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "Beach", nil, func(b beachDTO) {
 		latitude, longitude := b.LatLon()
 
 		details := domain.BeachDetails{
@@ -158,16 +156,16 @@ func (svc *beachSvc) refresh() error {
 			details.SeeAlso = &seeAlso
 		}
 
-		wqo, err := svc.getWaterQualitiesNearBeach(ctx, latitude, longitude)
-		if err != nil {
-			logger.Error().Err(err).Msgf("failed to get water qualities near %s (%s)", b.Name, b.ID)
+		wqo, err_ := svc.getWaterQualitiesNearBeach(ctx, latitude, longitude)
+		if err_ != nil {
+			logger.Error().Err(err_).Msgf("failed to get water qualities near %s (%s)", b.Name, b.ID)
 		} else {
 			details.WaterQuality = &wqo
 		}
 
-		jsonBytes, err := json.MarshalIndent(details, "  ", "  ")
-		if err != nil {
-			logger.Error().Err(err).Msg("failed to marshal beach to json")
+		jsonBytes, err_ := json.MarshalIndent(details, "  ", "  ")
+		if err_ != nil {
+			err = fmt.Errorf("failed to marshal beach to json: %w", err_)
 			return
 		}
 
@@ -189,19 +187,19 @@ func (svc *beachSvc) refresh() error {
 		beaches = append(beaches, beach)
 	})
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to retrieve beaches from context broker")
-		return err
+		err = fmt.Errorf("failed to retrieve beaches from context broker: %w", err)
+		return
 	}
 
-	jsonBytes, err := json.MarshalIndent(beaches, "  ", "  ")
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to marshal beaches to json")
-		return err
+	jsonBytes, err_ := json.MarshalIndent(beaches, "  ", "  ")
+	if err_ != nil {
+		err = fmt.Errorf("failed to marshal beaches to json: %w", err_)
+		return
 	}
 
 	svc.storeBeachList(jsonBytes)
 
-	return err
+	return
 }
 
 func (svc *beachSvc) storeBeachDetails(id string, body []byte) {
@@ -216,65 +214,6 @@ func (svc *beachSvc) storeBeachList(body []byte) {
 	defer svc.beachMutex.Unlock()
 
 	svc.beaches = body
-}
-
-func (svc *beachSvc) getBeachesFromContextBroker(ctx context.Context, callback func(b beachDTO)) error {
-	var err error
-
-	logger := logging.GetFromContext(ctx)
-
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, svc.contextBrokerURL+"/ngsi-ld/v1/entities?type=Beach&limit=100&options=keyValues", nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %s", err.Error())
-	}
-
-	req.Header.Add("Accept", "application/ld+json")
-	linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
-	req.Header.Add("Link", linkHeaderURL)
-
-	if svc.tenant != DefaultBrokerTenant {
-		req.Header.Add("NGSILD-Tenant", svc.tenant)
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send request: %s", err.Error())
-	}
-	defer resp.Body.Close()
-
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %s", err.Error())
-	}
-
-	if resp.StatusCode >= http.StatusBadRequest {
-		reqbytes, _ := httputil.DumpRequest(req, false)
-		respbytes, _ := httputil.DumpResponse(resp, false)
-
-		logger.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
-		return fmt.Errorf("request failed")
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		contentType := resp.Header.Get("Content-Type")
-		return fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", resp.StatusCode, contentType, string(respBody))
-	}
-
-	var beaches []beachDTO
-	err = json.Unmarshal(respBody, &beaches)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal response: %s", err.Error())
-	}
-
-	for _, b := range beaches {
-		callback(b)
-	}
-
-	return nil
 }
 
 func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, longitude float64) ([]domain.WaterQuality, error) {
@@ -307,7 +246,7 @@ func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, l
 		linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
 		req.Header.Add("Link", linkHeaderURL)
 
-		if svc.tenant != DefaultBrokerTenant {
+		if svc.tenant != entities.DefaultNGSITenant {
 			req.Header.Add("NGSILD-Tenant", svc.tenant)
 		}
 
@@ -354,7 +293,7 @@ func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, l
 	linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
 	req.Header.Add("Link", linkHeaderURL)
 
-	if svc.tenant != DefaultBrokerTenant {
+	if svc.tenant != entities.DefaultNGSITenant {
 		req.Header.Add("NGSILD-Tenant", svc.tenant)
 	}
 
@@ -367,7 +306,7 @@ func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, l
 	}
 	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		err = fmt.Errorf("failed to read response body: %s", err.Error())
 		return nil, err

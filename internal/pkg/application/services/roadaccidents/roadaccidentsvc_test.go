@@ -18,7 +18,7 @@ func TestThatRefreshReturnsErrorOnNoValidHostNotFound(t *testing.T) {
 	svc, ok := raSvc.(*roadAccidentSvc)
 	is.True(ok)
 
-	err := svc.refresh()
+	_, err := svc.refresh()
 	is.True(err != nil) // should return err due to invalid host
 }
 
@@ -30,9 +30,9 @@ func TestThatRefreshFailsOnEmptyResponseBody(t *testing.T) {
 	svc, ok := raSvc.(*roadAccidentSvc)
 	is.True(ok)
 
-	err := svc.refresh()
+	_, err := svc.refresh()
 	is.True(err != nil)
-	is.Equal("failed to unmarshal response: unexpected end of JSON input", err.Error()) // should fail to unmarshal due to empty response
+	is.Equal("failed to retrieve road accidents from context broker: failed to unmarshal response: unexpected end of JSON input", err.Error()) // should fail to unmarshal due to empty response
 }
 
 func TestThatRefreshFailsOnStatusCode400(t *testing.T) {
@@ -43,9 +43,9 @@ func TestThatRefreshFailsOnStatusCode400(t *testing.T) {
 	svc, ok := raSvc.(*roadAccidentSvc)
 	is.True(ok)
 
-	err := svc.refresh()
+	_, err := svc.refresh()
 	is.True(err != nil)
-	is.Equal("request failed", err.Error()) // should fail on failed get request to context broker
+	is.Equal("failed to retrieve road accidents from context broker: request failed", err.Error()) // should fail on failed get request to context broker
 }
 
 func TestThatItWorks(t *testing.T) {
@@ -56,7 +56,7 @@ func TestThatItWorks(t *testing.T) {
 	svc, ok := raSvc.(*roadAccidentSvc)
 	is.True(ok)
 
-	err := svc.refresh()
+	_, err := svc.refresh()
 	is.NoErr(err)
 	is.Equal(len(svc.roadAccidentDetails), 2) // should be equal to 2
 }

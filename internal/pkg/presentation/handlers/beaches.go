@@ -26,7 +26,6 @@ const (
 	NUTSCodePrefix      string = "https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/"
 	WikidataPrefix      string = "https://www.wikidata.org/wiki/"
 	YearMonthDayISO8601 string = "2006-01-02"
-	DefaultBrokerTenant string = "default"
 )
 
 func NewRetrieveBeachByIDHandler(logger zerolog.Logger, beachService beaches.BeachService) http.HandlerFunc {
@@ -149,7 +148,7 @@ func getBeachesFromContextBroker(ctx context.Context, logger zerolog.Logger, bro
 	linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
 	req.Header.Add("Link", linkHeaderURL)
 
-	if tenant != DefaultBrokerTenant {
+	if tenant != entities.DefaultNGSITenant {
 		req.Header.Add("NGSILD-Tenant", tenant)
 	}
 

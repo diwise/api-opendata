@@ -4,28 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math"
-	"net/http"
-	"net/http/httputil"
 	"sync"
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
-	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 )
 
 var tracer = otel.Tracer("api-opendata/svcs/exercisetrails")
-
-const (
-	DefaultBrokerTenant string = "default"
-)
 
 type ExerciseTrailService interface {
 	Broker() string
@@ -109,14 +100,16 @@ func (svc *exerciseTrailSvc) run() {
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing execise trail info")
-			err := svc.refresh()
+			svc.log.Info().Msg("refreshing exercise trail info")
+			count, err := svc.refresh()
 
 			if err != nil {
 				svc.log.Error().Err(err).Msg("failed to refresh exercise trails")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
+				svc.log.Info().Msgf("refreshed %d exercise trails", count)
+
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
 			}
@@ -129,8 +122,8 @@ func (svc *exerciseTrailSvc) run() {
 	svc.log.Info().Msg("exercise trail service exiting")
 }
 
-func (svc *exerciseTrailSvc) refresh() error {
-	var err error
+func (svc *exerciseTrailSvc) refresh() (count int, err error) {
+
 	ctx, span := tracer.Start(svc.ctx, "refresh-trails")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
@@ -138,7 +131,7 @@ func (svc *exerciseTrailSvc) refresh() error {
 
 	trails := []domain.ExerciseTrail{}
 
-	err = svc.getExerciseTrailsFromContextBroker(ctx, func(t trailDTO) {
+	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "ExerciseTrail", nil, func(t trailDTO) {
 
 		trail := domain.ExerciseTrail{
 			ID:                  t.ID,
@@ -159,12 +152,12 @@ func (svc *exerciseTrailSvc) refresh() error {
 	})
 
 	if err != nil {
-		return err
+		return
 	}
 
 	svc.storeExerciseTrailList(trails)
 
-	return err
+	return
 }
 
 func (svc *exerciseTrailSvc) storeExerciseTrailList(list []domain.ExerciseTrail) {
@@ -177,65 +170,6 @@ func (svc *exerciseTrailSvc) storeExerciseTrailList(list []domain.ExerciseTrail)
 	for index := range list {
 		svc.trailDetails[list[index].ID] = index
 	}
-}
-
-func (svc *exerciseTrailSvc) getExerciseTrailsFromContextBroker(ctx context.Context, callback func(b trailDTO)) error {
-	var err error
-
-	logger := logging.GetFromContext(ctx)
-
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, svc.contextBrokerURL+"/ngsi-ld/v1/entities?type=ExerciseTrail&limit=1000&options=keyValues", nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %s", err.Error())
-	}
-
-	req.Header.Add("Accept", "application/ld+json")
-	linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
-	req.Header.Add("Link", linkHeaderURL)
-
-	if svc.tenant != DefaultBrokerTenant {
-		req.Header.Add("NGSILD-Tenant", svc.tenant)
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send request: %s", err.Error())
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %s", err.Error())
-	}
-
-	if resp.StatusCode >= http.StatusBadRequest {
-		reqbytes, _ := httputil.DumpRequest(req, false)
-		respbytes, _ := httputil.DumpResponse(resp, false)
-
-		logger.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
-		return fmt.Errorf("request failed")
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		contentType := resp.Header.Get("Content-Type")
-		return fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", resp.StatusCode, contentType, string(respBody))
-	}
-
-	var trails []trailDTO
-	err = json.Unmarshal(respBody, &trails)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal response: %s", err.Error())
-	}
-
-	for _, t := range trails {
-		callback(t)
-	}
-
-	return nil
 }
 
 type trailDTO struct {
