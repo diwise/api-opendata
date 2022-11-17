@@ -20,8 +20,9 @@ func TestSomething(t *testing.T) {
 	svc, ok := svci.(*exerciseTrailSvc)
 	is.True(ok)
 
-	err := svc.refresh()
+	count, err := svc.refresh()
 	is.NoErr(err)
+	is.Equal(count, 2)
 
 	trail, err := svc.GetByID("urn:ngsi-ld:ExerciseTrail:se:sundsvall:facilities:650")
 	is.NoErr(err)

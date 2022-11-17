@@ -20,7 +20,7 @@ func TestExpectedOutputOfGetByID(t *testing.T) {
 	svc, ok := svci.(*sportsfieldSvc)
 	is.True(ok)
 
-	err := svc.refresh()
+	_, err := svc.refresh()
 	is.NoErr(err)
 
 	sportsfield, err := svc.GetByID("urn:ngsi-ld:SportsField:se:sundsvall:facilities:3142")
@@ -41,7 +41,7 @@ func TestExpectedOutputOfGetAll(t *testing.T) {
 	svc, ok := svci.(*sportsfieldSvc)
 	is.True(ok)
 
-	err := svc.refresh()
+	_, err := svc.refresh()
 	is.NoErr(err)
 
 	sportsfields := svc.GetAll()
