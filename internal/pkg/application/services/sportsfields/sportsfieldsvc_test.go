@@ -20,10 +20,10 @@ func TestExpectedOutputOfGetByID(t *testing.T) {
 	svc, ok := svci.(*sportsfieldSvc)
 	is.True(ok)
 
-	err := svc.refresh()
+	_, err := svc.refresh()
 	is.NoErr(err)
 
-	sportsfield, err := svc.GetByID("urn:ngsi-ld:SportsField:se:sundsvall:facilities:796")
+	sportsfield, err := svc.GetByID("urn:ngsi-ld:SportsField:se:sundsvall:facilities:3142")
 	is.NoErr(err)
 
 	sportsfieldJSON, err := json.Marshal(sportsfield)
@@ -41,10 +41,10 @@ func TestExpectedOutputOfGetAll(t *testing.T) {
 	svc, ok := svci.(*sportsfieldSvc)
 	is.True(ok)
 
-	err := svc.refresh()
+	_, err := svc.refresh()
 	is.NoErr(err)
 
-	sportsfields := svc.GetAll()
+	sportsfields := svc.GetAll([]string{})
 
 	is.Equal(len(sportsfields), 1)
 }
@@ -63,6 +63,6 @@ func setupMockServiceThatReturns(responseCode int, body string, headers ...func(
 	}))
 }
 
-const testData string = `[{"@context":["https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld"],"id":"urn:ngsi-ld:SportsField:se:sundsvall:facilities:796","category":{"type":"Property","value":["skating","floodlit","ice-rink"]},"dateCreated":{"type":"Property","value":{"@type":"DateTime","@value":"2019-10-15T16:15:32Z"}},"dateModified":{"type":"Property","value":{"@type":"DateTime","@value":"2021-12-17T16:54:02Z"}},"description":{"type":"Property","value":"7-manna grusplan intill skolan. Vintertid spolas och snöröjs isbanan en gång i veckan."},"location":{"type":"GeoProperty","value":{"type":"MultiPolygon","coordinates":[[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]}},"name":{"type":"Property","value":"Skolans grusplan och isbana"},"source":{"type":"Property","value":"http://127.0.0.1:60519/get/796"},"type":"SportsField"}]`
+const testData string = `[{"@context":["https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonl"],"category":["skating","floodlit","ice-rink"],"dateCreated":{"@type":"DateTime","@value":"2022-01-25T15:37:55Z"},"dateModified":{"@type":"DateTime","@value":"2022-01-25T22:08:19Z"},"description":"Stenstans konstfrusna isbana på Stora Torget är alltid öppen för alla att åka på fram tom sportlovsveckan. Snöröjs och spolas fem gånger i veckan beroende på väder. Belysning är alltid på och musik spelas under dagtid. Fritidsbanken lånar gratis ut skridskor och hjälmar måndag-torsdag 9-21, fredag 9-18, lördag-söndag 10-18.","id":"urn:ngsi-ld:SportsField:se:sundsvall:facilities:3142","location":{"type":"MultiPolygon","coordinates":[[[[17.306436,62.390592],[17.306383,62.390501],[17.30692,62.390437],[17.306973,62.390532],[17.306436,62.390592]]]]},"name":"Stora Torget isbana","source":"https://api.sundsvall.se/facilities/2.1/get/3142","type":"SportsField"}]`
 
-const expectedOutput string = `{"id":"urn:ngsi-ld:SportsField:se:sundsvall:facilities:796","name":"Skolans grusplan och isbana","description":"7-manna grusplan intill skolan. Vintertid spolas och snöröjs isbanan en gång i veckan.","categories":["skating","floodlit","ice-rink"],"location":{"type":"MultiPolygon","coordinates":[[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]},"dateCreated":"2019-10-15T16:15:32Z","dateModified":"2021-12-17T16:54:02Z","source":"http://127.0.0.1:60519/get/796"}`
+const expectedOutput string = `{"id":"urn:ngsi-ld:SportsField:se:sundsvall:facilities:3142","name":"Stora Torget isbana","description":"Stenstans konstfrusna isbana på Stora Torget är alltid öppen för alla att åka på fram tom sportlovsveckan. Snöröjs och spolas fem gånger i veckan beroende på väder. Belysning är alltid på och musik spelas under dagtid. Fritidsbanken lånar gratis ut skridskor och hjälmar måndag-torsdag 9-21, fredag 9-18, lördag-söndag 10-18.","categories":["skating","floodlit","ice-rink"],"location":{"type":"MultiPolygon","coordinates":[[[[17.306436,62.390592],[17.306383,62.390501],[17.30692,62.390437],[17.306973,62.390532],[17.306436,62.390592]]]]},"dateCreated":"2022-01-25T15:37:55Z","dateModified":"2022-01-25T22:08:19Z","source":"https://api.sundsvall.se/facilities/2.1/get/3142"}`

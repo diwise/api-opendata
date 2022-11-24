@@ -4,33 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/http/httputil"
 	"sync"
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
-	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 )
 
 var tracer = otel.Tracer("api-opendata/svcs/sportsfields")
 
-const (
-	DefaultBrokerTenant string = "default"
-)
-
 type SportsFieldService interface {
 	Broker() string
 	Tenant() string
 
-	GetAll() []domain.SportsField
+	GetAll(requiredCategories []string) []domain.SportsField
 	GetByID(id string) (*domain.SportsField, error)
 
 	Start()
@@ -70,11 +61,35 @@ func (svc *sportsfieldSvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *sportsfieldSvc) GetAll() []domain.SportsField {
+func (svc *sportsfieldSvc) GetAll(requiredCategories []string) []domain.SportsField {
 	svc.sportsfieldsMutex.Lock()
 	defer svc.sportsfieldsMutex.Unlock()
 
-	return svc.sportsfields
+	if len(requiredCategories) == 0 {
+		return svc.sportsfields
+	}
+
+	result := make([]domain.SportsField, 0, len(svc.sportsfields))
+
+	anyCategoryMatches := func(categories []string) bool {
+		for _, category := range categories {
+			for _, requiredCategory := range requiredCategories {
+				if category == requiredCategory {
+					return true
+				}
+			}
+		}
+
+		return false
+	}
+
+	for idx := range svc.sportsfields {
+		if anyCategoryMatches(svc.sportsfields[idx].Categories) {
+			result = append(result, svc.sportsfields[idx])
+		}
+	}
+
+	return result
 }
 
 func (svc *sportsfieldSvc) GetByID(id string) (*domain.SportsField, error) {
@@ -83,14 +98,14 @@ func (svc *sportsfieldSvc) GetByID(id string) (*domain.SportsField, error) {
 
 	index, ok := svc.sportsfieldsDetails[id]
 	if !ok {
-		return nil, fmt.Errorf("no such sportsfield")
+		return nil, fmt.Errorf("no such sports field")
 	}
 
 	return &svc.sportsfields[index], nil
 }
 
 func (svc *sportsfieldSvc) Start() {
-	svc.log.Info().Msg("starting sportsfields service")
+	svc.log.Info().Msg("starting sports fields service")
 	// TODO: Prevent multiple starts on the same service
 	go svc.run()
 }
@@ -105,14 +120,15 @@ func (svc *sportsfieldSvc) run() {
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing sportsfield info")
-			err := svc.refresh()
+			svc.log.Info().Msg("refreshing sports field info")
+			count, err := svc.refresh()
 
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh sportsfields")
+				svc.log.Error().Err(err).Msg("failed to refresh sports fields")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
+				svc.log.Info().Msgf("refreshed %d sports fields", count)
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
 			}
@@ -122,107 +138,50 @@ func (svc *sportsfieldSvc) run() {
 		time.Sleep(1 * time.Second)
 	}
 
-	svc.log.Info().Msg("sportsfields service exiting")
+	svc.log.Info().Msg("sports fields service exiting")
 }
 
-func (svc *sportsfieldSvc) refresh() error {
-	var err error
+func (svc *sportsfieldSvc) refresh() (count int, err error) {
+
 	ctx, span := tracer.Start(svc.ctx, "refresh-sports-fields")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
+	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
 
 	sportsfields := []domain.SportsField{}
 
-	err = svc.getSportsFieldsFromContextBroker(ctx, func(sf sportsFieldsDTO) {
+	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "SportsField", nil, func(sf sportsFieldDTO) {
 
 		sportsfield := domain.SportsField{
 			ID:          sf.ID,
-			Name:        sf.Name.Value,
-			Description: sf.Description.Value,
-			Categories:  sf.Category.Value,
-			Location:    sf.Location.Value,
-			Source:      sf.Source.Value,
+			Name:        sf.Name,
+			Description: sf.Description,
+			Categories:  sf.Categories(),
+			Location:    sf.Location,
+			Source:      sf.Source,
 		}
 
 		if sf.DateCreated != nil {
-			sportsfield.DateCreated = &sf.DateCreated.Value.Value
+			sportsfield.DateCreated = &sf.DateCreated.Value
 		}
 		if sf.DateModified != nil {
-			sportsfield.DateModified = &sf.DateModified.Value.Value
+			sportsfield.DateModified = &sf.DateModified.Value
 		}
 		if sf.DateLastPreparation != nil {
-			sportsfield.DateLastPreparation = &sf.DateLastPreparation.Value.Value
+			sportsfield.DateLastPreparation = &sf.DateLastPreparation.Value
 		}
 
 		sportsfields = append(sportsfields, sportsfield)
 	})
 
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to retrieve sports fields from context broker")
-		return err
+		err = fmt.Errorf("failed to retrieve sports fields from context broker: %w", err)
+		return
 	}
 
 	svc.storeSportsFieldList(sportsfields)
 
-	return err
-}
-
-func (svc *sportsfieldSvc) getSportsFieldsFromContextBroker(ctx context.Context, callback func(sf sportsFieldsDTO)) error {
-	var err error
-
-	logger := logging.GetFromContext(ctx)
-
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, svc.contextBrokerURL+"/ngsi-ld/v1/entities?type=SportsField&limit=1000&options=keyValues", nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %s", err.Error())
-	}
-
-	req.Header.Add("Link", entities.LinkHeader)
-
-	if svc.tenant != DefaultBrokerTenant {
-		req.Header.Add("NGSILD-Tenant", svc.tenant)
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send request: %s", err.Error())
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %s", err.Error())
-	}
-
-	if resp.StatusCode >= http.StatusBadRequest {
-		reqbytes, _ := httputil.DumpRequest(req, false)
-		respbytes, _ := httputil.DumpResponse(resp, false)
-
-		logger.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
-		return fmt.Errorf("request failed")
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		contentType := resp.Header.Get("Content-Type")
-		return fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", resp.StatusCode, contentType, string(respBody))
-	}
-
-	var sportsfields []sportsFieldsDTO
-	err = json.Unmarshal(respBody, &sportsfields)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal response: %s", err.Error())
-	}
-
-	for _, sf := range sportsfields {
-		callback(sf)
-	}
-
-	return nil
+	return
 }
 
 func (svc *sportsfieldSvc) storeSportsFieldList(list []domain.SportsField) {
@@ -237,27 +196,34 @@ func (svc *sportsfieldSvc) storeSportsFieldList(list []domain.SportsField) {
 	}
 }
 
-type sportsFieldsDTO struct {
-	ID                  string          `json:"id"`
-	Name                domain.Text     `json:"name"`
-	Description         domain.Text     `json:"description"`
-	Category            domain.TextList `json:"category"`
-	Location            Location        `json:"location"`
-	DateCreated         *DateTime       `json:"dateCreated"`
-	DateModified        *DateTime       `json:"dateModified,omitempty"`
-	DateLastPreparation *DateTime       `json:"dateLastPreparation,omitempty"`
-	Source              domain.Text     `json:"source"`
+type sportsFieldDTO struct {
+	ID                  string              `json:"id"`
+	Name                string              `json:"name"`
+	Description         string              `json:"description"`
+	Category            json.RawMessage     `json:"category"`
+	Location            domain.MultiPolygon `json:"location"`
+	DateCreated         *domain.DateTime    `json:"dateCreated"`
+	DateModified        *domain.DateTime    `json:"dateModified,omitempty"`
+	DateLastPreparation *domain.DateTime    `json:"dateLastPreparation,omitempty"`
+	Source              string              `json:"source"`
 }
 
-type Location struct {
-	Type  string              `json:"type"`
-	Value domain.MultiPolygon `json:"value"`
-}
+// Categories extracts the field categories as a string array, regardless
+// of the format string vs []string of the response property
+func (f *sportsFieldDTO) Categories() []string {
+	valueAsArray := []string{}
 
-type DateTime struct {
-	Type  string `json:"type"`
-	Value struct {
-		Type  string `json:"@type"`
-		Value string `json:"@value"`
-	} `json:"value"`
+	if len(f.Category) > 0 {
+		if err := json.Unmarshal(f.Category, &valueAsArray); err != nil {
+			var valueAsString string
+
+			if err = json.Unmarshal(f.Category, &valueAsString); err != nil {
+				return []string{err.Error()}
+			}
+
+			return []string{valueAsString}
+		}
+	}
+
+	return valueAsArray
 }

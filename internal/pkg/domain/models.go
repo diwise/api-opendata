@@ -140,14 +140,16 @@ type SportsField struct {
 	Source              string       `json:"source"`
 }
 
-type Text struct {
-	Type  string `json:"type"`
-	Value string `json:"value"`
-}
-
-type TextList struct {
-	Type  string   `json:"type"`
-	Value []string `json:"value"`
+type SportsVenue struct {
+	ID           string       `json:"id"`
+	Name         string       `json:"name"`
+	Description  string       `json:"description"`
+	Categories   []string     `json:"categories"`
+	Location     MultiPolygon `json:"location"`
+	DateCreated  *string      `json:"dateCreated,omitempty"`
+	DateModified *string      `json:"dateModified,omitempty"`
+	Source       string       `json:"source"`
+	SeeAlso      []string     `json:"seeAlso,omitempty"`
 }
 
 type Temperature struct {

@@ -40,7 +40,7 @@ func NewRetrieveSportsFieldByIDHandler(logger zerolog.Logger, sfsvc sportsfields
 
 		responseBody, err := json.Marshal(sportsfield)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to marshal trail to json")
+			log.Error().Err(err).Msg("failed to marshal sports field to json")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -61,13 +61,10 @@ func NewRetrieveSportsFieldsHandler(logger zerolog.Logger, sfsvc sportsfields.Sp
 
 		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		requestedFields := r.URL.Query().Get("fields")
-		fields := []string{}
-		if requestedFields != "" {
-			fields = strings.Split(requestedFields, ",")
-		}
+		categories := urlValueAsSlice(r.URL.Query(), "categories")
+		fields := urlValueAsSlice(r.URL.Query(), "fields")
 
-		sportsfields := sfsvc.GetAll()
+		sportsfields := sfsvc.GetAll(categories)
 
 		const geoJSONContentType string = "application/geo+json"
 
@@ -89,7 +86,7 @@ func NewRetrieveSportsFieldsHandler(logger zerolog.Logger, sfsvc sportsfields.Sp
 					newSportsFieldsMapper(fields, locationMapper),
 				))
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal sportsfields list to geo json")
+				log.Error().Err(err).Msg("failed to marshal sports fields list to geo json")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -104,11 +101,11 @@ func NewRetrieveSportsFieldsHandler(logger zerolog.Logger, sfsvc sportsfields.Sp
 				return domain.NewPoint(t.Location.Coordinates[0][0][0][1], t.Location.Coordinates[0][0][0][0])
 			}
 
-			fields := append([]string{"id", "name", "categories"}, fields...)
+			fields := append([]string{"id", "name", "categories", "location"}, fields...)
 			sportsfieldsJSON, err := marshalSportsFieldsToJSON(sportsfields, newSportsFieldsMapper(fields, locationMapper))
 
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal sportsfields list to json")
+				log.Error().Err(err).Msg("failed to marshal sports fields list to json")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -182,12 +179,12 @@ func marshalSportsFieldsToJSON(sportsfields []domain.SportsField, mapper SportsF
 
 func newSportsFieldsMapper(fields []string, location func(*domain.SportsField) any) SportsFieldsMapperFunc {
 
-	omitempty := func(s string) any {
-		if s == "" {
+	omitempty := func(s *string) any {
+		if s == nil || *s == "" {
 			return nil
 		}
 
-		return s
+		return *s
 	}
 
 	mappers := map[string]func(*domain.SportsField) (string, any){
@@ -197,10 +194,12 @@ func newSportsFieldsMapper(fields []string, location func(*domain.SportsField) a
 		"description": func(sf *domain.SportsField) (string, any) { return "description", sf.Description },
 		"location":    func(sf *domain.SportsField) (string, any) { return "location", location(sf) },
 		"categories":  func(sf *domain.SportsField) (string, any) { return "categories", sf.Categories },
+		"datecreated": func(sf *domain.SportsField) (string, any) { return "dateCreated", *sf.DateCreated },
 		"datelastpreparation": func(sf *domain.SportsField) (string, any) {
-			return "dateLastPreparation", omitempty(*sf.DateLastPreparation)
+			return "dateLastPreparation", omitempty(sf.DateLastPreparation)
 		},
-		"source": func(t *domain.SportsField) (string, any) { return "source", t.Source },
+		"datemodified": func(sf *domain.SportsField) (string, any) { return "dateModified", *sf.DateModified },
+		"source":       func(t *domain.SportsField) (string, any) { return "source", t.Source },
 	}
 
 	return func(t *domain.SportsField) ([]byte, error) {
