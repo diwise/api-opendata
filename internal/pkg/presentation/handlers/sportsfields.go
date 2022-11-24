@@ -61,13 +61,10 @@ func NewRetrieveSportsFieldsHandler(logger zerolog.Logger, sfsvc sportsfields.Sp
 
 		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		requestedFields := r.URL.Query().Get("fields")
-		fields := []string{}
-		if requestedFields != "" {
-			fields = strings.Split(requestedFields, ",")
-		}
+		categories := urlValueAsSlice(r.URL.Query(), "categories")
+		fields := urlValueAsSlice(r.URL.Query(), "fields")
 
-		sportsfields := sfsvc.GetAll()
+		sportsfields := sfsvc.GetAll(categories)
 
 		const geoJSONContentType string = "application/geo+json"
 
@@ -89,7 +86,7 @@ func NewRetrieveSportsFieldsHandler(logger zerolog.Logger, sfsvc sportsfields.Sp
 					newSportsFieldsMapper(fields, locationMapper),
 				))
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal sportsfields list to geo json")
+				log.Error().Err(err).Msg("failed to marshal sports fields list to geo json")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -108,7 +105,7 @@ func NewRetrieveSportsFieldsHandler(logger zerolog.Logger, sfsvc sportsfields.Sp
 			sportsfieldsJSON, err := marshalSportsFieldsToJSON(sportsfields, newSportsFieldsMapper(fields, locationMapper))
 
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal sportsfields list to json")
+				log.Error().Err(err).Msg("failed to marshal sports fields list to json")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
