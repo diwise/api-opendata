@@ -58,7 +58,7 @@ func TestExpectedOutputOfGetAll(t *testing.T) {
 	_, err := svc.refresh()
 	is.NoErr(err)
 
-	sportsfields := svc.GetAll()
+	sportsfields := svc.GetAll([]string{})
 
 	is.Equal(len(sportsfields), 1)
 }

@@ -94,7 +94,7 @@ func defaultSportsVenuesMock() *services.SportsVenueServiceMock {
 	list = append(list, sf0, sf1)
 
 	mock := &services.SportsVenueServiceMock{
-		GetAllFunc: func() []domain.SportsVenue {
+		GetAllFunc: func(c []string) []domain.SportsVenue {
 			return list
 		},
 		GetByIDFunc: func(id string) (*domain.SportsVenue, error) {

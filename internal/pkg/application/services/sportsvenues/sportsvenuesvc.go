@@ -21,7 +21,7 @@ type SportsVenueService interface {
 	Broker() string
 	Tenant() string
 
-	GetAll() []domain.SportsVenue
+	GetAll(requiredCategories []string) []domain.SportsVenue
 	GetByID(id string) (*domain.SportsVenue, error)
 
 	Start()
@@ -61,11 +61,35 @@ func (svc *sportsvenueSvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *sportsvenueSvc) GetAll() []domain.SportsVenue {
+func (svc *sportsvenueSvc) GetAll(requiredCategories []string) []domain.SportsVenue {
 	svc.sportsvenuesMutex.Lock()
 	defer svc.sportsvenuesMutex.Unlock()
 
-	return svc.sportsvenues
+	if len(requiredCategories) == 0 {
+		return svc.sportsvenues
+	}
+
+	result := make([]domain.SportsVenue, 0, len(svc.sportsvenues))
+
+	anyCategoryMatches := func(categories []string) bool {
+		for _, category := range categories {
+			for _, requiredCategory := range requiredCategories {
+				if category == requiredCategory {
+					return true
+				}
+			}
+		}
+
+		return false
+	}
+
+	for idx := range svc.sportsvenues {
+		if anyCategoryMatches(svc.sportsvenues[idx].Categories) {
+			result = append(result, svc.sportsvenues[idx])
+		}
+	}
+
+	return result
 }
 
 func (svc *sportsvenueSvc) GetByID(id string) (*domain.SportsVenue, error) {

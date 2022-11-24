@@ -61,6 +61,42 @@ func TestGetExerciseTrailsWithDescription(t *testing.T) {
 	is.Equal(string(response), expectedResponse)
 }
 
+func TestGetExerciseTrailsWithNoSpecificCategories(t *testing.T) {
+	is, log, rw := setup(t)
+	svc := defaultTrailsMock()
+	req, err := http.NewRequest("GET", "", nil)
+	is.NoErr(err)
+
+	defaultGetAll := svc.GetAllFunc
+	svc.GetAllFunc = func(c []string) []domain.ExerciseTrail {
+		is.Equal(c, []string{})
+		return defaultGetAll(c)
+	}
+
+	NewRetrieveExerciseTrailsHandler(log, svc).ServeHTTP(rw, req)
+
+	is.Equal(rw.Code, http.StatusOK)    // response status should be 200 OK
+	is.Equal(len(svc.GetAllCalls()), 1) // Get should have been called once
+}
+
+func TestGetExerciseTrailsWithCertainCategories(t *testing.T) {
+	is, log, rw := setup(t)
+	svc := defaultTrailsMock()
+	req, err := http.NewRequest("GET", "?categories=bike-track,floodlit", nil)
+	is.NoErr(err)
+
+	defaultGetAll := svc.GetAllFunc
+	svc.GetAllFunc = func(c []string) []domain.ExerciseTrail {
+		is.Equal(c, []string{"bike-track", "floodlit"})
+		return defaultGetAll(c)
+	}
+
+	NewRetrieveExerciseTrailsHandler(log, svc).ServeHTTP(rw, req)
+
+	is.Equal(rw.Code, http.StatusOK)    // response status should be 200 OK
+	is.Equal(len(svc.GetAllCalls()), 1) // Get should have been called once
+}
+
 const expectedGPXOutput string = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx creator="diwise cip" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
   <trk>
@@ -124,7 +160,7 @@ func defaultTrailsMock() *services.ExerciseTrailServiceMock {
 	}
 
 	mock := &services.ExerciseTrailServiceMock{
-		GetAllFunc: func() []domain.ExerciseTrail {
+		GetAllFunc: func(c []string) []domain.ExerciseTrail {
 			return []domain.ExerciseTrail{trail0}
 		},
 		GetByIDFunc: func(id string) (*domain.ExerciseTrail, error) {
