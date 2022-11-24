@@ -22,7 +22,7 @@ type ExerciseTrailService interface {
 	Broker() string
 	Tenant() string
 
-	GetAll() []domain.ExerciseTrail
+	GetAll(requiredCategories []string) []domain.ExerciseTrail
 	GetByID(id string) (*domain.ExerciseTrail, error)
 
 	Start()
@@ -65,11 +65,35 @@ func (svc *exerciseTrailSvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *exerciseTrailSvc) GetAll() []domain.ExerciseTrail {
+func (svc *exerciseTrailSvc) GetAll(requiredCategories []string) []domain.ExerciseTrail {
 	svc.trailMutex.Lock()
 	defer svc.trailMutex.Unlock()
 
-	return svc.trails
+	if len(requiredCategories) == 0 {
+		return svc.trails
+	}
+
+	result := make([]domain.ExerciseTrail, 0, len(svc.trails))
+
+	anyCategoryMatches := func(categories []string) bool {
+		for _, category := range categories {
+			for _, requiredCategory := range requiredCategories {
+				if category == requiredCategory {
+					return true
+				}
+			}
+		}
+
+		return false
+	}
+
+	for idx := range svc.trails {
+		if anyCategoryMatches(svc.trails[idx].Categories) {
+			result = append(result, svc.trails[idx])
+		}
+	}
+
+	return result
 }
 
 func (svc *exerciseTrailSvc) GetByID(id string) (*domain.ExerciseTrail, error) {

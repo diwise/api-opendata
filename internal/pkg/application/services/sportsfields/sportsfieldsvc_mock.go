@@ -21,7 +21,7 @@ var _ SportsFieldService = &SportsFieldServiceMock{}
 // 			BrokerFunc: func() string {
 // 				panic("mock out the Broker method")
 // 			},
-// 			GetAllFunc: func() []domain.SportsField {
+// 			GetAllFunc: func(requiredCategories []string) []domain.SportsField {
 // 				panic("mock out the GetAll method")
 // 			},
 // 			GetByIDFunc: func(id string) (*domain.SportsField, error) {
@@ -47,7 +47,7 @@ type SportsFieldServiceMock struct {
 	BrokerFunc func() string
 
 	// GetAllFunc mocks the GetAll method.
-	GetAllFunc func() []domain.SportsField
+	GetAllFunc func(requiredCategories []string) []domain.SportsField
 
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(id string) (*domain.SportsField, error)
@@ -68,6 +68,8 @@ type SportsFieldServiceMock struct {
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
+			// RequiredCategories is the requiredCategories argument value.
+			RequiredCategories []string
 		}
 		// GetByID holds details about calls to the GetByID method.
 		GetByID []struct {
@@ -119,24 +121,29 @@ func (mock *SportsFieldServiceMock) BrokerCalls() []struct {
 }
 
 // GetAll calls GetAllFunc.
-func (mock *SportsFieldServiceMock) GetAll() []domain.SportsField {
+func (mock *SportsFieldServiceMock) GetAll(requiredCategories []string) []domain.SportsField {
 	if mock.GetAllFunc == nil {
 		panic("SportsFieldServiceMock.GetAllFunc: method is nil but SportsFieldService.GetAll was just called")
 	}
 	callInfo := struct {
-	}{}
+		RequiredCategories []string
+	}{
+		RequiredCategories: requiredCategories,
+	}
 	mock.lockGetAll.Lock()
 	mock.calls.GetAll = append(mock.calls.GetAll, callInfo)
 	mock.lockGetAll.Unlock()
-	return mock.GetAllFunc()
+	return mock.GetAllFunc(requiredCategories)
 }
 
 // GetAllCalls gets all the calls that were made to GetAll.
 // Check the length with:
 //     len(mockedSportsFieldService.GetAllCalls())
 func (mock *SportsFieldServiceMock) GetAllCalls() []struct {
+	RequiredCategories []string
 } {
 	var calls []struct {
+		RequiredCategories []string
 	}
 	mock.lockGetAll.RLock()
 	calls = mock.calls.GetAll

@@ -19,28 +19,28 @@ import (
 func NewRetrieveSportsVenueByIDHandler(logger zerolog.Logger, sfsvc sportsvenues.SportsVenueService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
-		ctx, span := tracer.Start(r.Context(), "retrieve-sportsfield-by-id")
+		ctx, span := tracer.Start(r.Context(), "retrieve-sportsvenue-by-id")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		sportsfieldID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
-		if sportsfieldID == "" {
-			err = fmt.Errorf("no sports field is supplied in query")
+		sportsvenueID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
+		if sportsvenueID == "" {
+			err = fmt.Errorf("no sports venue is supplied in query")
 			log.Error().Err(err).Msg("bad request")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		sportsfield, err := sfsvc.GetByID(sportsfieldID)
+		venue, err := sfsvc.GetByID(sportsvenueID)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		responseBody, err := json.Marshal(sportsfield)
+		responseBody, err := json.Marshal(venue)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to marshal sports field to json")
+			log.Error().Err(err).Msg("failed to marshal sports venue to json")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -61,13 +61,10 @@ func NewRetrieveSportsVenuesHandler(logger zerolog.Logger, sfsvc sportsvenues.Sp
 
 		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		requestedFields := r.URL.Query().Get("fields")
-		fields := []string{}
-		if requestedFields != "" {
-			fields = strings.Split(requestedFields, ",")
-		}
+		categories := urlValueAsSlice(r.URL.Query(), "categories")
+		fields := urlValueAsSlice(r.URL.Query(), "fields")
 
-		sportsvenues := sfsvc.GetAll()
+		sportsvenues := sfsvc.GetAll(categories)
 
 		const geoJSONContentType string = "application/geo+json"
 

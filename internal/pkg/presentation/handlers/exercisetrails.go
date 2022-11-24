@@ -77,6 +77,14 @@ func NewRetrieveExerciseTrailByIDHandler(logger zerolog.Logger, trailService exe
 	})
 }
 
+func urlValueAsSlice(query url.Values, param string) []string {
+	value := query.Get(param)
+	if value == "" {
+		return []string{}
+	}
+	return strings.Split(value, ",")
+}
+
 func NewRetrieveExerciseTrailsHandler(logger zerolog.Logger, trailService exercisetrails.ExerciseTrailService) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -87,13 +95,10 @@ func NewRetrieveExerciseTrailsHandler(logger zerolog.Logger, trailService exerci
 
 		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		requestedFields := r.URL.Query().Get("fields")
-		fields := []string{}
-		if requestedFields != "" {
-			fields = strings.Split(requestedFields, ",")
-		}
+		categories := urlValueAsSlice(r.URL.Query(), "categories")
+		fields := urlValueAsSlice(r.URL.Query(), "fields")
 
-		trails := trailService.GetAll()
+		trails := trailService.GetAll(categories)
 
 		const geoJSONContentType string = "application/geo+json"
 
