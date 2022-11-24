@@ -395,6 +395,19 @@
         "description": "Get information about published exercise trails",
         "parameters": [{
           "in": "query",
+          "name": "categories",
+          "explode": false,
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["bike-track", "floodlit", "ice-skating", "ski-classic", "ski-skate"]
+            }
+          },
+          "required": false,
+          "description": "Filter the returned trails by category"
+        },{
+          "in": "query",
           "name": "fields",
           "explode": false,
           "schema": {
@@ -912,6 +925,19 @@
         "description": "Get information about published sports fields",
         "parameters": [{
           "in": "query",
+          "name": "categories",
+          "explode": false,
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["bandy", "hockey", "ice-rink", "skating", "floodlit"]
+            }
+          },
+          "required": false,
+          "description": "Filter the returned sports fields by category"
+        },{
+          "in": "query",
           "name": "fields",
           "explode": false,
           "schema": {
@@ -1194,6 +1220,19 @@
         "operationId": "getSportsVenues",
         "description": "Get information about published sports venues",
         "parameters": [{
+          "in": "query",
+          "name": "categories",
+          "explode": false,
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["ice-rink", "sports-hall", "swimming-pool"]
+            }
+          },
+          "required": false,
+          "description": "Filter the returned sports venues by category"
+        },{
           "in": "query",
           "name": "fields",
           "explode": false,
