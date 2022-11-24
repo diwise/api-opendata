@@ -37,10 +37,10 @@ func TestRetrieveAirQualityByID(t *testing.T) {
 	is.Equal(response.StatusCode, http.StatusOK)
 	is.Equal(len(svc.GetByIDCalls()), 1)
 
-	is.Equal(responseBody, expectedOutput)
+	is.Equal(responseBody, expectedAirQualityOutput)
 }
 
-const expectedOutput string = "{\n  \"data\": {\"id\":\"aq1\",\"location\":{\"type\":\"GeoProperty\",\"value\":{\"type\":\"Point\",\"coordinates\":[17.1,62.1]}}}\n}"
+const expectedAirQualityOutput string = "{\n  \"data\": {\"id\":\"aq1\",\"location\":{\"type\":\"GeoProperty\",\"value\":{\"type\":\"Point\",\"coordinates\":[17.1,62.1]}}}\n}"
 
 func defaultAirQualityMock() *services.AirQualityServiceMock {
 	aqList := []domain.AirQuality{
