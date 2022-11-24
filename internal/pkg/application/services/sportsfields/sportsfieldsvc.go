@@ -2,6 +2,7 @@ package sportsfields
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -73,14 +74,14 @@ func (svc *sportsfieldSvc) GetByID(id string) (*domain.SportsField, error) {
 
 	index, ok := svc.sportsfieldsDetails[id]
 	if !ok {
-		return nil, fmt.Errorf("no such sportsfield")
+		return nil, fmt.Errorf("no such sports field")
 	}
 
 	return &svc.sportsfields[index], nil
 }
 
 func (svc *sportsfieldSvc) Start() {
-	svc.log.Info().Msg("starting sportsfields service")
+	svc.log.Info().Msg("starting sports fields service")
 	// TODO: Prevent multiple starts on the same service
 	go svc.run()
 }
@@ -95,11 +96,11 @@ func (svc *sportsfieldSvc) run() {
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing sportsfield info")
+			svc.log.Info().Msg("refreshing sports field info")
 			count, err := svc.refresh()
 
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh sportsfields")
+				svc.log.Error().Err(err).Msg("failed to refresh sports fields")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
@@ -113,7 +114,7 @@ func (svc *sportsfieldSvc) run() {
 		time.Sleep(1 * time.Second)
 	}
 
-	svc.log.Info().Msg("sportsfields service exiting")
+	svc.log.Info().Msg("sports fields service exiting")
 }
 
 func (svc *sportsfieldSvc) refresh() (count int, err error) {
@@ -125,13 +126,13 @@ func (svc *sportsfieldSvc) refresh() (count int, err error) {
 
 	sportsfields := []domain.SportsField{}
 
-	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "SportsField", nil, func(sf sportsFieldsDTO) {
+	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "SportsField", nil, func(sf sportsFieldDTO) {
 
 		sportsfield := domain.SportsField{
 			ID:          sf.ID,
 			Name:        sf.Name,
 			Description: sf.Description,
-			Categories:  sf.Category,
+			Categories:  sf.Categories(),
 			Location:    sf.Location,
 			Source:      sf.Source,
 		}
@@ -171,14 +172,34 @@ func (svc *sportsfieldSvc) storeSportsFieldList(list []domain.SportsField) {
 	}
 }
 
-type sportsFieldsDTO struct {
+type sportsFieldDTO struct {
 	ID                  string              `json:"id"`
 	Name                string              `json:"name"`
 	Description         string              `json:"description"`
-	Category            []string            `json:"category"`
+	Category            json.RawMessage     `json:"category"`
 	Location            domain.MultiPolygon `json:"location"`
 	DateCreated         *domain.DateTime    `json:"dateCreated"`
 	DateModified        *domain.DateTime    `json:"dateModified,omitempty"`
 	DateLastPreparation *domain.DateTime    `json:"dateLastPreparation,omitempty"`
 	Source              string              `json:"source"`
+}
+
+// Categories extracts the field categories as a string array, regardless
+// of the format string vs []string of the response property
+func (f *sportsFieldDTO) Categories() []string {
+	valueAsArray := []string{}
+
+	if len(f.Category) > 0 {
+		if err := json.Unmarshal(f.Category, &valueAsArray); err != nil {
+			var valueAsString string
+
+			if err = json.Unmarshal(f.Category, &valueAsString); err != nil {
+				return []string{err.Error()}
+			}
+
+			return []string{valueAsString}
+		}
+	}
+
+	return valueAsArray
 }
