@@ -13,6 +13,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/application/services/exercisetrails"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/roadaccidents"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsfields"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsvenues"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
@@ -102,6 +103,9 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	sportsfieldsSvc := sportsfields.NewSportsFieldService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
 	sportsfieldsSvc.Start()
 
+	sportsvenuesSvc := sportsvenues.NewSportsVenueService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
+	sportsvenuesSvc.Start()
+
 	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
 
 	stratsysEnabled := (env.GetVariableOrDefault(log, "STRATSYS_ENABLED", "true") != "false")
@@ -166,6 +170,14 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 	r.Get(
 		"/api/sportsfields/{id}",
 		handlers.NewRetrieveSportsFieldByIDHandler(log, sportsfieldsSvc),
+	)
+	r.Get(
+		"/api/sportsvenues",
+		handlers.NewRetrieveSportsVenuesHandler(log, sportsvenuesSvc),
+	)
+	r.Get(
+		"/api/sportsvenues/{id}",
+		handlers.NewRetrieveSportsVenueByIDHandler(log, sportsvenuesSvc),
 	)
 
 	if stratsysEnabled {
