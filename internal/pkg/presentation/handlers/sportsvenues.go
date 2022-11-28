@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsvenues"
@@ -179,6 +180,14 @@ func marshalSportsVenuesToJSON(sportsvenues []domain.SportsVenue, mapper SportsV
 
 func newSportsVenuesMapper(fields []string, location func(*domain.SportsVenue) any) SportsVenuesMapperFunc {
 
+	omitempty := func(v []string) []string {
+		if len(v) == 0 {
+			return nil
+		}
+
+		return v
+	}
+
 	mappers := map[string]func(*domain.SportsVenue) (string, any){
 		"id":           func(sf *domain.SportsVenue) (string, any) { return "id", sf.ID },
 		"type":         func(sf *domain.SportsVenue) (string, any) { return "type", "SportsVenue" },
@@ -188,7 +197,7 @@ func newSportsVenuesMapper(fields []string, location func(*domain.SportsVenue) a
 		"categories":   func(sf *domain.SportsVenue) (string, any) { return "categories", sf.Categories },
 		"datecreated":  func(sf *domain.SportsVenue) (string, any) { return "dateCreated", *sf.DateCreated },
 		"datemodified": func(sf *domain.SportsVenue) (string, any) { return "dateModified", *sf.DateModified },
-		"seealso":      func(sf *domain.SportsVenue) (string, any) { return "seeAlso", sf.SeeAlso },
+		"seealso":      func(sf *domain.SportsVenue) (string, any) { return "seeAlso", omitempty(sf.SeeAlso) },
 		"source":       func(t *domain.SportsVenue) (string, any) { return "source", t.Source },
 	}
 
@@ -200,11 +209,23 @@ func newSportsVenuesMapper(fields []string, location func(*domain.SportsVenue) a
 				return nil, fmt.Errorf("unknown field: %s", f)
 			}
 			key, value := mapper(t)
-			if value != nil {
+			if propertyIsNotNil(value) {
 				result[key] = value
 			}
 		}
 
 		return json.Marshal(&result)
 	}
+}
+
+// TODO: Explain the peculiarities of nil interfaces to Go newcomers ...
+func propertyIsNotNil(v any) bool {
+	if v == nil {
+		return false
+	}
+	switch reflect.TypeOf(v).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return !reflect.ValueOf(v).IsNil()
+	}
+	return true
 }

@@ -13,7 +13,7 @@ import (
 func TestInvokeSportsVenuesHandler(t *testing.T) {
 	is, log, rw := setup(t)
 	svc := defaultSportsVenuesMock()
-	req, err := http.NewRequest("GET", "", nil)
+	req, err := http.NewRequest("GET", "?fields=seealso", nil)
 	is.NoErr(err)
 
 	NewRetrieveSportsVenuesHandler(log, svc).ServeHTTP(rw, req)
@@ -47,8 +47,8 @@ func TestGetSportsVenuesAsGeoJSON(t *testing.T) {
 
 	svc := defaultSportsVenuesMock()
 
-	r.Get("/sportsfields", NewRetrieveSportsVenuesHandler(zerolog.Logger{}, svc))
-	response, responseBody := newGetRequest(is, ts, "application/geo+json", "/sportsfields?fields=description", nil)
+	r.Get("/sportsvenues", NewRetrieveSportsVenuesHandler(zerolog.Logger{}, svc))
+	response, responseBody := newGetRequest(is, ts, "application/geo+json", "/sportsvenues?fields=description", nil)
 
 	is.Equal(response.StatusCode, http.StatusOK) // response status should be 200 OK
 	is.Equal(responseBody, sportsvenueGeoJSON)
@@ -71,6 +71,7 @@ func defaultSportsVenuesMock() *services.SportsVenueServiceMock {
 			},
 		},
 		Description: "cool description",
+		SeeAlso:     []string{},
 	}
 	sf1 := domain.SportsVenue{
 		ID:         "id1",
@@ -87,6 +88,7 @@ func defaultSportsVenuesMock() *services.SportsVenueServiceMock {
 			},
 		},
 		Description: "even cooler description",
+		SeeAlso:     []string{},
 	}
 
 	list := []domain.SportsVenue{}
