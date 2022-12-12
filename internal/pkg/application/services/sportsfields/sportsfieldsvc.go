@@ -153,12 +153,13 @@ func (svc *sportsfieldSvc) refresh() (count int, err error) {
 	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "SportsField", nil, func(sf sportsFieldDTO) {
 
 		sportsfield := domain.SportsField{
-			ID:          sf.ID,
-			Name:        sf.Name,
-			Description: sf.Description,
-			Categories:  sf.Categories(),
-			Location:    sf.Location,
-			Source:      sf.Source,
+			ID:           sf.ID,
+			Name:         sf.Name,
+			Description:  sf.Description,
+			Categories:   sf.Categories(),
+			PublicAccess: sf.PublicAccess,
+			Location:     sf.Location,
+			Source:       sf.Source,
 		}
 
 		if sf.DateCreated != nil {
@@ -201,6 +202,7 @@ type sportsFieldDTO struct {
 	Name                string              `json:"name"`
 	Description         string              `json:"description"`
 	Category            json.RawMessage     `json:"category"`
+	PublicAccess        string              `json:"publicAccess"`
 	Location            domain.MultiPolygon `json:"location"`
 	DateCreated         *domain.DateTime    `json:"dateCreated"`
 	DateModified        *domain.DateTime    `json:"dateModified,omitempty"`
