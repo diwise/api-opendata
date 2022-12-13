@@ -21,26 +21,29 @@ type Registry interface {
 
 func NewRegistry(input io.Reader) (Registry, error) {
 
-	buf, err := io.ReadAll(input)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg := &struct {
-		Orgs []organisation `yaml:"organisations"`
-	}{}
-
-	err = yaml.Unmarshal(buf, &cfg)
-	if err != nil {
-		return nil, err
-	}
-
+	var err error
 	reg := &registry{
 		orgs: make(map[string]*domain.Organisation),
 	}
 
-	for _, org := range cfg.Orgs {
-		reg.orgs[org.ID] = &domain.Organisation{Name: org.Name}
+	if input != nil {
+		buf, err := io.ReadAll(input)
+		if err != nil {
+			return nil, err
+		}
+
+		cfg := &struct {
+			Orgs []organisation `yaml:"organisations"`
+		}{}
+
+		err = yaml.Unmarshal(buf, &cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, org := range cfg.Orgs {
+			reg.orgs[org.ID] = &domain.Organisation{Name: org.Name}
+		}
 	}
 
 	return reg, err
