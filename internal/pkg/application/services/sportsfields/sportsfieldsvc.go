@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/organisations"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -28,11 +29,12 @@ type SportsFieldService interface {
 	Shutdown()
 }
 
-func NewSportsFieldService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string) SportsFieldService {
+func NewSportsFieldService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string, orgreg organisations.Registry) SportsFieldService {
 	svc := &sportsfieldSvc{
 		ctx:                 ctx,
 		sportsfields:        []domain.SportsField{},
 		sportsfieldsDetails: map[string]int{},
+		orgRegistry:         orgreg,
 		contextBrokerURL:    contextBrokerURL,
 		tenant:              tenant,
 		log:                 logger,
@@ -47,6 +49,7 @@ type sportsfieldSvc struct {
 	sportsfieldsMutex   sync.Mutex
 	sportsfields        []domain.SportsField
 	sportsfieldsDetails map[string]int
+	orgRegistry         organisations.Registry
 	contextBrokerURL    string
 	tenant              string
 	log                 zerolog.Logger
@@ -162,6 +165,13 @@ func (svc *sportsfieldSvc) refresh() (count int, err error) {
 			Source:       sf.Source,
 		}
 
+		if len(sf.ManagedBy) > 0 {
+			sportsfield.ManagedBy, err = svc.orgRegistry.Get(sf.ManagedBy)
+			if err != nil {
+				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+			}
+		}
+
 		if sf.DateCreated != nil {
 			sportsfield.DateCreated = &sf.DateCreated.Value
 		}
@@ -208,6 +218,7 @@ type sportsFieldDTO struct {
 	DateModified        *domain.DateTime    `json:"dateModified,omitempty"`
 	DateLastPreparation *domain.DateTime    `json:"dateLastPreparation,omitempty"`
 	Source              string              `json:"source"`
+	ManagedBy           string              `json:"managedBy"`
 }
 
 // Categories extracts the field categories as a string array, regardless
