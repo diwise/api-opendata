@@ -15,28 +15,35 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func openDatasetsFile(ctx context.Context, path string) *os.File {
-	log := logging.GetFromContext(ctx)
-	datafile, err := os.Open(path)
+func openFile(ctx context.Context, description, path string) *os.File {
+	file, err := os.Open(path)
 	if err != nil {
-		log.Info().Msgf("failed to open the datasets rdf file %s.", path)
+		log := logging.GetFromContext(ctx)
+		log.Error().Err(err).Msgf("failed to open the %s file %s.", description, path)
 		return nil
 	}
-	return datafile
+	return file
+}
+
+func openDatasetsFile(ctx context.Context, path string) *os.File {
+	return openFile(ctx, "datasets rdf", path)
 }
 
 func openOASFile(ctx context.Context, path string) *os.File {
-	log := logging.GetFromContext(ctx)
-	oasfile, err := os.Open(path)
-	if err != nil {
-		log.Info().Msgf("failed to open the OpenAPI specification file %s.", path)
+	return openFile(ctx, "OpenAPI specification", path)
+}
+
+func openOrganisationsFile(ctx context.Context, path string) *os.File {
+	if path == "" {
 		return nil
 	}
-	return oasfile
+
+	return openFile(ctx, "organisations registry", path)
 }
 
 var datasetFileName string
 var openApiSpecFileName string
+var organisationRegistryFile string
 
 func main() {
 	serviceName := "api-opendata"
@@ -46,11 +53,13 @@ func main() {
 	defer cleanup()
 
 	flag.StringVar(&openApiSpecFileName, "oas", "/opt/diwise/openapi.json", "An OpenAPI specification to be served on /api/openapi")
+	flag.StringVar(&organisationRegistryFile, "orgreg", "", "A yaml file containing known organisations")
 	flag.StringVar(&datasetFileName, "rdffile", "/opt/diwise/datasets/dcat.rdf", "The file to serve datasets from")
 	flag.Parse()
 
 	datafile := openDatasetsFile(ctx, datasetFileName)
 	oasfile := openOASFile(ctx, openApiSpecFileName)
+	orgFile := openOrganisationsFile(ctx, organisationRegistryFile)
 
 	if datafile == nil {
 		log.Fatal().Msg("Unable to open dataset file. Exiting.")
@@ -84,7 +93,7 @@ func main() {
 
 		r := chi.NewRouter()
 
-		api := presentation.NewAPI(r, ctx, datasetResponseBuffer, oasResponseBuffer)
+		api := presentation.NewAPI(r, ctx, datasetResponseBuffer, oasResponseBuffer, orgFile)
 		err = api.Start(port)
 		if err != nil {
 			log.Fatal().Msgf("failed to start router: %s", err.Error())
