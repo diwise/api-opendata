@@ -17,7 +17,7 @@ func TestExpectedOutputOfGetByID(t *testing.T) {
 	is, log, server := testSetup(t, http.StatusOK, testData)
 	defer server.Close()
 
-	svci := NewSportsFieldService(context.Background(), log, server.URL(), "ignored")
+	svci := NewSportsFieldService(context.Background(), log, server.URL(), "ignored", nil)
 	svc, ok := svci.(*sportsfieldSvc)
 	is.True(ok)
 
@@ -37,7 +37,7 @@ func TestExpectedOutputOfGetAll(t *testing.T) {
 	is, log, server := testSetup(t, http.StatusOK, testData)
 	defer server.Close()
 
-	svci := NewSportsFieldService(context.Background(), log, server.URL(), "ignored")
+	svci := NewSportsFieldService(context.Background(), log, server.URL(), "ignored", nil)
 	svc, ok := svci.(*sportsfieldSvc)
 	is.True(ok)
 

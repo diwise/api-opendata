@@ -1,0 +1,63 @@
+package organisations
+
+import (
+	"fmt"
+	"io"
+	"sync"
+
+	yaml "gopkg.in/yaml.v2"
+
+	"github.com/diwise/api-opendata/internal/pkg/domain"
+)
+
+type organisation struct {
+	ID   string `yaml:"id"`
+	Name string `yaml:"name"`
+}
+
+type Registry interface {
+	Get(organisationID string) (*domain.Organisation, error)
+}
+
+func NewRegistry(input io.Reader) (Registry, error) {
+
+	buf, err := io.ReadAll(input)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := &struct {
+		Orgs []organisation `yaml:"organisations"`
+	}{}
+
+	err = yaml.Unmarshal(buf, &cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	reg := &registry{
+		orgs: make(map[string]*domain.Organisation),
+	}
+
+	for _, org := range cfg.Orgs {
+		reg.orgs[org.ID] = &domain.Organisation{Name: org.Name}
+	}
+
+	return reg, err
+}
+
+type registry struct {
+	orgs map[string]*domain.Organisation
+	mu   sync.Mutex
+}
+
+func (r *registry) Get(organisationID string) (*domain.Organisation, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	org, ok := r.orgs[organisationID]
+	if !ok {
+		return nil, fmt.Errorf("organisation %s not found", organisationID)
+	}
+	return org, nil
+}
