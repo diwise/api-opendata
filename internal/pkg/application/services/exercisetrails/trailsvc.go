@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/organisations"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -29,11 +30,12 @@ type ExerciseTrailService interface {
 	Shutdown()
 }
 
-func NewExerciseTrailService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string) ExerciseTrailService {
+func NewExerciseTrailService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string, orgreg organisations.Registry) ExerciseTrailService {
 	svc := &exerciseTrailSvc{
 		ctx:              ctx,
 		trails:           []domain.ExerciseTrail{},
 		trailDetails:     map[string]int{},
+		orgRegistry:      orgreg,
 		contextBrokerURL: contextBrokerURL,
 		tenant:           tenant,
 		log:              logger,
@@ -46,6 +48,8 @@ func NewExerciseTrailService(ctx context.Context, logger zerolog.Logger, context
 type exerciseTrailSvc struct {
 	contextBrokerURL string
 	tenant           string
+
+	orgRegistry organisations.Registry
 
 	trailMutex   sync.Mutex
 	trails       []domain.ExerciseTrail
@@ -144,10 +148,6 @@ func (svc *exerciseTrailSvc) run() {
 	}
 
 	svc.log.Info().Msg("exercise trail service exiting")
-}
-
-var managingOrganisations map[string]string = map[string]string{
-	"urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:": "",
 }
 
 func (svc *exerciseTrailSvc) refresh() (count int, err error) {

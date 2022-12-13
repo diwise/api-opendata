@@ -27,7 +27,7 @@ func TestSomething(t *testing.T) {
 	)
 	defer ms.Close()
 
-	svci := NewExerciseTrailService(context.Background(), zerolog.Logger{}, ms.URL(), "ignored")
+	svci := NewExerciseTrailService(context.Background(), zerolog.Logger{}, ms.URL(), "ignored", nil)
 	svc, ok := svci.(*exerciseTrailSvc)
 	is.True(ok)
 
@@ -52,7 +52,7 @@ func TestGetByCategory(t *testing.T) {
 	)
 	defer ms.Close()
 
-	svci := NewExerciseTrailService(context.Background(), zerolog.Logger{}, ms.URL(), "ignored")
+	svci := NewExerciseTrailService(context.Background(), zerolog.Logger{}, ms.URL(), "ignored", nil)
 	svc, ok := svci.(*exerciseTrailSvc)
 	is.True(ok)
 
