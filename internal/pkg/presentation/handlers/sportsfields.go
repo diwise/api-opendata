@@ -201,6 +201,8 @@ func newSportsFieldsMapper(fields []string, location func(*domain.SportsField) a
 		"datemodified": func(sf *domain.SportsField) (string, any) { return "dateModified", *sf.DateModified },
 		"publicaccess": func(sf *domain.SportsField) (string, any) { return "publicAccess", omitempty(&sf.PublicAccess) },
 		"source":       func(t *domain.SportsField) (string, any) { return "source", t.Source },
+		"managedby":    func(t *domain.SportsField) (string, any) { return "managedBy", t.ManagedBy },
+		"owner":        func(t *domain.SportsField) (string, any) { return "owner", t.Owner },
 	}
 
 	return func(t *domain.SportsField) ([]byte, error) {
