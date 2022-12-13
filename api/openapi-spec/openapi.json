@@ -414,7 +414,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["areaserved", "datelastpreparation", "description", "difficulty", "location", "paymentrequired", "source", "status"]
+              "enum": ["areaserved", "datelastpreparation", "description", "difficulty", "location", "managedby", "owner", "paymentrequired", "publicaccess", "source", "status"]
             }
           },
           "required": false,
@@ -442,6 +442,26 @@
                             "type": "string",
                             "description": "The name of this exercise trail",
                             "example": "Hotellslingan 5K"
+                          },
+                          "owner": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "description": "The name of the owner of this exercise trail",
+                                "example": "Sundsvalls kommun Friluftsenheten"
+                              }
+                            }
+                          },
+                          "managedBy": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "description": "The name of the manager of this exercise trail",
+                                "example": "Sundsvalls kommun Friluftsenheten"
+                              }
+                            }
                           },
                           "location": {
                             "type": "object",
@@ -486,6 +506,12 @@
                           "paymentRequired": {
                             "type": "boolean",
                             "description": "A value determining if payment is required to use the trail"
+                          },
+                          "publicAccess": {
+                            "type": "string",
+                            "description": "Information about when/if this trail is open for the public",
+                            "enum": ["always", "no", "opening-hours", "after-school"],
+                            "example": "opening-hours"
                           },
                           "status": {
                             "type": "string",
@@ -557,6 +583,26 @@
                                 "type": "string",
                                 "example": "Hotellslingan 5K"
                               },
+                              "owner": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string",
+                                    "description": "The name of the owner of this exercise trail",
+                                    "example": "Sundsvalls kommun Friluftsenheten"
+                                  }
+                                }
+                              },
+                              "managedBy": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string",
+                                    "description": "The name of the manager of this exercise trail",
+                                    "example": "Sundsvalls kommun Friluftsenheten"
+                                  }
+                                }
+                              },
                               "categories": {
                                 "type": "array",
                                 "description": "List of exercise trail categories",
@@ -581,6 +627,12 @@
                               "paymentRequired": {
                                 "type": "boolean",
                                 "description": "A value determining if payment is required to use the trail"
+                              },
+                              "publicAccess": {
+                                "type": "string",
+                                "description": "Information about when/if this trail is open for the public",
+                                "enum": ["always", "no", "opening-hours", "after-school"],
+                                "example": "after-school"
                               },
                               "status": {
                                 "type": "string",
@@ -707,6 +759,26 @@
                           "description": "The name of this exercise trail",
                           "example": "Hotellslingan 5K"
                         },
+                        "owner": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "description": "The name of the owner of this exercise trail",
+                              "example": "Sundsvalls kommun Friluftsenheten"
+                            }
+                          }
+                        },
+                        "managedBy": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "description": "The name of the manager of this exercise trail",
+                              "example": "Sundsvalls kommun Friluftsenheten"
+                            }
+                          }
+                        },
                         "location": {
                           "type": "object",
                           "properties": {
@@ -757,6 +829,12 @@
                         "paymentRequired": {
                           "type": "boolean",
                           "description": "A value determining if payment is required to use the trail"
+                        },
+                        "publicAccess": {
+                          "type": "string",
+                          "description": "Information about when/if this trail is open for the public",
+                          "enum": ["always", "no", "opening-hours", "after-school"],
+                          "example": "no"
                         },
                         "source": {
                           "type": "string",
@@ -944,7 +1022,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["datelastpreparation", "description", "location", "source"]
+              "enum": ["datelastpreparation", "description", "location", "managedby", "owner", "publicaccess", "source"]
             }
           },
           "required": false,
@@ -973,6 +1051,26 @@
                             "description": "The name of this sports field",
                             "example": "Skolans grusplan och isbana"
                           },
+                          "owner": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "description": "The name of the owner of this sports field",
+                                "example": "Sundsvalls kommun Friluftsenheten"
+                              }
+                            }
+                          },
+                          "managedBy": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "description": "The name of the manager of this sports field",
+                                "example": "Sundsvalls kommun Friluftsenheten"
+                              }
+                            }
+                          },
                           "location": {
                             "type": "object",
                             "properties": {
@@ -1000,6 +1098,12 @@
                               "enum": ["bandy", "hockey", "ice-rink", "skating", "floodlit"]
                             },
                             "example":  ["floodlit", "hockey"]
+                          },
+                          "publicAccess": {
+                            "type": "string",
+                            "description": "Information about when/if this sports field is open for the public",
+                            "enum": ["always", "no", "opening-hours", "after-school"],
+                            "example": "always"
                           },
                           "description": {
                             "type": "string",
@@ -1078,6 +1182,26 @@
                                 "type": "string",
                                 "example": "Skolans grusplan och isbana"
                               },
+                              "owner": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string",
+                                    "description": "The name of the owner of this sports field",
+                                    "example": "Sundsvalls kommun Friluftsenheten"
+                                  }
+                                }
+                              },
+                              "managedBy": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string",
+                                    "description": "The name of the manager of this sports field",
+                                    "example": "Sundsvalls kommun Friluftsenheten"
+                                  }
+                                }
+                              },
                               "source": {
                                 "type": "string",
                                 "description": "The source of the data for this sports field",
@@ -1091,6 +1215,12 @@
                                   "enum": ["bandy", "hockey", "ice-rink", "skating", "floodlit"]
                                 },
                                 "example":  ["floodlit", "skating"]
+                              },
+                              "publicAccess": {
+                                "type": "string",
+                                "description": "Information about when/if this sports field is open for the public",
+                                "enum": ["always", "no", "opening-hours", "after-school"],
+                                "example": "opening-hours"
                               },
                               "dateLastPreparation": {
                                 "type": "string",
@@ -1144,6 +1274,26 @@
                       "description": "The name of this sports field",
                       "example": "Skolans grusplan och isbana"
                     },
+                    "owner": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "The name of the owner of this sports field",
+                          "example": "Sundsvalls kommun Friluftsenheten"
+                        }
+                      }
+                    },
+                    "managedBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "The name of the manager of this sports field",
+                          "example": "Sundsvalls kommun Friluftsenheten"
+                        }
+                      }
+                    },
                     "location": {
                       "type": "object",
                       "properties": {
@@ -1181,6 +1331,12 @@
                         "enum": ["bandy", "hockey", "ice-rink", "skating", "floodlit"]
                       },
                       "example":  ["floodlit", "hockey"]
+                    },
+                    "publicAccess": {
+                      "type": "string",
+                      "description": "Information about when/if this sports field is open for the public",
+                      "enum": ["always", "no", "opening-hours", "after-school"],
+                      "example": "always"
                     },
                     "description": {
                       "type": "string",
@@ -1240,7 +1396,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["description", "location", "seealso", "source"]
+              "enum": ["description", "location", "managedby", "owner", "seealso", "source"]
             }
           },
           "required": false,
@@ -1268,6 +1424,26 @@
                             "type": "string",
                             "description": "The name of this sports venue",
                             "example": "Sporthallen"
+                          },
+                          "owner": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "description": "The name of the owner of this sports venue",
+                                "example": "Sundsvalls kommun Friluftsenheten"
+                              }
+                            }
+                          },
+                          "managedBy": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "description": "The name of the manager of this sports venue",
+                                "example": "Sundsvalls kommun Friluftsenheten"
+                              }
+                            }
                           },
                           "location": {
                             "type": "object",
@@ -1379,6 +1555,26 @@
                                 "type": "string",
                                 "example": "Sporthallen"
                               },
+                              "owner": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string",
+                                    "description": "The name of the owner of this sports venue",
+                                    "example": "Sundsvalls kommun Friluftsenheten"
+                                  }
+                                }
+                              },
+                              "managedBy": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string",
+                                    "description": "The name of the manager of this sports venue",
+                                    "example": "Sundsvalls kommun Friluftsenheten"
+                                  }
+                                }
+                              },
                               "source": {
                                 "type": "string",
                                 "description": "The source of the data for this sports venue",
@@ -1449,6 +1645,26 @@
                       "type": "string",
                       "description": "The name of this sports venue",
                       "example": "Sporthallen"
+                    },
+                    "owner": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "The name of the owner of this sports venue",
+                          "example": "Sundsvalls kommun Friluftsenheten"
+                        }
+                      }
+                    },
+                    "managedBy": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "The name of the manager of this sports venue",
+                          "example": "Sundsvalls kommun Friluftsenheten"
+                        }
+                      }
                     },
                     "location": {
                       "type": "object",
