@@ -172,6 +172,13 @@ func (svc *sportsvenueSvc) refresh() (count int, err error) {
 			}
 		}
 
+		if len(sf.Owner) > 0 {
+			venue.Owner, err = svc.orgRegistry.Get(sf.Owner)
+			if err != nil {
+				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+			}
+		}
+
 		if sf.DateCreated != nil {
 			venue.DateCreated = &sf.DateCreated.Value
 		}
@@ -215,6 +222,7 @@ type sportsVenueDTO struct {
 	See          json.RawMessage     `json:"seeAlso"`
 	Source       string              `json:"source"`
 	ManagedBy    string              `json:"managedBy"`
+	Owner        string              `json:"owner"`
 }
 
 // Categories extracts the venue categories as a string array, regardless

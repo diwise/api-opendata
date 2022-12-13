@@ -172,6 +172,13 @@ func (svc *sportsfieldSvc) refresh() (count int, err error) {
 			}
 		}
 
+		if len(sf.Owner) > 0 {
+			sportsfield.Owner, err = svc.orgRegistry.Get(sf.Owner)
+			if err != nil {
+				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+			}
+		}
+
 		if sf.DateCreated != nil {
 			sportsfield.DateCreated = &sf.DateCreated.Value
 		}
@@ -219,6 +226,7 @@ type sportsFieldDTO struct {
 	DateLastPreparation *domain.DateTime    `json:"dateLastPreparation,omitempty"`
 	Source              string              `json:"source"`
 	ManagedBy           string              `json:"managedBy"`
+	Owner               string              `json:"owner"`
 }
 
 // Categories extracts the field categories as a string array, regardless

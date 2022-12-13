@@ -184,6 +184,13 @@ func (svc *exerciseTrailSvc) refresh() (count int, err error) {
 			}
 		}
 
+		if len(t.Owner) > 0 {
+			trail.Owner, err = svc.orgRegistry.Get(t.Owner)
+			if err != nil {
+				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+			}
+		}
+
 		trails = append(trails, trail)
 	})
 
@@ -227,6 +234,7 @@ type trailDTO struct {
 	DateModified        domain.DateTime `json:"dateModified"`
 	DateLastPreparation domain.DateTime `json:"dateLastPreparation"`
 	ManagedBy           string          `json:"managedBy"`
+	Owner               string          `json:"owner"`
 }
 
 // LatLon tries to guess a suitable location point by assuming that the
