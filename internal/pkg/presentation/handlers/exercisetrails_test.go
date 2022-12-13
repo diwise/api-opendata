@@ -81,7 +81,7 @@ func TestGetExerciseTrailsWithManageBy(t *testing.T) {
 	NewRetrieveExerciseTrailsHandler(log, svc).ServeHTTP(rw, req)
 	response, _ := io.ReadAll(rw.Body)
 
-	const expectedResponse string = `{"data":[{"categories":["bike-track"],"id":"trail0","length":7,"managedBy":"a very ominous organisation","name":"test0"}]}`
+	const expectedResponse string = `{"data":[{"categories":["bike-track"],"id":"trail0","length":7,"managedBy":{"name":"a very ominous organisation"},"name":"test0"}]}`
 	is.Equal(string(response), expectedResponse)
 }
 
@@ -182,7 +182,7 @@ func defaultTrailsMock() *services.ExerciseTrailServiceMock {
 		Length:       7,
 		AreaServed:   "southern part",
 		Location:     *domain.NewLineString([][]float64{{17.313069, 62.368439, 32.1}, {17.313284, 62.368418, 42.5}, {17.313413, 62.368416, 38.7}}),
-		ManagedBy:    "a very ominous organisation",
+		ManagedBy:    &domain.Organisation{Name: "a very ominous organisation"},
 	}
 
 	mock := &services.ExerciseTrailServiceMock{

@@ -175,7 +175,10 @@ func (svc *exerciseTrailSvc) refresh() (count int, err error) {
 			DateLastPreparation: t.DateLastPreparation.Value,
 			Source:              t.Source,
 			AreaServed:          t.AreaServed,
-			ManagedBy:           t.ManagedBy,
+		}
+
+		if len(t.ManagedBy) > 0 {
+			trail.ManagedBy = &domain.Organisation{Name: t.ManagedBy}
 		}
 
 		trails = append(trails, trail)
