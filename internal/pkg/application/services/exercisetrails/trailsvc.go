@@ -162,6 +162,7 @@ func (svc *exerciseTrailSvc) refresh() (count int, err error) {
 			Name:                t.Name,
 			Description:         t.Description,
 			Categories:          t.Categories(),
+			PublicAccess:        t.PublicAccess,
 			Location:            *domain.NewLineString(t.Location.Coordinates),
 			Length:              math.Round(t.Length*10) / 10,
 			Difficulty:          math.Round(t.Difficulty*100) / 100,
@@ -197,11 +198,12 @@ func (svc *exerciseTrailSvc) storeExerciseTrailList(list []domain.ExerciseTrail)
 }
 
 type trailDTO struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	Category    json.RawMessage `json:"category"`
-	Location    struct {
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description"`
+	Category     json.RawMessage `json:"category"`
+	PublicAccess string          `json:"publicAccess"`
+	Location     struct {
 		Type        string      `json:"type"`
 		Coordinates [][]float64 `json:"coordinates"`
 	} `json:"location"`

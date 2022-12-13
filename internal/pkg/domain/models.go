@@ -72,6 +72,7 @@ type ExerciseTrail struct {
 	Description         string     `json:"description"`
 	Location            LineString `json:"location"`
 	Categories          []string   `json:"categories"`
+	PublicAccess        string     `json:"publicAccess"`
 	Length              float64    `json:"length"`
 	Difficulty          float64    `json:"difficulty"`
 	PaymentRequired     bool       `json:"paymentRequired"`
