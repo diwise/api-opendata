@@ -20,6 +20,18 @@ func TestLoad(t *testing.T) {
 	is.Equal(org.Name, "foo")
 }
 
+func TestLoadNoInfile(t *testing.T) {
+	is := is.New(t)
+
+	svc, err := NewRegistry(nil)
+	is.NoErr(err)
+
+	_, err = svc.Get("test0")
+
+	is.True(err != nil)
+	is.Equal(err.Error(), "organisation test0 not found")
+}
+
 const configFile string = `
 organisations:
   - id: test0
