@@ -1,7 +1,6 @@
 package organisations
 
 import (
-	"errors"
 	"io"
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
@@ -19,5 +18,5 @@ type registry struct {
 }
 
 func (r *registry) Get(organisationID string) (*domain.Organisation, error) {
-	return nil, errors.New("not implemented")
+	return &domain.Organisation{Name: organisationID}, nil
 }

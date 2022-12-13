@@ -178,7 +178,10 @@ func (svc *exerciseTrailSvc) refresh() (count int, err error) {
 		}
 
 		if len(t.ManagedBy) > 0 {
-			trail.ManagedBy = &domain.Organisation{Name: t.ManagedBy}
+			trail.ManagedBy, err = svc.orgRegistry.Get(t.ManagedBy)
+			if err != nil {
+				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+			}
 		}
 
 		trails = append(trails, trail)
