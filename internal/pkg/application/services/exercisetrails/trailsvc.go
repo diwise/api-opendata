@@ -146,6 +146,10 @@ func (svc *exerciseTrailSvc) run() {
 	svc.log.Info().Msg("exercise trail service exiting")
 }
 
+var managingOrganisations map[string]string = map[string]string{
+	"urn:ngsi-ld:Organisation:se:sundsvall:facilities:org:": "",
+}
+
 func (svc *exerciseTrailSvc) refresh() (count int, err error) {
 
 	ctx, span := tracer.Start(svc.ctx, "refresh-trails")
@@ -171,6 +175,7 @@ func (svc *exerciseTrailSvc) refresh() (count int, err error) {
 			DateLastPreparation: t.DateLastPreparation.Value,
 			Source:              t.Source,
 			AreaServed:          t.AreaServed,
+			ManagedBy:           t.ManagedBy,
 		}
 
 		trails = append(trails, trail)
@@ -215,6 +220,7 @@ type trailDTO struct {
 	AreaServed          string          `json:"areaServed"`
 	DateModified        domain.DateTime `json:"dateModified"`
 	DateLastPreparation domain.DateTime `json:"dateLastPreparation"`
+	ManagedBy           string          `json:"managedBy"`
 }
 
 // LatLon tries to guess a suitable location point by assuming that the

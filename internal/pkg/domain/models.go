@@ -80,6 +80,8 @@ type ExerciseTrail struct {
 	DateLastPreparation string     `json:"dateLastPreparation,omitempty"`
 	Source              string     `json:"source"`
 	AreaServed          string     `json:"areaServed"`
+	ManagedBy           string     `json:"managedBy"`
+	Owner               string     `json:"owner"`
 }
 
 type MultiPolygon struct {
