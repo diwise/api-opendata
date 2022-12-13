@@ -11,6 +11,7 @@ require (
 	github.com/rs/cors v1.8.2
 	github.com/rs/zerolog v1.28.0
 	go.opentelemetry.io/otel v1.11.1
+	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
