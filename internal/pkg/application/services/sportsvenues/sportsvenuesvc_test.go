@@ -27,7 +27,7 @@ func TestExpectedOutputOfGetByID(t *testing.T) {
 	)
 	defer ms.Close()
 
-	svci := NewSportsVenueService(context.Background(), zerolog.Logger{}, ms.URL(), "ignored")
+	svci := NewSportsVenueService(context.Background(), zerolog.Logger{}, ms.URL(), "ignored", nil)
 	svc, ok := svci.(*sportsvenueSvc)
 	is.True(ok)
 
@@ -51,7 +51,7 @@ func TestExpectedOutputOfGetAll(t *testing.T) {
 	)
 	defer ms.Close()
 
-	svci := NewSportsVenueService(context.Background(), zerolog.Logger{}, ms.URL(), "ignored")
+	svci := NewSportsVenueService(context.Background(), zerolog.Logger{}, ms.URL(), "ignored", nil)
 	svc, ok := svci.(*sportsvenueSvc)
 	is.True(ok)
 

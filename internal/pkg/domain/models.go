@@ -44,10 +44,8 @@ type Agent struct {
 	Name  string
 }
 
-type Organization struct {
-	About    string
-	Fn       string
-	HasEmail string
+type Organisation struct {
+	Name string `json:"name"`
 }
 
 type Beach struct {
@@ -67,18 +65,21 @@ type BeachDetails struct {
 }
 
 type ExerciseTrail struct {
-	ID                  string     `json:"id"`
-	Name                string     `json:"name"`
-	Description         string     `json:"description"`
-	Location            LineString `json:"location"`
-	Categories          []string   `json:"categories"`
-	Length              float64    `json:"length"`
-	Difficulty          float64    `json:"difficulty"`
-	PaymentRequired     bool       `json:"paymentRequired"`
-	Status              string     `json:"status"`
-	DateLastPreparation string     `json:"dateLastPreparation,omitempty"`
-	Source              string     `json:"source"`
-	AreaServed          string     `json:"areaServed"`
+	ID                  string        `json:"id"`
+	Name                string        `json:"name"`
+	Description         string        `json:"description"`
+	Location            LineString    `json:"location"`
+	Categories          []string      `json:"categories"`
+	PublicAccess        string        `json:"publicAccess"`
+	Length              float64       `json:"length"`
+	Difficulty          float64       `json:"difficulty"`
+	PaymentRequired     bool          `json:"paymentRequired"`
+	Status              string        `json:"status"`
+	DateLastPreparation string        `json:"dateLastPreparation,omitempty"`
+	Source              string        `json:"source"`
+	AreaServed          string        `json:"areaServed"`
+	ManagedBy           *Organisation `json:"managedBy,omitempty"`
+	Owner               *Organisation `json:"owner,omitempty"`
 }
 
 type MultiPolygon struct {
@@ -92,27 +93,32 @@ type Sensor struct {
 }
 
 type SportsField struct {
-	ID                  string       `json:"id"`
-	Name                string       `json:"name"`
-	Description         string       `json:"description"`
-	Categories          []string     `json:"categories"`
-	Location            MultiPolygon `json:"location"`
-	DateCreated         *string      `json:"dateCreated,omitempty"`
-	DateModified        *string      `json:"dateModified,omitempty"`
-	DateLastPreparation *string      `json:"dateLastPreparation,omitempty"`
-	Source              string       `json:"source"`
+	ID                  string        `json:"id"`
+	Name                string        `json:"name"`
+	Description         string        `json:"description"`
+	Categories          []string      `json:"categories"`
+	PublicAccess        string        `json:"publicAccess"`
+	Location            MultiPolygon  `json:"location"`
+	DateCreated         *string       `json:"dateCreated,omitempty"`
+	DateModified        *string       `json:"dateModified,omitempty"`
+	DateLastPreparation *string       `json:"dateLastPreparation,omitempty"`
+	Source              string        `json:"source"`
+	ManagedBy           *Organisation `json:"managedBy,omitempty"`
+	Owner               *Organisation `json:"owner,omitempty"`
 }
 
 type SportsVenue struct {
-	ID           string       `json:"id"`
-	Name         string       `json:"name"`
-	Description  string       `json:"description"`
-	Categories   []string     `json:"categories"`
-	Location     MultiPolygon `json:"location"`
-	DateCreated  *string      `json:"dateCreated,omitempty"`
-	DateModified *string      `json:"dateModified,omitempty"`
-	Source       string       `json:"source"`
-	SeeAlso      []string     `json:"seeAlso,omitempty"`
+	ID           string        `json:"id"`
+	Name         string        `json:"name"`
+	Description  string        `json:"description"`
+	Categories   []string      `json:"categories"`
+	Location     MultiPolygon  `json:"location"`
+	DateCreated  *string       `json:"dateCreated,omitempty"`
+	DateModified *string       `json:"dateModified,omitempty"`
+	Source       string        `json:"source"`
+	SeeAlso      []string      `json:"seeAlso,omitempty"`
+	ManagedBy    *Organisation `json:"managedBy,omitempty"`
+	Owner        *Organisation `json:"owner,omitempty"`
 }
 
 type Temperature struct {

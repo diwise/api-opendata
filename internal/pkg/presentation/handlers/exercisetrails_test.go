@@ -61,6 +61,30 @@ func TestGetExerciseTrailsWithDescription(t *testing.T) {
 	is.Equal(string(response), expectedResponse)
 }
 
+func TestGetExerciseTrailsWithPublicAccess(t *testing.T) {
+	is, log, rw := setup(t)
+	svc := defaultTrailsMock()
+	req, _ := http.NewRequest("GET", "?fields=publicaccess", nil)
+
+	NewRetrieveExerciseTrailsHandler(log, svc).ServeHTTP(rw, req)
+	response, _ := io.ReadAll(rw.Body)
+
+	const expectedResponse string = `{"data":[{"categories":["bike-track"],"id":"trail0","length":7,"name":"test0","publicAccess":"no"}]}`
+	is.Equal(string(response), expectedResponse)
+}
+
+func TestGetExerciseTrailsWithManageBy(t *testing.T) {
+	is, log, rw := setup(t)
+	svc := defaultTrailsMock()
+	req, _ := http.NewRequest("GET", "?fields=managedby", nil)
+
+	NewRetrieveExerciseTrailsHandler(log, svc).ServeHTTP(rw, req)
+	response, _ := io.ReadAll(rw.Body)
+
+	const expectedResponse string = `{"data":[{"categories":["bike-track"],"id":"trail0","length":7,"managedBy":{"name":"a very ominous organisation"},"name":"test0"}]}`
+	is.Equal(string(response), expectedResponse)
+}
+
 func TestGetExerciseTrailsWithNoSpecificCategories(t *testing.T) {
 	is, log, rw := setup(t)
 	svc := defaultTrailsMock()
@@ -150,13 +174,15 @@ func TestGetExerciseTrailAsGeoJSON(t *testing.T) {
 
 func defaultTrailsMock() *services.ExerciseTrailServiceMock {
 	trail0 := domain.ExerciseTrail{
-		ID:          "trail0",
-		Name:        "test0",
-		Description: "this is a description",
-		Categories:  []string{"bike-track"},
-		Length:      7,
-		AreaServed:  "southern part",
-		Location:    *domain.NewLineString([][]float64{{17.313069, 62.368439, 32.1}, {17.313284, 62.368418, 42.5}, {17.313413, 62.368416, 38.7}}),
+		ID:           "trail0",
+		Name:         "test0",
+		Description:  "this is a description",
+		Categories:   []string{"bike-track"},
+		PublicAccess: "no",
+		Length:       7,
+		AreaServed:   "southern part",
+		Location:     *domain.NewLineString([][]float64{{17.313069, 62.368439, 32.1}, {17.313284, 62.368418, 42.5}, {17.313413, 62.368416, 38.7}}),
+		ManagedBy:    &domain.Organisation{Name: "a very ominous organisation"},
 	}
 
 	mock := &services.ExerciseTrailServiceMock{

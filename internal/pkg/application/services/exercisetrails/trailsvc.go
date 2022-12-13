@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/organisations"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -29,11 +30,12 @@ type ExerciseTrailService interface {
 	Shutdown()
 }
 
-func NewExerciseTrailService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string) ExerciseTrailService {
+func NewExerciseTrailService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string, orgreg organisations.Registry) ExerciseTrailService {
 	svc := &exerciseTrailSvc{
 		ctx:              ctx,
 		trails:           []domain.ExerciseTrail{},
 		trailDetails:     map[string]int{},
+		orgRegistry:      orgreg,
 		contextBrokerURL: contextBrokerURL,
 		tenant:           tenant,
 		log:              logger,
@@ -46,6 +48,8 @@ func NewExerciseTrailService(ctx context.Context, logger zerolog.Logger, context
 type exerciseTrailSvc struct {
 	contextBrokerURL string
 	tenant           string
+
+	orgRegistry organisations.Registry
 
 	trailMutex   sync.Mutex
 	trails       []domain.ExerciseTrail
@@ -162,6 +166,7 @@ func (svc *exerciseTrailSvc) refresh() (count int, err error) {
 			Name:                t.Name,
 			Description:         t.Description,
 			Categories:          t.Categories(),
+			PublicAccess:        t.PublicAccess,
 			Location:            *domain.NewLineString(t.Location.Coordinates),
 			Length:              math.Round(t.Length*10) / 10,
 			Difficulty:          math.Round(t.Difficulty*100) / 100,
@@ -170,6 +175,20 @@ func (svc *exerciseTrailSvc) refresh() (count int, err error) {
 			DateLastPreparation: t.DateLastPreparation.Value,
 			Source:              t.Source,
 			AreaServed:          t.AreaServed,
+		}
+
+		if len(t.ManagedBy) > 0 {
+			trail.ManagedBy, err = svc.orgRegistry.Get(t.ManagedBy)
+			if err != nil {
+				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+			}
+		}
+
+		if len(t.Owner) > 0 {
+			trail.Owner, err = svc.orgRegistry.Get(t.Owner)
+			if err != nil {
+				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+			}
 		}
 
 		trails = append(trails, trail)
@@ -197,11 +216,12 @@ func (svc *exerciseTrailSvc) storeExerciseTrailList(list []domain.ExerciseTrail)
 }
 
 type trailDTO struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	Category    json.RawMessage `json:"category"`
-	Location    struct {
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description"`
+	Category     json.RawMessage `json:"category"`
+	PublicAccess string          `json:"publicAccess"`
+	Location     struct {
 		Type        string      `json:"type"`
 		Coordinates [][]float64 `json:"coordinates"`
 	} `json:"location"`
@@ -213,6 +233,8 @@ type trailDTO struct {
 	AreaServed          string          `json:"areaServed"`
 	DateModified        domain.DateTime `json:"dateModified"`
 	DateLastPreparation domain.DateTime `json:"dateLastPreparation"`
+	ManagedBy           string          `json:"managedBy"`
+	Owner               string          `json:"owner"`
 }
 
 // LatLon tries to guess a suitable location point by assuming that the

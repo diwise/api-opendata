@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/organisations"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -28,12 +29,13 @@ type SportsVenueService interface {
 	Shutdown()
 }
 
-func NewSportsVenueService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string) SportsVenueService {
+func NewSportsVenueService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string, orgreg organisations.Registry) SportsVenueService {
 	svc := &sportsvenueSvc{
 		ctx:                 ctx,
 		sportsvenues:        []domain.SportsVenue{},
 		sportsvenuesDetails: map[string]int{},
 		contextBrokerURL:    contextBrokerURL,
+		orgRegistry:         orgreg,
 		tenant:              tenant,
 		log:                 logger,
 		keepRunning:         true,
@@ -47,6 +49,7 @@ type sportsvenueSvc struct {
 	sportsvenuesMutex   sync.Mutex
 	sportsvenues        []domain.SportsVenue
 	sportsvenuesDetails map[string]int
+	orgRegistry         organisations.Registry
 	contextBrokerURL    string
 	tenant              string
 	log                 zerolog.Logger
@@ -162,6 +165,20 @@ func (svc *sportsvenueSvc) refresh() (count int, err error) {
 			SeeAlso:     sf.SeeAlso(),
 		}
 
+		if len(sf.ManagedBy) > 0 {
+			venue.ManagedBy, err = svc.orgRegistry.Get(sf.ManagedBy)
+			if err != nil {
+				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+			}
+		}
+
+		if len(sf.Owner) > 0 {
+			venue.Owner, err = svc.orgRegistry.Get(sf.Owner)
+			if err != nil {
+				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+			}
+		}
+
 		if sf.DateCreated != nil {
 			venue.DateCreated = &sf.DateCreated.Value
 		}
@@ -204,6 +221,8 @@ type sportsVenueDTO struct {
 	DateModified *domain.DateTime    `json:"dateModified,omitempty"`
 	See          json.RawMessage     `json:"seeAlso"`
 	Source       string              `json:"source"`
+	ManagedBy    string              `json:"managedBy"`
+	Owner        string              `json:"owner"`
 }
 
 // Categories extracts the venue categories as a string array, regardless

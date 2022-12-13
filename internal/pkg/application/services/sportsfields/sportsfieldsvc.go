@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/organisations"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -28,11 +29,12 @@ type SportsFieldService interface {
 	Shutdown()
 }
 
-func NewSportsFieldService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string) SportsFieldService {
+func NewSportsFieldService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string, orgreg organisations.Registry) SportsFieldService {
 	svc := &sportsfieldSvc{
 		ctx:                 ctx,
 		sportsfields:        []domain.SportsField{},
 		sportsfieldsDetails: map[string]int{},
+		orgRegistry:         orgreg,
 		contextBrokerURL:    contextBrokerURL,
 		tenant:              tenant,
 		log:                 logger,
@@ -47,6 +49,7 @@ type sportsfieldSvc struct {
 	sportsfieldsMutex   sync.Mutex
 	sportsfields        []domain.SportsField
 	sportsfieldsDetails map[string]int
+	orgRegistry         organisations.Registry
 	contextBrokerURL    string
 	tenant              string
 	log                 zerolog.Logger
@@ -153,12 +156,27 @@ func (svc *sportsfieldSvc) refresh() (count int, err error) {
 	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "SportsField", nil, func(sf sportsFieldDTO) {
 
 		sportsfield := domain.SportsField{
-			ID:          sf.ID,
-			Name:        sf.Name,
-			Description: sf.Description,
-			Categories:  sf.Categories(),
-			Location:    sf.Location,
-			Source:      sf.Source,
+			ID:           sf.ID,
+			Name:         sf.Name,
+			Description:  sf.Description,
+			Categories:   sf.Categories(),
+			PublicAccess: sf.PublicAccess,
+			Location:     sf.Location,
+			Source:       sf.Source,
+		}
+
+		if len(sf.ManagedBy) > 0 {
+			sportsfield.ManagedBy, err = svc.orgRegistry.Get(sf.ManagedBy)
+			if err != nil {
+				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+			}
+		}
+
+		if len(sf.Owner) > 0 {
+			sportsfield.Owner, err = svc.orgRegistry.Get(sf.Owner)
+			if err != nil {
+				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+			}
 		}
 
 		if sf.DateCreated != nil {
@@ -201,11 +219,14 @@ type sportsFieldDTO struct {
 	Name                string              `json:"name"`
 	Description         string              `json:"description"`
 	Category            json.RawMessage     `json:"category"`
+	PublicAccess        string              `json:"publicAccess"`
 	Location            domain.MultiPolygon `json:"location"`
 	DateCreated         *domain.DateTime    `json:"dateCreated"`
 	DateModified        *domain.DateTime    `json:"dateModified,omitempty"`
 	DateLastPreparation *domain.DateTime    `json:"dateLastPreparation,omitempty"`
 	Source              string              `json:"source"`
+	ManagedBy           string              `json:"managedBy"`
+	Owner               string              `json:"owner"`
 }
 
 // Categories extracts the field categories as a string array, regardless
