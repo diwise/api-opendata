@@ -206,6 +206,7 @@ func newTrailMapper(fields []string, location func(*domain.ExerciseTrail) any) T
 		"source":     func(t *domain.ExerciseTrail) (string, any) { return "source", t.Source },
 		"areaserved": func(t *domain.ExerciseTrail) (string, any) { return "areaServed", t.AreaServed },
 		"managedby":  func(t *domain.ExerciseTrail) (string, any) { return "managedBy", t.ManagedBy },
+		"owner":      func(t *domain.ExerciseTrail) (string, any) { return "owner", t.Owner },
 	}
 
 	return func(t *domain.ExerciseTrail) ([]byte, error) {
