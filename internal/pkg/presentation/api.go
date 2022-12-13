@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/flate"
 	"context"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -38,11 +39,11 @@ type opendataAPI struct {
 	log    zerolog.Logger
 }
 
-func NewAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) API {
-	return newOpendataAPI(r, ctx, dcatResponse, openapiResponse)
+func NewAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer, orgfile io.Reader) API {
+	return newOpendataAPI(r, ctx, dcatResponse, openapiResponse, orgfile)
 }
 
-func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) *opendataAPI {
+func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer, orgfile io.Reader) *opendataAPI {
 	log := logging.GetFromContext(ctx)
 
 	r.Use(cors.New(cors.Options{
@@ -64,7 +65,7 @@ func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffe
 		log:    log,
 	}
 
-	o.addDiwiseHandlers(r, log)
+	o.addDiwiseHandlers(r, log, orgfile)
 	o.addProbeHandlers(r)
 
 	o.router.Get("/api/datasets/dcat", o.newRetrieveDatasetsHandler(log, dcatResponse))
@@ -79,7 +80,7 @@ func (a *opendataAPI) Start(port string) error {
 	return http.ListenAndServe(":"+port, a.router)
 }
 
-func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
+func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger, orgfile io.Reader) {
 	contextBrokerURL := env.GetVariableOrDie(log, "DIWISE_CONTEXT_BROKER_URL", "context broker URL")
 	contextBrokerTenant := env.GetVariableOrDefault(log, "DIWISE_CONTEXT_BROKER_TENANT", entities.DefaultNGSITenant)
 	maxWQODistStr := env.GetVariableOrDefault(log, "WATER_QUALITY_MAX_DISTANCE", "1000")
@@ -89,8 +90,7 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
 		maxWQODistance = 1000
 	}
 
-	input := bytes.NewBufferString("")
-	organisationsRegistry, _ := organisations.NewRegistry(input)
+	organisationsRegistry, _ := organisations.NewRegistry(orgfile)
 
 	beachService := beaches.NewBeachService(context.Background(), log, contextBrokerURL, contextBrokerTenant, int(maxWQODistance))
 	beachService.Start()
