@@ -80,6 +80,7 @@ type ExerciseTrail struct {
 	AreaServed          string        `json:"areaServed"`
 	ManagedBy           *Organisation `json:"managedBy,omitempty"`
 	Owner               *Organisation `json:"owner,omitempty"`
+	SeeAlso             []string      `json:"seeAlso,omitempty"`
 }
 
 type MultiPolygon struct {
