@@ -175,6 +175,7 @@ func (svc *exerciseTrailSvc) refresh() (count int, err error) {
 			DateLastPreparation: t.DateLastPreparation.Value,
 			Source:              t.Source,
 			AreaServed:          t.AreaServed,
+			SeeAlso:             t.SeeAlso(),
 		}
 
 		if len(t.ManagedBy) > 0 {
@@ -235,6 +236,7 @@ type trailDTO struct {
 	DateLastPreparation domain.DateTime `json:"dateLastPreparation"`
 	ManagedBy           string          `json:"managedBy"`
 	Owner               string          `json:"owner"`
+	See                 json.RawMessage `json:"seeAlso"`
 }
 
 // LatLon tries to guess a suitable location point by assuming that the
@@ -269,4 +271,28 @@ func (t *trailDTO) Categories() []string {
 	}
 
 	return catsAsArray
+}
+
+// SeeAlso extracts the trail reference links as a string array, regardless
+// of the format string vs []string of the response property
+func (t *trailDTO) SeeAlso() []string {
+	return rawJSONToSliceOfStrings(t.See)
+}
+
+func rawJSONToSliceOfStrings(rm json.RawMessage) []string {
+	valueAsArray := []string{}
+
+	if len(rm) > 0 {
+		if err := json.Unmarshal(rm, &valueAsArray); err != nil {
+			var valueAsString string
+
+			if err = json.Unmarshal(rm, &valueAsString); err != nil {
+				return []string{err.Error()}
+			}
+
+			return []string{valueAsString}
+		}
+	}
+
+	return valueAsArray
 }

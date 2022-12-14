@@ -180,12 +180,19 @@ func newGeoJSONMapper(baseMapper TrailMapperFunc) TrailMapperFunc {
 
 func newTrailMapper(fields []string, location func(*domain.ExerciseTrail) any) TrailMapperFunc {
 
-	omitempty := func(s string) any {
-		if s == "" {
-			return nil
+	omitempty := func(v any) any {
+		switch value := v.(type) {
+		case []string:
+			if len(value) == 0 || (len(value) == 1 && len(value[0]) == 0) {
+				return nil
+			}
+		case string:
+			if len(value) == 0 {
+				return nil
+			}
 		}
 
-		return s
+		return v
 	}
 
 	mappers := map[string]func(*domain.ExerciseTrail) (string, any){
@@ -207,6 +214,7 @@ func newTrailMapper(fields []string, location func(*domain.ExerciseTrail) any) T
 		"areaserved": func(t *domain.ExerciseTrail) (string, any) { return "areaServed", t.AreaServed },
 		"managedby":  func(t *domain.ExerciseTrail) (string, any) { return "managedBy", t.ManagedBy },
 		"owner":      func(t *domain.ExerciseTrail) (string, any) { return "owner", t.Owner },
+		"seealso":    func(t *domain.ExerciseTrail) (string, any) { return "seeAlso", omitempty(t.SeeAlso) },
 	}
 
 	return func(t *domain.ExerciseTrail) ([]byte, error) {
