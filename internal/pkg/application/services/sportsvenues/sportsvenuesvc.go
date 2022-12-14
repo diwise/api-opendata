@@ -153,37 +153,38 @@ func (svc *sportsvenueSvc) refresh() (count int, err error) {
 
 	sportsvenues := []domain.SportsVenue{}
 
-	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "SportsVenue", nil, func(sf sportsVenueDTO) {
+	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "SportsVenue", nil, func(sv sportsVenueDTO) {
 
 		venue := domain.SportsVenue{
-			ID:          sf.ID,
-			Name:        sf.Name,
-			Description: sf.Description,
-			Categories:  sf.Categories(),
-			Location:    sf.Location,
-			Source:      sf.Source,
-			SeeAlso:     sf.SeeAlso(),
+			ID:           sv.ID,
+			Name:         sv.Name,
+			Description:  sv.Description,
+			Categories:   sv.Categories(),
+			PublicAccess: sv.PublicAccess,
+			Location:     sv.Location,
+			Source:       sv.Source,
+			SeeAlso:      sv.SeeAlso(),
 		}
 
-		if len(sf.ManagedBy) > 0 {
-			venue.ManagedBy, err = svc.orgRegistry.Get(sf.ManagedBy)
+		if len(sv.ManagedBy) > 0 {
+			venue.ManagedBy, err = svc.orgRegistry.Get(sv.ManagedBy)
 			if err != nil {
 				svc.log.Error().Err(err).Msg("failed to resolve organisation")
 			}
 		}
 
-		if len(sf.Owner) > 0 {
-			venue.Owner, err = svc.orgRegistry.Get(sf.Owner)
+		if len(sv.Owner) > 0 {
+			venue.Owner, err = svc.orgRegistry.Get(sv.Owner)
 			if err != nil {
 				svc.log.Error().Err(err).Msg("failed to resolve organisation")
 			}
 		}
 
-		if sf.DateCreated != nil {
-			venue.DateCreated = &sf.DateCreated.Value
+		if sv.DateCreated != nil {
+			venue.DateCreated = &sv.DateCreated.Value
 		}
-		if sf.DateModified != nil {
-			venue.DateModified = &sf.DateModified.Value
+		if sv.DateModified != nil {
+			venue.DateModified = &sv.DateModified.Value
 		}
 
 		sportsvenues = append(sportsvenues, venue)
@@ -216,6 +217,7 @@ type sportsVenueDTO struct {
 	Name         string              `json:"name"`
 	Description  string              `json:"description"`
 	Category     json.RawMessage     `json:"category"`
+	PublicAccess string              `json:"publicAccess"`
 	Location     domain.MultiPolygon `json:"location"`
 	DateCreated  *domain.DateTime    `json:"dateCreated"`
 	DateModified *domain.DateTime    `json:"dateModified,omitempty"`
