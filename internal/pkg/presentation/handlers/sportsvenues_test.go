@@ -71,7 +71,7 @@ func defaultSportsVenuesMock() *services.SportsVenueServiceMock {
 			},
 		},
 		Description: "cool description",
-		SeeAlso:     []string{},
+		SeeAlso:     []string{"https://a.com"},
 	}
 	sf1 := domain.SportsVenue{
 		ID:         "id1",
@@ -88,7 +88,7 @@ func defaultSportsVenuesMock() *services.SportsVenueServiceMock {
 			},
 		},
 		Description: "even cooler description",
-		SeeAlso:     []string{},
+		SeeAlso:     []string{"https://b.com"},
 	}
 
 	list := []domain.SportsVenue{}
@@ -106,6 +106,6 @@ func defaultSportsVenuesMock() *services.SportsVenueServiceMock {
 	return mock
 }
 
-const expectedVenuesOutput string = `{"data":[{"categories":["ice-rink"],"id":"id0","location":{"type":"Point","coordinates":[17.428771593881844,62.42103804538807]},"name":"test0"},{"categories":["sports-hall"],"id":"id1","location":{"type":"Point","coordinates":[17.428771593881844,62.42103804538807]},"name":"test1"}]}`
+const expectedVenuesOutput string = `{"data":[{"categories":["ice-rink"],"id":"id0","location":{"type":"Point","coordinates":[17.428771593881844,62.42103804538807]},"name":"test0","seeAlso":["https://a.com"]},{"categories":["sports-hall"],"id":"id1","location":{"type":"Point","coordinates":[17.428771593881844,62.42103804538807]},"name":"test1","seeAlso":["https://b.com"]}]}`
 
 const sportsvenueGeoJSON string = `{"type":"FeatureCollection", "features": [{"type":"Feature","id":"id0","geometry":{"type":"MultiPolygon","coordinates":[[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]},"properties":{"categories":["ice-rink"],"description":"cool description","name":"test0","type":"SportsVenue"}},{"type":"Feature","id":"id1","geometry":{"type":"MultiPolygon","coordinates":[[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]},"properties":{"categories":["sports-hall"],"description":"even cooler description","name":"test1","type":"SportsVenue"}}]}`

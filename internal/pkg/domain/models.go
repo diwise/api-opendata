@@ -112,7 +112,7 @@ type SportsVenue struct {
 	Name         string        `json:"name"`
 	Description  string        `json:"description"`
 	Categories   []string      `json:"categories"`
-	PublicAccess string        `json:"publicAccess"`
+	PublicAccess string        `json:"publicAccess,omitempty"`
 	Location     MultiPolygon  `json:"location"`
 	DateCreated  *string       `json:"dateCreated,omitempty"`
 	DateModified *string       `json:"dateModified,omitempty"`
