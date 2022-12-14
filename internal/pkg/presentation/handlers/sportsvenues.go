@@ -182,8 +182,8 @@ func newSportsVenuesMapper(fields []string, location func(*domain.SportsVenue) a
 
 	omitempty := func(v any) any {
 		switch value := v.(type) {
-		case []any:
-			if len(value) == 0 {
+		case []string:
+			if len(value) == 0 || (len(value) == 1 && len(value[0]) == 0) {
 				return nil
 			}
 		case string:
@@ -204,7 +204,7 @@ func newSportsVenuesMapper(fields []string, location func(*domain.SportsVenue) a
 		"categories":   func(sv *domain.SportsVenue) (string, any) { return "categories", sv.Categories },
 		"datecreated":  func(sv *domain.SportsVenue) (string, any) { return "dateCreated", *sv.DateCreated },
 		"datemodified": func(sv *domain.SportsVenue) (string, any) { return "dateModified", *sv.DateModified },
-		"publicaccess": func(sv *domain.SportsVenue) (string, any) { return "publicAccess", omitempty(&sv.PublicAccess) },
+		"publicaccess": func(sv *domain.SportsVenue) (string, any) { return "publicAccess", omitempty(sv.PublicAccess) },
 		"seealso":      func(sv *domain.SportsVenue) (string, any) { return "seeAlso", omitempty(sv.SeeAlso) },
 		"source":       func(sv *domain.SportsVenue) (string, any) { return "source", sv.Source },
 		"managedby":    func(sv *domain.SportsVenue) (string, any) { return "managedBy", sv.ManagedBy },
