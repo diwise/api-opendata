@@ -203,7 +203,7 @@ func newSportsFieldsMapper(fields []string, location func(*domain.SportsField) a
 		"source":       func(sf *domain.SportsField) (string, any) { return "source", sf.Source },
 		"managedby":    func(sf *domain.SportsField) (string, any) { return "managedBy", sf.ManagedBy },
 		"owner":        func(sf *domain.SportsField) (string, any) { return "owner", sf.Owner },
-		"status":       func(sf *domain.SportsField) (string, any) { return "status", "open" },
+		"status":       func(sf *domain.SportsField) (string, any) { return "status", sf.Status },
 	}
 
 	return func(t *domain.SportsField) ([]byte, error) {
