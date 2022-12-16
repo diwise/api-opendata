@@ -106,6 +106,7 @@ type SportsField struct {
 	Source              string        `json:"source"`
 	ManagedBy           *Organisation `json:"managedBy,omitempty"`
 	Owner               *Organisation `json:"owner,omitempty"`
+	Status              string        `json:"status,omitempty"`
 }
 
 type SportsVenue struct {

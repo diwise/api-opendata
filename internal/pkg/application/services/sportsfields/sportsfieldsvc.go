@@ -163,6 +163,7 @@ func (svc *sportsfieldSvc) refresh() (count int, err error) {
 			PublicAccess: sf.PublicAccess,
 			Location:     sf.Location,
 			Source:       sf.Source,
+			Status:       sf.Status,
 		}
 
 		if len(sf.ManagedBy) > 0 {
@@ -227,6 +228,7 @@ type sportsFieldDTO struct {
 	Source              string              `json:"source"`
 	ManagedBy           string              `json:"managedBy"`
 	Owner               string              `json:"owner"`
+	Status              string              `json:"status"`
 }
 
 // Categories extracts the field categories as a string array, regardless
