@@ -225,7 +225,7 @@ func newTrailMapper(fields []string, location func(*domain.ExerciseTrail) any) T
 				return nil, fmt.Errorf("unknown field: %s", f)
 			}
 			key, value := mapper(t)
-			if value != nil {
+			if propertyIsNotNil(value) {
 				result[key] = value
 			}
 		}
