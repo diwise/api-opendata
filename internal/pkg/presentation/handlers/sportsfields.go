@@ -213,7 +213,7 @@ func newSportsFieldsMapper(fields []string, location func(*domain.SportsField) a
 				return nil, fmt.Errorf("unknown field: %s", f)
 			}
 			key, value := mapper(t)
-			if value != nil {
+			if propertyIsNotNil(value) {
 				result[key] = value
 			}
 		}
