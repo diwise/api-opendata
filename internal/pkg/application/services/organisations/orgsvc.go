@@ -3,6 +3,7 @@ package organisations
 import (
 	"fmt"
 	"io"
+	"reflect"
 	"sync"
 
 	yaml "gopkg.in/yaml.v2"
@@ -26,7 +27,7 @@ func NewRegistry(input io.Reader) (Registry, error) {
 		orgs: make(map[string]*domain.Organisation),
 	}
 
-	if input != nil {
+	if inputIsNotNil(input) {
 		buf, err := io.ReadAll(input)
 		if err != nil {
 			return nil, err
@@ -63,4 +64,15 @@ func (r *registry) Get(organisationID string) (*domain.Organisation, error) {
 		return nil, fmt.Errorf("organisation %s not found", organisationID)
 	}
 	return org, nil
+}
+
+func inputIsNotNil(v any) bool {
+	if v == nil {
+		return false
+	}
+	switch reflect.TypeOf(v).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return !reflect.ValueOf(v).IsNil()
+	}
+	return true
 }
