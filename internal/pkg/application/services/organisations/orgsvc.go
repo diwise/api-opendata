@@ -27,7 +27,7 @@ func NewRegistry(input io.Reader) (Registry, error) {
 		orgs: make(map[string]*domain.Organisation),
 	}
 
-	if inputIsNotNil(input) {
+	if isNotNil(input) {
 		buf, err := io.ReadAll(input)
 		if err != nil {
 			return nil, err
@@ -66,7 +66,7 @@ func (r *registry) Get(organisationID string) (*domain.Organisation, error) {
 	return org, nil
 }
 
-func inputIsNotNil(v any) bool {
+func isNotNil(v any) bool {
 	if v == nil {
 		return false
 	}
