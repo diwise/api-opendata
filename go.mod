@@ -3,12 +3,12 @@ module github.com/diwise/api-opendata
 go 1.19
 
 require (
-	github.com/diwise/context-broker v0.0.0-20221122175945-ef967d4f7367
+	github.com/diwise/context-broker v0.0.0-20230210114057-055408ac89da
 	github.com/diwise/ngsi-ld-golang v0.0.0-20220518083256-2e7d28ad5f2e
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/matryer/is v1.4.0
-	github.com/riandyrn/otelchi v0.4.0
-	github.com/rs/cors v1.8.2
+	github.com/riandyrn/otelchi v0.5.0
+	github.com/rs/cors v1.8.3
 	github.com/rs/zerolog v1.29.0
 	go.opentelemetry.io/otel v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
