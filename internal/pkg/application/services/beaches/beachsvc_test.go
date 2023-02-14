@@ -19,7 +19,6 @@ func TestXXX(t *testing.T) {
 	defer bs.Shutdown()
 
 	beaches := bs.GetAll()
-	is.NoErr(err)
 	is.True(beaches != nil)
 }
 
