@@ -16,10 +16,11 @@ func TestXXX(t *testing.T) {
 
 	bs := NewBeachService(context.Background(), log, mockSvc.URL(), "default", 250)
 	bs.Start()
-	defer bs.Shutdown()
 
-	beaches := bs.GetAll()
-	is.True(beaches != nil)
+	svc := bs.(*beachSvc)
+
+	_, err := svc.refresh()
+	is.NoErr(err)
 }
 
 var Expects = testutils.Expects

@@ -141,7 +141,7 @@ func (svc *beachSvc) refresh() (count int, err error) {
 
 	beaches := []domain.Beach{}
 
-	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "Beach", nil, func(b beachDTO) {
+	_, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "Beach", nil, func(b beachDTO) {
 		latitude, longitude := b.LatLon()
 
 		details := domain.BeachDetails{
@@ -225,9 +225,12 @@ func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, l
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
+	startTime := time.Now().UTC().Add(-24 * time.Hour)
+	endTime := time.Now().UTC()
+
 	baseURL := fmt.Sprintf(
-		"%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near%%3BmaxDistance==%d&geometry=Point&coordinates=[%f,%f]",
-		svc.contextBrokerURL, svc.beachMaxWQODistance, longitude, latitude,
+		"%s/ngsi-ld/v1/temporal/entities/?time=%s&endTime=%s&timerel=between&type=WaterQualityObserved&georel=near%%3BmaxDistance==%d&geometry=Point&coordinates=[%f,%f]",
+		svc.contextBrokerURL, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339), svc.beachMaxWQODistance, longitude, latitude,
 	)
 
 	count, err := func() (int64, error) {
@@ -373,7 +376,7 @@ type beachDTO struct {
 		Coordinates [][][][]float64 `json:"coordinates"`
 	} `json:"location"`
 	See          json.RawMessage `json:"seeAlso"`
-	DateModified domain.DateTime `json:"dateModified"`
+	DateModified json.RawMessage `json:"dateModified"`
 }
 
 func round(v float64) float64 {
