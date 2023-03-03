@@ -133,12 +133,6 @@ func (svc *wqsvc) run() {
 }
 
 func (svc *wqsvc) refresh() error {
-	// /temporal/entities/
-	// within range of request
-	// default time last 24 hrs
-
-	// ask which water quality observations exist first to build list of sensors, then for each sensor the historical/temporal data
-
 	wqoBytes, err := svc.requestData(svc.ctx, svc.log, svc.contextBrokerURL)
 	if err != nil {
 		svc.log.Error().Err(err).Msg("failed to retrieve water quality data")
