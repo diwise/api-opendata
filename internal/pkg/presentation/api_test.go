@@ -10,6 +10,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/roadaccidents"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/rs/zerolog"
 
@@ -62,21 +63,13 @@ func TestGetBeaches(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/api/beaches", nil)
 	req.Header.Add("Accept", "application/json")
 
-	beachSvc := beaches.NewBeachService(context.Background(), zerolog.Logger{}, server.URL, "default", 500)
+	wqsvc := waterquality.NewWaterQualityService(context.Background(), zerolog.Logger{}, server.URL, "default")
+	defer wqsvc.Shutdown()
+
+	beachSvc := beaches.NewBeachService(context.Background(), zerolog.Logger{}, server.URL, "default", 500, wqsvc)
 	defer beachSvc.Shutdown()
 
 	handlers.NewRetrieveBeachesHandler(zerolog.Logger{}, beachSvc).ServeHTTP(w, req)
-	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
-}
-
-func TestGetWaterQuality(t *testing.T) {
-	is := is.New(t)
-	server := setupMockService(http.StatusOK, waterqualityJson)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/api/waterquality", nil)
-
-	handlers.NewRetrieveWaterQualityHandler(zerolog.Logger{}, server.URL, "").ServeHTTP(w, req)
 	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 
@@ -616,40 +609,6 @@ const trafficFlowJson string = `[{
 		}
 }
 ]`
-
-const waterqualityJson string = `[{
-	"@context": [
-	  "https://schema.lab.fiware.org/ld/context",
-	  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
-	],
-	"dateObserved": {
-	  "type": "Property",
-	  "value": {
-		"@type": "DateTime",
-		"@value": "2021-05-18T19:23:09Z"
-	  }
-	},
-	"id": "urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z",
-	"location": {
-	  "type": "GeoProperty",
-	  "value": {
-		"coordinates": [
-		  17.39364,
-		  62.297684
-		],
-		"type": "Point"
-	  }
-	},
-	"refDevice": {
-	  "object": "urn:ngsi-ld:Device:temperature:se:servanet:lora:sk-elt-temp-02",
-	  "type": "Relationship"
-	},
-	"temperature": {
-	  "type": "Property",
-	  "value": 10.8
-	},
-	"type": "WaterQualityObserved"
-  }]`
 
 const beachesJson string = `[
 	{

@@ -17,6 +17,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsfields"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsvenues"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
@@ -92,7 +93,10 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger, orgfil
 
 	organisationsRegistry, _ := organisations.NewRegistry(orgfile)
 
-	beachService := beaches.NewBeachService(context.Background(), log, contextBrokerURL, contextBrokerTenant, int(maxWQODistance))
+	waterqualitySvc := waterquality.NewWaterQualityService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
+	waterqualitySvc.Start()
+
+	beachService := beaches.NewBeachService(context.Background(), log, contextBrokerURL, contextBrokerTenant, int(maxWQODistance), waterqualitySvc)
 	beachService.Start()
 
 	trailService := exercisetrails.NewExerciseTrailService(context.Background(), log, contextBrokerURL, contextBrokerTenant, organisationsRegistry)
@@ -110,8 +114,6 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger, orgfil
 	sportsvenuesSvc := sportsvenues.NewSportsVenueService(context.Background(), log, contextBrokerURL, contextBrokerTenant, organisationsRegistry)
 	sportsvenuesSvc.Start()
 
-	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
-
 	stratsysEnabled := (env.GetVariableOrDefault(log, "STRATSYS_ENABLED", "true") != "false")
 	stratsysCompanyCode := os.Getenv("STRATSYS_COMPANY_CODE")
 	stratsysClientId := os.Getenv("STRATSYS_CLIENT_ID")
@@ -120,8 +122,8 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger, orgfil
 	stratsysDefaultUrl := os.Getenv("STRATSYS_DEFAULT_URL")
 
 	r.Get(
-		"/api/temperature/water",
-		handlers.NewRetrieveWaterQualityHandler(log, contextBrokerURL, waterQualityQueryParams),
+		"/api/waterquality",
+		handlers.NewRetrieveWaterQualityHandler(log, waterqualitySvc),
 	)
 	r.Get(
 		"/api/beaches",

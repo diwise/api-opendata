@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
@@ -38,8 +39,9 @@ type BeachService interface {
 	Shutdown()
 }
 
-func NewBeachService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string, maxWQODistance int) BeachService {
+func NewBeachService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string, maxWQODistance int, wqsvc waterquality.WaterQualityService) BeachService {
 	svc := &beachSvc{
+		wqsvc:               wqsvc,
 		ctx:                 ctx,
 		beaches:             []byte("[]"),
 		beachDetails:        map[string][]byte{},
@@ -54,6 +56,8 @@ func NewBeachService(ctx context.Context, logger zerolog.Logger, contextBrokerUR
 }
 
 type beachSvc struct {
+	wqsvc waterquality.WaterQualityService
+
 	contextBrokerURL string
 	tenant           string
 
@@ -214,6 +218,12 @@ func (svc *beachSvc) storeBeachList(body []byte) {
 	defer svc.beachMutex.Unlock()
 
 	svc.beaches = body
+}
+
+func (svc *beachSvc) getWaterQualitiesFromService(latitude, longitude float64) ([]waterquality.WaterQualityTemporal, error) {
+	wqos := svc.wqsvc.GetNearPoint(latitude, longitude, svc.beachMaxWQODistance)
+
+	return wqos, nil
 }
 
 func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, longitude float64) ([]domain.WaterQuality, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
 	testutils "github.com/diwise/service-chassis/pkg/test/http"
 	"github.com/diwise/service-chassis/pkg/test/http/expects"
 	"github.com/diwise/service-chassis/pkg/test/http/response"
@@ -11,10 +12,14 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func TestXXX(t *testing.T) {
-	is, log, mockSvc := testSetup(t, 200, beachesJson)
+func TestBeachServiceStartsProperly(t *testing.T) {
+	is, log, mockWQSvc := testSetup(t, 200, waterqualityJson)
 
-	bs := NewBeachService(context.Background(), log, mockSvc.URL(), "default", 250)
+	wqsvc := waterquality.NewWaterQualityService(context.Background(), log, mockWQSvc.URL(), "default")
+
+	_, _, mockBeachSvc := testSetup(nil, 200, beachesJson)
+
+	bs := NewBeachService(context.Background(), log, mockBeachSvc.URL(), "default", 1000, wqsvc)
 	bs.Start()
 
 	svc := bs.(*beachSvc)
@@ -101,3 +106,38 @@ const beachesJson string = `[
 		],
 	  "type": "Beach"
 	}]`
+
+const waterqualityJson string = `[{
+		"@context": [
+		  "https://schema.lab.fiware.org/ld/context",
+		  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
+		],
+		"dateObserved": {
+		  "type": "Property",
+		  "value": {
+			"@type": "DateTime",
+			"@value": "2021-05-18T19:23:09Z"
+		  }
+		},
+		"id": "urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z",
+		"location": {
+		  "type": "GeoProperty",
+		  "value": {
+			"coordinates": [
+			  17.39364,
+			  62.297684
+			],
+			"type": "Point"
+		  }
+		},
+		"refDevice": {
+		  "object": "urn:ngsi-ld:Device:temperature:se:servanet:lora:sk-elt-temp-02",
+		  "type": "Relationship"
+		},
+		"temperature": [{
+		  "type": "Property",
+		  "value": 10.8,
+		  "observedAt": "2021-05-18T19:23:09Z"
+		}],
+		"type": "WaterQualityObserved"
+	  }]`
