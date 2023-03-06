@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -22,14 +25,37 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 
 		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
+		maxDistance := r.URL.Query().Get("maxDistance")
+		if maxDistance != "" {
+			distance, err := strconv.ParseInt(maxDistance, 0, 64)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to parse distance from query parameters")
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+
+			svc.Distance(int(distance))
+		}
+
+		coordinates := r.URL.Query().Get("coordinates")
+		if coordinates != "" {
+			coords := strings.Split(coordinates, ",")
+
+			longitude, _ := strconv.ParseFloat(coords[0], 64)
+			latitude, _ := strconv.ParseFloat(coords[1], 64)
+
+			svc.Location(latitude, longitude)
+		}
+
 		wqos := svc.GetAll()
+
+		body, err := json.Marshal(wqos)
 		if err != nil {
-			log.Error().Err(err).Msgf("failed to get waterquality from %s", svc.Broker())
+			log.Error().Err(err).Msg("failed to marshal waterqualities")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		body, err := json.Marshal(wqos)
+		fmt.Printf("body: %s", string(body))
 
 		waterQualityJSON := "{\n  \"data\": " + string(body) + "\n}"
 
