@@ -2,6 +2,7 @@ package waterquality
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -30,34 +31,16 @@ func TestGetAll(t *testing.T) {
 	svcMock := wq.(*wqsvc)
 
 	err := svcMock.refresh()
-
 	is.NoErr(err)
 
 	wqos := svcMock.GetAll()
 	is.True(wqos != nil)
 
+	wqoJson, _ := json.Marshal(wqos)
+
 	expectation := `[{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[17.39364,62.297684]}},"temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}]}]`
 
-	is.Equal(string(wqos), expectation)
-}
-
-func TestGetByID(t *testing.T) {
-	is, log, svc := testSetup(t, http.StatusOK, waterqualityJson)
-	wq := NewWaterQualityService(context.Background(), log, svc.URL(), "default")
-
-	svcMock := wq.(*wqsvc)
-
-	err := svcMock.refresh()
-
-	is.NoErr(err)
-
-	wqo, err := svcMock.GetByID("urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z")
-	is.NoErr(err)
-	is.True(wqo != nil)
-
-	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[17.39364,62.297684]}},"temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}]}`
-
-	is.Equal(string(wqo), expectation)
+	is.Equal(string(wqoJson), expectation)
 }
 
 var Expects = testutils.Expects

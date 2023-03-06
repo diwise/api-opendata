@@ -14,55 +14,64 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-type WaterQuality interface {
+type WaterQualityService interface {
 	Start()
 	Shutdown()
 
 	Tenant() string
 	Broker() string
 
-	GetAll() []byte
+	BetweenTimes(from, to time.Time)
+	Distance(distance int)
+	Location(latitude, longitude float64)
+
+	GetAll() []WaterQualityTemporal
+	GetNearPoint(latitude, longitude float64, distance int) []WaterQualityTemporal
 }
 
-type WaterQualityQuery interface {
-	BetweenTimes(from, to time.Time) WaterQualityQuery
-	Point(latitude, longitude float64) WaterQualityQuery
-}
-
-func NewWaterQualityService(ctx context.Context, log zerolog.Logger, url, tenant string) WaterQuality {
+func NewWaterQualityService(ctx context.Context, log zerolog.Logger, url, tenant string) WaterQualityService {
 	return &wqsvc{
 		contextBrokerURL: url,
 		tenant:           tenant,
 
-		waterQualities:      []byte("[]"),
-		waterQualityDetails: map[string][]byte{},
+		waterQualities: []WaterQualityTemporal{},
 
 		ctx: ctx,
 		log: log,
 	}
 }
 
-type wqq struct {
+type wqsvc struct {
+	contextBrokerURL string
+	tenant           string
+
 	from      time.Time
 	to        time.Time
 	latitude  float64
 	longitude float64
 	distance  int
-}
 
-type wqsvc struct {
-	wqq
-	contextBrokerURL string
-	tenant           string
-
-	wqoMutex            sync.Mutex
-	waterQualities      []byte
-	waterQualityDetails map[string][]byte
+	wqoMutex       sync.Mutex
+	waterQualities []WaterQualityTemporal
 
 	ctx context.Context
 	log zerolog.Logger
 
 	keepRunning bool
+}
+
+func (svc *wqsvc) BetweenTimes(from, to time.Time) {
+	svc.from = from
+	svc.to = to
+}
+
+func (svc *wqsvc) Distance(distance int) {
+	svc.distance = distance
+}
+
+func (svc *wqsvc) Location(latitude, longitude float64) {
+	svc.latitude = latitude
+	svc.longitude = longitude
 }
 
 func (svc *wqsvc) Start() {
@@ -83,30 +92,16 @@ func (svc *wqsvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *wqsvc) GetAll() []byte {
+func (svc *wqsvc) GetAll() []WaterQualityTemporal {
 	svc.wqoMutex.Lock()
 	defer svc.wqoMutex.Unlock()
 
 	return svc.waterQualities
 }
 
-func (svc *wqsvc) GetByID(id string) ([]byte, error) {
-	svc.wqoMutex.Lock()
-	defer svc.wqoMutex.Unlock()
+func (svc *wqsvc) GetNearPoint(latitude, longitude float64, distance int) []WaterQualityTemporal {
 
-	body, ok := svc.waterQualityDetails[id]
-	if !ok {
-		return []byte{}, fmt.Errorf("no such water quality observed")
-	}
-
-	return body, nil
-}
-
-func (svc *wqsvc) GetByLocation(latitude, longitude float64) ([]byte, error) {
-
-	//ask for suggestions on how best to do this
-
-	return nil, nil
+	return []WaterQualityTemporal{}
 }
 
 func (svc *wqsvc) run() {
@@ -146,48 +141,19 @@ func (svc *wqsvc) refresh() error {
 		return err
 	}
 
-	for _, wq := range wqos {
-		details := WaterQualityTemporal{
-			ID:          wq.ID,
-			Location:    wq.Location,
-			Temperature: wq.Temperature,
-		}
-
-		jsonBytes, err := json.Marshal(details)
-		if err != nil {
-			svc.log.Error().Err(err).Msg("failed to marshal water quality to json")
-			return err
-		}
-
-		svc.storeWaterQualityDetails(wq.ID, jsonBytes)
-	}
-
-	jsonBytes, err := json.Marshal(wqos)
-	if err != nil {
-		svc.log.Error().Err(err).Msg("failed to marshal water qualities to json")
-		return err
-	}
-
-	svc.storeWaterQualityList(jsonBytes)
+	svc.storeWaterQualityList(wqos)
 
 	return nil
 }
 
-func (svc *wqsvc) storeWaterQualityDetails(id string, body []byte) {
+func (svc *wqsvc) storeWaterQualityList(wqs []WaterQualityTemporal) {
 	svc.wqoMutex.Lock()
 	defer svc.wqoMutex.Unlock()
 
-	svc.waterQualityDetails[id] = body
+	svc.waterQualities = wqs
 }
 
-func (svc *wqsvc) storeWaterQualityList(body []byte) {
-	svc.wqoMutex.Lock()
-	defer svc.wqoMutex.Unlock()
-
-	svc.waterQualities = body
-}
-
-func (q *wqq) requestData(ctx context.Context, log zerolog.Logger, ctxBrokerURL string) ([]byte, error) {
+func (q *wqsvc) requestData(ctx context.Context, log zerolog.Logger, ctxBrokerURL string) ([]byte, error) {
 	var err error
 
 	httpClient := http.Client{
@@ -200,11 +166,11 @@ func (q *wqq) requestData(ctx context.Context, log zerolog.Logger, ctxBrokerURL 
 	)
 
 	if !q.from.IsZero() && !q.to.IsZero() {
-		url = url + fmt.Sprintf("&timerel=between&time=%s&endTime=%s", q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
+		url = fmt.Sprintf("%s&timerel=between&time=%s&endTime=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
 	} else {
 		q.from = time.Now().UTC().Add(-24 * time.Hour)
 		q.to = time.Now().UTC()
-		url = url + fmt.Sprintf("&timerel=between&time=%s&endTime=%s", q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
+		url = fmt.Sprintf("%s&timerel=between&time=%s&endTime=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
 	}
 
 	if q.latitude > 0.0 && q.longitude > 0.0 {
@@ -241,6 +207,7 @@ type WaterQualityTemporal struct {
 		Value domain.Point `json:"value"`
 	} `json:"location"`
 	Temperature []Value `json:"temperature"`
+	Source      string  `json:"source,omitempty"`
 }
 
 type Value struct {
