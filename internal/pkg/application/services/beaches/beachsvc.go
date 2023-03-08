@@ -4,25 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math"
-	"net/http"
-	"net/http/httputil"
-	"sort"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
-	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 )
 
@@ -160,14 +151,30 @@ func (svc *beachSvc) refresh() (count int, err error) {
 			details.SeeAlso = &seeAlso
 		}
 
-		wqo, err_ := svc.getWaterQualitiesNearBeach(ctx, latitude, longitude)
+		wqots, err_ := svc.wqsvc.GetAllNearPoint(latitude, longitude, svc.beachMaxWQODistance)
 		if err_ != nil {
 			logger.Error().Err(err_).Msgf("failed to get water qualities near %s (%s)", b.Name, b.ID)
 		} else {
-			details.WaterQuality = &wqo
+			wq := []domain.WaterQualityTemporal{}
+
+			for _, t := range *wqots {
+				newWQ := domain.WaterQualityTemporal{}
+
+				if len(t.Temperature) > 0 {
+					newWQ.Temperature = t.Temperature
+				}
+
+				if t.Source != "" {
+					newWQ.Source = t.Source
+				}
+
+				wq = append(wq, newWQ)
+			}
+
+			details.WaterQuality = &wq
 		}
 
-		jsonBytes, err_ := json.MarshalIndent(details, "  ", "  ")
+		jsonBytes, err_ := json.Marshal(details)
 		if err_ != nil {
 			err = fmt.Errorf("failed to marshal beach to json: %w", err_)
 			return
@@ -181,10 +188,18 @@ func (svc *beachSvc) refresh() (count int, err error) {
 			Location: details.Location,
 		}
 
+		// This is probably not a great solution to check how old the reading actually is
+		// Saying this almost entirely based on the fact that now have an array of temperatures
+		// and I'm only grabbing the first entry in the array and using those values. I don't actually
+		// know for a fact that that is the most recent entry.
 		if details.WaterQuality != nil && len(*details.WaterQuality) > 0 {
 			mostRecentWQ := (*details.WaterQuality)[0]
-			if mostRecentWQ.Age() < 24*time.Hour {
-				beach.WaterQuality = &mostRecentWQ
+			if mostRecentWQ.Temperature[0].Age() < 24*time.Hour {
+				beach.WaterQuality = &domain.WaterQuality{
+					Temperature:  mostRecentWQ.Temperature[0].Value,
+					DateObserved: mostRecentWQ.Temperature[0].ObservedAt,
+					Source:       &mostRecentWQ.Source,
+				}
 			}
 		}
 
@@ -195,7 +210,7 @@ func (svc *beachSvc) refresh() (count int, err error) {
 		return
 	}
 
-	jsonBytes, err_ := json.MarshalIndent(beaches, "  ", "  ")
+	jsonBytes, err_ := json.Marshal(beaches)
 	if err_ != nil {
 		err = fmt.Errorf("failed to marshal beaches to json: %w", err_)
 		return
@@ -220,13 +235,7 @@ func (svc *beachSvc) storeBeachList(body []byte) {
 	svc.beaches = body
 }
 
-func (svc *beachSvc) getWaterQualitiesFromService(latitude, longitude float64) ([]waterquality.WaterQualityTemporal, error) {
-	wqos := svc.wqsvc.GetNearPoint(latitude, longitude, svc.beachMaxWQODistance)
-
-	return wqos, nil
-}
-
-func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, longitude float64) ([]domain.WaterQuality, error) {
+/* func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, longitude float64) ([]domain.WaterQuality, error) {
 	var err error
 	ctx, span := tracer.Start(ctx, "retrieve-water-qualites")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
@@ -375,7 +384,7 @@ func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, l
 	}
 
 	return waterQualities, nil
-}
+} */
 
 type beachDTO struct {
 	ID          string `json:"id"`

@@ -52,16 +52,16 @@ type Beach struct {
 	ID           string        `json:"id"`
 	Name         string        `json:"name"`
 	Location     Point         `json:"location"`
-	WaterQuality *WaterQuality `json:"waterquality,omitempty"`
+	WaterQuality *WaterQuality `json:"waterquality"`
 }
 
 type BeachDetails struct {
-	ID           string          `json:"id"`
-	Name         string          `json:"name"`
-	Description  *string         `json:"description,omitempty"`
-	Location     Point           `json:"location"`
-	WaterQuality *[]WaterQuality `json:"waterquality,omitempty"`
-	SeeAlso      *[]string       `json:"seeAlso,omitempty"`
+	ID           string                  `json:"id"`
+	Name         string                  `json:"name"`
+	Description  *string                 `json:"description,omitempty"`
+	Location     Point                   `json:"location"`
+	WaterQuality *[]WaterQualityTemporal `json:"waterquality"`
+	SeeAlso      *[]string               `json:"seeAlso,omitempty"`
 }
 
 type ExerciseTrail struct {
@@ -135,22 +135,6 @@ type Temperature struct {
 	To      *time.Time
 }
 
-type WaterQuality struct {
-	Temperature  float64 `json:"temperature"`
-	DateObserved string  `json:"dateObserved"`
-	Source       *string `json:"source,omitempty"`
-}
-
-func (wq WaterQuality) Age() time.Duration {
-	observedAt, err := time.Parse(time.RFC3339, wq.DateObserved)
-	if err != nil {
-		// Pretend it was almost 100 years ago
-		return 100 * 365 * 24 * time.Hour
-	}
-
-	return time.Since(observedAt)
-}
-
 type Cityworks struct {
 	ID        string `json:"id"`
 	Location  Point  `json:"location"`
@@ -204,4 +188,30 @@ type RoadAccidentDetails struct {
 	DateCreated  string `json:"dateCreated"`
 	DateModified string `json:"dateModified,omitempty"`
 	Status       string `json:"status"`
+}
+
+type WaterQuality struct {
+	Temperature  float64 `json:"temperature"`
+	DateObserved string  `json:"dateObserved"`
+	Source       *string `json:"source,omitempty"`
+}
+
+type WaterQualityTemporal struct {
+	Temperature []Value `json:"temperature"`
+	Source      string  `json:"source,omitempty"`
+}
+
+type Value struct {
+	Value      float64 `json:"value"`
+	ObservedAt string  `json:"observedAt"`
+}
+
+func (v Value) Age() time.Duration {
+	observedAt, err := time.Parse(time.RFC3339, v.ObservedAt)
+	if err != nil {
+		// Pretend it was almost 100 years ago
+		return 100 * 365 * 24 * time.Hour
+	}
+
+	return time.Since(observedAt)
 }

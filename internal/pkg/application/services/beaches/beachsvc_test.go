@@ -2,6 +2,8 @@ package beaches
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
@@ -13,19 +15,56 @@ import (
 )
 
 func TestBeachServiceStartsProperly(t *testing.T) {
-	is, log, mockWQSvc := testSetup(t, 200, waterqualityJson)
+	is, log, mockBeachSvc := testSetup(t, 200, beachesJson)
+	wq := &waterquality.WaterQualityServiceMock{
+		GetAllNearPointFunc: func(latitude, longitude float64, distance int) (*[]waterquality.WaterQualityTemporal, error) {
+			wqo := []waterquality.WaterQualityTemporal{}
+			err := json.Unmarshal([]byte(waterqualityJson), &wqo)
+			is.NoErr(err)
 
-	wqsvc := waterquality.NewWaterQualityService(context.Background(), log, mockWQSvc.URL(), "default")
+			return &wqo, nil
+		},
+	}
 
-	_, _, mockBeachSvc := testSetup(nil, 200, beachesJson)
-
-	bs := NewBeachService(context.Background(), log, mockBeachSvc.URL(), "default", 1000, wqsvc)
+	bs := NewBeachService(context.Background(), log, mockBeachSvc.URL(), "default", 1000, wq)
 	bs.Start()
 
 	svc := bs.(*beachSvc)
 
 	_, err := svc.refresh()
 	is.NoErr(err)
+	is.Equal(len(wq.GetAllNearPointCalls()), 2)
+}
+
+func TestBeachServiceGetsAll(t *testing.T) {
+	is, log, mockBeachSvc := testSetup(t, 200, beachesJson)
+	wq := &waterquality.WaterQualityServiceMock{
+		GetAllNearPointFunc: func(latitude, longitude float64, distance int) (*[]waterquality.WaterQualityTemporal, error) {
+			wqo := []waterquality.WaterQualityTemporal{}
+			err := json.Unmarshal([]byte(waterqualityJson), &wqo)
+			is.NoErr(err)
+
+			return &wqo, nil
+		},
+	}
+
+	bs := NewBeachService(context.Background(), log, mockBeachSvc.URL(), "default", 1000, wq)
+	bs.Start()
+
+	svc := bs.(*beachSvc)
+
+	svc.beachMaxWQODistance = 1000
+
+	_, err := svc.refresh()
+	is.NoErr(err)
+
+	b, err := svc.GetByID("urn:ngsi-ld:Beach:se:sundsvall:anlaggning:283")
+	is.NoErr(err)
+	is.True(b != nil)
+
+	expectation := `"waterquality":[{"temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}]`
+
+	is.True(strings.Contains(string(b), expectation))
 }
 
 var Expects = testutils.Expects
@@ -124,8 +163,8 @@ const waterqualityJson string = `[{
 		  "type": "GeoProperty",
 		  "value": {
 			"coordinates": [
-			  17.39364,
-			  62.297684
+				17.473565135911233,
+				62.43447998588642
 			],
 			"type": "Point"
 		  }

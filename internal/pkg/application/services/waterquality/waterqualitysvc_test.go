@@ -38,7 +38,49 @@ func TestGetAll(t *testing.T) {
 
 	wqoJson, _ := json.Marshal(wqos)
 
-	expectation := `[{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[17.39364,62.297684]}},"temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}]}]`
+	expectation := `[{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[17.39364,62.297684]}},"temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}],"dateObserved":{"type":"Property","value":{"@type":"DateTime","@value":"2021-05-18T19:23:09Z"}}}]`
+
+	is.Equal(string(wqoJson), expectation)
+}
+
+func TestGetAllNearPoint(t *testing.T) {
+	is, log, svc := testSetup(t, http.StatusOK, waterqualityJson)
+
+	wq := NewWaterQualityService(context.Background(), log, svc.URL(), "default")
+
+	svcMock := wq.(*wqsvc)
+
+	err := svcMock.refresh()
+	is.NoErr(err)
+
+	wqos, err := svcMock.GetAllNearPoint(17.39364, 62.297684, 500)
+	is.NoErr(err)
+	is.True(wqos != nil)
+
+	wqoJson, _ := json.Marshal(wqos)
+
+	expectation := `[{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[17.39364,62.297684]}},"temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}],"dateObserved":{"type":"Property","value":{"@type":"DateTime","@value":"2021-05-18T19:23:09Z"}}}]`
+
+	is.Equal(string(wqoJson), expectation)
+}
+
+func TestGetAllNearPointReturnsErrorIfNoPointsAreWithinRange(t *testing.T) {
+	is, log, svc := testSetup(t, http.StatusOK, waterqualityJson)
+
+	wq := NewWaterQualityService(context.Background(), log, svc.URL(), "default")
+
+	svcMock := wq.(*wqsvc)
+
+	err := svcMock.refresh()
+	is.NoErr(err)
+
+	wqos, err := svcMock.GetAllNearPoint(0.0, 0.0, 500)
+	is.True(err != nil)
+	is.Equal(len(*wqos), 0)
+
+	wqoJson, _ := json.Marshal(wqos)
+
+	expectation := `[]`
 
 	is.Equal(string(wqoJson), expectation)
 }

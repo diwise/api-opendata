@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"sync"
 	"time"
@@ -26,7 +27,7 @@ type WaterQualityService interface {
 	Location(latitude, longitude float64)
 
 	GetAll() []WaterQualityTemporal
-	GetNearPoint(latitude, longitude float64, distance int) []WaterQualityTemporal
+	GetAllNearPoint(latitude, longitude float64, distance int) (*[]WaterQualityTemporal, error)
 }
 
 func NewWaterQualityService(ctx context.Context, log zerolog.Logger, url, tenant string) WaterQualityService {
@@ -35,6 +36,7 @@ func NewWaterQualityService(ctx context.Context, log zerolog.Logger, url, tenant
 		tenant:           tenant,
 
 		waterQualities: []WaterQualityTemporal{},
+		keepRunning:    true,
 
 		ctx: ctx,
 		log: log,
@@ -99,9 +101,61 @@ func (svc *wqsvc) GetAll() []WaterQualityTemporal {
 	return svc.waterQualities
 }
 
-func (svc *wqsvc) GetNearPoint(latitude, longitude float64, distance int) []WaterQualityTemporal {
+func (svc *wqsvc) GetAllNearPoint(latitude, longitude float64, maxDistance int) (*[]WaterQualityTemporal, error) {
+	waterQualitiesWithinDistance := []WaterQualityTemporal{}
 
-	return []WaterQualityTemporal{}
+	for _, storedWQ := range svc.waterQualities {
+		wqPoint := NewCoords(storedWQ.Location.Value.Coordinates[0], storedWQ.Location.Value.Coordinates[1]) // double check n
+		comparativeLocation := NewCoords(latitude, longitude)
+		_, distanceBetweenPoints := Distance(wqPoint, comparativeLocation)
+
+		if distanceBetweenPoints < maxDistance {
+			waterQualitiesWithinDistance = append(waterQualitiesWithinDistance, storedWQ)
+		}
+	}
+	if len(waterQualitiesWithinDistance) == 0 {
+		return &[]WaterQualityTemporal{}, fmt.Errorf("no stored water qualities exist within %d meters of point %f,%f", maxDistance, longitude, latitude)
+	}
+
+	return &waterQualitiesWithinDistance, nil
+}
+
+type Coords struct {
+	Latitude  float64
+	Longitude float64
+}
+
+func NewCoords(lat, lon float64) Coords {
+	return Coords{
+		Latitude:  lat,
+		Longitude: lon,
+	}
+}
+
+func degreesToRadians(d float64) float64 {
+	return d * math.Pi / 180
+}
+
+func Distance(point1, point2 Coords) (int, int) {
+	earthRadiusKm := 6371
+
+	lat1 := degreesToRadians(point1.Latitude)
+	lon1 := degreesToRadians(point1.Longitude)
+	lat2 := degreesToRadians(point2.Latitude)
+	lon2 := degreesToRadians(point2.Longitude)
+
+	diffLat := lat2 - lat1
+	diffLon := lon2 - lon1
+
+	a := math.Pow(math.Sin(diffLat/2), 2) + math.Cos(lat1)*math.Cos(lat2)*
+		math.Pow(math.Sin(diffLon/2), 2)
+
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+
+	distanceInKm := c * float64(earthRadiusKm)
+	distanceInM := distanceInKm * 1000
+
+	return int(distanceInKm), int(distanceInM)
 }
 
 func (svc *wqsvc) run() {
@@ -206,11 +260,10 @@ type WaterQualityTemporal struct {
 		Type  string       `json:"type"`
 		Value domain.Point `json:"value"`
 	} `json:"location"`
-	Temperature []Value `json:"temperature"`
-	Source      string  `json:"source,omitempty"`
-}
-
-type Value struct {
-	Value      float64 `json:"value"`
-	ObservedAt string  `json:"observedAt"`
+	Temperature  []domain.Value `json:"temperature"`
+	Source       string         `json:"source,omitempty"`
+	DateObserved struct {
+		Type            string `json:"type"`
+		domain.DateTime `json:"value"`
+	} `json:"dateObserved,omitempty"`
 }
