@@ -151,7 +151,8 @@ func (svc *beachSvc) refresh() (count int, err error) {
 			details.SeeAlso = &seeAlso
 		}
 
-		wqots, err_ := svc.wqsvc.GetAllNearPoint(latitude, longitude, svc.beachMaxWQODistance)
+		pt := waterquality.NewPoint(latitude, longitude)
+		wqots, err_ := svc.wqsvc.GetAllNearPoint(pt, svc.beachMaxWQODistance)
 		if err_ != nil {
 			logger.Error().Err(err_).Msgf("failed to get water qualities near %s (%s)", b.Name, b.ID)
 		} else {
@@ -188,10 +189,6 @@ func (svc *beachSvc) refresh() (count int, err error) {
 			Location: details.Location,
 		}
 
-		// This is probably not a great solution to check how old the reading actually is
-		// Saying this almost entirely based on the fact that now have an array of temperatures
-		// and I'm only grabbing the first entry in the array and using those values. I don't actually
-		// know for a fact that that is the most recent entry.
 		if details.WaterQuality != nil && len(*details.WaterQuality) > 0 {
 			mostRecentWQ := (*details.WaterQuality)[0]
 			if mostRecentWQ.Temperature[0].Age() < 24*time.Hour {
@@ -234,157 +231,6 @@ func (svc *beachSvc) storeBeachList(body []byte) {
 
 	svc.beaches = body
 }
-
-/* func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, longitude float64) ([]domain.WaterQuality, error) {
-	var err error
-	ctx, span := tracer.Start(ctx, "retrieve-water-qualites")
-	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
-	startTime := time.Now().UTC().Add(-24 * time.Hour)
-	endTime := time.Now().UTC()
-
-	baseURL := fmt.Sprintf(
-		"%s/ngsi-ld/v1/temporal/entities/?time=%s&endTime=%s&timerel=between&type=WaterQualityObserved&georel=near%%3BmaxDistance==%d&geometry=Point&coordinates=[%f,%f]",
-		svc.contextBrokerURL, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339), svc.beachMaxWQODistance, longitude, latitude,
-	)
-
-	count, err := func() (int64, error) {
-		subctx, subspan := tracer.Start(ctx, "retrieve-wqo-count")
-		defer func() { tracing.RecordAnyErrorAndEndSpan(err, subspan) }()
-
-		requestURL := fmt.Sprintf("%s&limit=0&count=true", baseURL)
-
-		req, err := http.NewRequestWithContext(subctx, http.MethodGet, requestURL, nil)
-		if err != nil {
-			err = fmt.Errorf("failed to create request: %s", err.Error())
-			return 0, err
-		}
-
-		req.Header.Add("Accept", "application/ld+json")
-		linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
-		req.Header.Add("Link", linkHeaderURL)
-
-		if svc.tenant != entities.DefaultNGSITenant {
-			req.Header.Add("NGSILD-Tenant", svc.tenant)
-		}
-
-		svc.log.Debug().Msgf("calling %s", requestURL)
-
-		resp, err := httpClient.Do(req)
-		if err != nil {
-			err = fmt.Errorf("failed to send request: %s", err.Error())
-			return 0, err
-		}
-		defer resp.Body.Close()
-
-		resultsCount := resp.Header.Get("Ngsild-Results-Count")
-		if resultsCount == "" {
-			return 0, nil
-		}
-
-		count, err := strconv.ParseInt(resultsCount, 10, 64)
-		if err != nil {
-			err = fmt.Errorf("malformed results header value: %s", err.Error())
-		}
-
-		return count, err
-	}()
-
-	if count == 0 || err != nil {
-		return []domain.WaterQuality{}, err
-	}
-
-	const MaxTempCount int64 = 12
-	requestURL := baseURL + "&options=keyValues"
-
-	if MaxTempCount < count {
-		requestURL = fmt.Sprintf("%s&offset=%d", requestURL, count-MaxTempCount)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
-	if err != nil {
-		err = fmt.Errorf("failed to create request: %s", err.Error())
-		return nil, err
-	}
-
-	req.Header.Add("Accept", "application/ld+json")
-	linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
-	req.Header.Add("Link", linkHeaderURL)
-
-	if svc.tenant != entities.DefaultNGSITenant {
-		req.Header.Add("NGSILD-Tenant", svc.tenant)
-	}
-
-	svc.log.Debug().Msgf("calling %s", requestURL)
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		err = fmt.Errorf("failed to send request: %s", err.Error())
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		err = fmt.Errorf("failed to read response body: %s", err.Error())
-		return nil, err
-	}
-
-	if resp.StatusCode >= http.StatusBadRequest {
-		reqbytes, _ := httputil.DumpRequest(req, false)
-		respbytes, _ := httputil.DumpResponse(resp, false)
-
-		log := logging.GetFromContext(ctx)
-		log.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
-		return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		contentType := resp.Header.Get("Content-Type")
-		err = fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", resp.StatusCode, contentType, string(respBody))
-		return nil, err
-	}
-
-	var wqo []struct {
-		Temperature  float64         `json:"temperature"`
-		DateObserved domain.DateTime `json:"dateObserved"`
-		Source       *string         `json:"source"`
-	}
-	err = json.Unmarshal(respBody, &wqo)
-	if err != nil {
-		err = fmt.Errorf("failed to unmarshal response: %s", err.Error())
-		return nil, err
-	}
-
-	// Sort the observations in chronologically reverse order
-	sort.Slice(wqo, func(i, j int) bool {
-		return strings.Compare(wqo[i].DateObserved.Value, wqo[j].DateObserved.Value) == 1
-	})
-
-	waterQualities := make([]domain.WaterQuality, 0, len(wqo))
-	previousTime := ""
-
-	for _, observation := range wqo {
-		// Filter out all but the first observation with the same timestamp
-		if previousTime == observation.DateObserved.Value {
-			continue
-		}
-
-		waterQualities = append(waterQualities, domain.WaterQuality{
-			Temperature:  math.Round(observation.Temperature*10) / 10,
-			DateObserved: observation.DateObserved.Value,
-			Source:       observation.Source,
-		})
-
-		previousTime = observation.DateObserved.Value
-	}
-
-	return waterQualities, nil
-} */
 
 type beachDTO struct {
 	ID          string `json:"id"`

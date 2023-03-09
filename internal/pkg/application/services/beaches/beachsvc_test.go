@@ -17,7 +17,7 @@ import (
 func TestBeachServiceStartsProperly(t *testing.T) {
 	is, log, mockBeachSvc := testSetup(t, 200, beachesJson)
 	wq := &waterquality.WaterQualityServiceMock{
-		GetAllNearPointFunc: func(latitude, longitude float64, distance int) (*[]waterquality.WaterQualityTemporal, error) {
+		GetAllNearPointFunc: func(pt waterquality.Point, distance int) (*[]waterquality.WaterQualityTemporal, error) {
 			wqo := []waterquality.WaterQualityTemporal{}
 			err := json.Unmarshal([]byte(waterqualityJson), &wqo)
 			is.NoErr(err)
@@ -39,7 +39,7 @@ func TestBeachServiceStartsProperly(t *testing.T) {
 func TestBeachServiceGetsAll(t *testing.T) {
 	is, log, mockBeachSvc := testSetup(t, 200, beachesJson)
 	wq := &waterquality.WaterQualityServiceMock{
-		GetAllNearPointFunc: func(latitude, longitude float64, distance int) (*[]waterquality.WaterQualityTemporal, error) {
+		GetAllNearPointFunc: func(pt waterquality.Point, distance int) (*[]waterquality.WaterQualityTemporal, error) {
 			wqo := []waterquality.WaterQualityTemporal{}
 			err := json.Unmarshal([]byte(waterqualityJson), &wqo)
 			is.NoErr(err)

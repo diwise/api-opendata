@@ -27,7 +27,7 @@ type WaterQualityService interface {
 	Location(latitude, longitude float64)
 
 	GetAll() []WaterQualityTemporal
-	GetAllNearPoint(latitude, longitude float64, distance int) (*[]WaterQualityTemporal, error)
+	GetAllNearPoint(pt Point, distance int) (*[]WaterQualityTemporal, error)
 }
 
 func NewWaterQualityService(ctx context.Context, log zerolog.Logger, url, tenant string) WaterQualityService {
@@ -101,32 +101,31 @@ func (svc *wqsvc) GetAll() []WaterQualityTemporal {
 	return svc.waterQualities
 }
 
-func (svc *wqsvc) GetAllNearPoint(latitude, longitude float64, maxDistance int) (*[]WaterQualityTemporal, error) {
+func (svc *wqsvc) GetAllNearPoint(pt Point, maxDistance int) (*[]WaterQualityTemporal, error) {
 	waterQualitiesWithinDistance := []WaterQualityTemporal{}
 
 	for _, storedWQ := range svc.waterQualities {
-		wqPoint := NewCoords(storedWQ.Location.Value.Coordinates[0], storedWQ.Location.Value.Coordinates[1]) // double check n
-		comparativeLocation := NewCoords(latitude, longitude)
-		_, distanceBetweenPoints := Distance(wqPoint, comparativeLocation)
+		wqPoint := NewPoint(storedWQ.Location.Value.Coordinates[1], storedWQ.Location.Value.Coordinates[0])
+		distanceBetweenPoints := Distance(wqPoint, pt)
 
 		if distanceBetweenPoints < maxDistance {
 			waterQualitiesWithinDistance = append(waterQualitiesWithinDistance, storedWQ)
 		}
 	}
 	if len(waterQualitiesWithinDistance) == 0 {
-		return &[]WaterQualityTemporal{}, fmt.Errorf("no stored water qualities exist within %d meters of point %f,%f", maxDistance, longitude, latitude)
+		return &[]WaterQualityTemporal{}, fmt.Errorf("no stored water qualities exist within %d meters of point %f,%f", maxDistance, pt.Longitude, pt.Latitude)
 	}
 
 	return &waterQualitiesWithinDistance, nil
 }
 
-type Coords struct {
+type Point struct {
 	Latitude  float64
 	Longitude float64
 }
 
-func NewCoords(lat, lon float64) Coords {
-	return Coords{
+func NewPoint(lat, lon float64) Point {
+	return Point{
 		Latitude:  lat,
 		Longitude: lon,
 	}
@@ -136,7 +135,7 @@ func degreesToRadians(d float64) float64 {
 	return d * math.Pi / 180
 }
 
-func Distance(point1, point2 Coords) (int, int) {
+func Distance(point1, point2 Point) int {
 	earthRadiusKm := 6371
 
 	lat1 := degreesToRadians(point1.Latitude)
@@ -155,7 +154,7 @@ func Distance(point1, point2 Coords) (int, int) {
 	distanceInKm := c * float64(earthRadiusKm)
 	distanceInM := distanceInKm * 1000
 
-	return int(distanceInKm), int(distanceInM)
+	return int(distanceInM)
 }
 
 func (svc *wqsvc) run() {

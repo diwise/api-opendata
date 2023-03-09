@@ -53,7 +53,8 @@ func TestGetAllNearPoint(t *testing.T) {
 	err := svcMock.refresh()
 	is.NoErr(err)
 
-	wqos, err := svcMock.GetAllNearPoint(17.39364, 62.297684, 500)
+	pt := NewPoint(62.297684, 17.39364)
+	wqos, err := svcMock.GetAllNearPoint(pt, 500)
 	is.NoErr(err)
 	is.True(wqos != nil)
 
@@ -74,7 +75,8 @@ func TestGetAllNearPointReturnsErrorIfNoPointsAreWithinRange(t *testing.T) {
 	err := svcMock.refresh()
 	is.NoErr(err)
 
-	wqos, err := svcMock.GetAllNearPoint(0.0, 0.0, 500)
+	pt := NewPoint(0.0, 0.0)
+	wqos, err := svcMock.GetAllNearPoint(pt, 500)
 	is.True(err != nil)
 	is.Equal(len(*wqos), 0)
 

@@ -30,7 +30,7 @@ var _ WaterQualityService = &WaterQualityServiceMock{}
 // 			GetAllFunc: func() []WaterQualityTemporal {
 // 				panic("mock out the GetAll method")
 // 			},
-// 			GetAllNearPointFunc: func(latitude float64, longitude float64, distance int) (*[]WaterQualityTemporal, error) {
+// 			GetAllNearPointFunc: func(pt Point, distance int) (*[]WaterQualityTemporal, error) {
 // 				panic("mock out the GetAllNearPoint method")
 // 			},
 // 			LocationFunc: func(latitude float64, longitude float64)  {
@@ -65,7 +65,7 @@ type WaterQualityServiceMock struct {
 	GetAllFunc func() []WaterQualityTemporal
 
 	// GetAllNearPointFunc mocks the GetAllNearPoint method.
-	GetAllNearPointFunc func(latitude float64, longitude float64, distance int) (*[]WaterQualityTemporal, error)
+	GetAllNearPointFunc func(pt Point, distance int) (*[]WaterQualityTemporal, error)
 
 	// LocationFunc mocks the Location method.
 	LocationFunc func(latitude float64, longitude float64)
@@ -101,10 +101,8 @@ type WaterQualityServiceMock struct {
 		}
 		// GetAllNearPoint holds details about calls to the GetAllNearPoint method.
 		GetAllNearPoint []struct {
-			// Latitude is the latitude argument value.
-			Latitude float64
-			// Longitude is the longitude argument value.
-			Longitude float64
+			// Pt is the pt argument value.
+			Pt Point
 			// Distance is the distance argument value.
 			Distance int
 		}
@@ -255,37 +253,33 @@ func (mock *WaterQualityServiceMock) GetAllCalls() []struct {
 }
 
 // GetAllNearPoint calls GetAllNearPointFunc.
-func (mock *WaterQualityServiceMock) GetAllNearPoint(latitude float64, longitude float64, distance int) (*[]WaterQualityTemporal, error) {
+func (mock *WaterQualityServiceMock) GetAllNearPoint(pt Point, distance int) (*[]WaterQualityTemporal, error) {
 	if mock.GetAllNearPointFunc == nil {
 		panic("WaterQualityServiceMock.GetAllNearPointFunc: method is nil but WaterQualityService.GetAllNearPoint was just called")
 	}
 	callInfo := struct {
-		Latitude  float64
-		Longitude float64
-		Distance  int
+		Pt       Point
+		Distance int
 	}{
-		Latitude:  latitude,
-		Longitude: longitude,
-		Distance:  distance,
+		Pt:       pt,
+		Distance: distance,
 	}
 	mock.lockGetAllNearPoint.Lock()
 	mock.calls.GetAllNearPoint = append(mock.calls.GetAllNearPoint, callInfo)
 	mock.lockGetAllNearPoint.Unlock()
-	return mock.GetAllNearPointFunc(latitude, longitude, distance)
+	return mock.GetAllNearPointFunc(pt, distance)
 }
 
 // GetAllNearPointCalls gets all the calls that were made to GetAllNearPoint.
 // Check the length with:
 //     len(mockedWaterQualityService.GetAllNearPointCalls())
 func (mock *WaterQualityServiceMock) GetAllNearPointCalls() []struct {
-	Latitude  float64
-	Longitude float64
-	Distance  int
+	Pt       Point
+	Distance int
 } {
 	var calls []struct {
-		Latitude  float64
-		Longitude float64
-		Distance  int
+		Pt       Point
+		Distance int
 	}
 	mock.lockGetAllNearPoint.RLock()
 	calls = mock.calls.GetAllNearPoint
