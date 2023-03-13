@@ -88,7 +88,7 @@ func TestGetAllNearPointReturnsErrorIfNoPointsAreWithinRange(t *testing.T) {
 	is.Equal(string(wqoJson), expectation)
 }
 
-/*func TestGetByID(t *testing.T) {
+func TestGetByID(t *testing.T) {
 	is, log, svc := testSetup(t, http.StatusOK, waterqualityJson)
 
 	wq := NewWaterQualityService(context.Background(), log, svc.URL(), "default")
@@ -98,15 +98,26 @@ func TestGetAllNearPointReturnsErrorIfNoPointsAreWithinRange(t *testing.T) {
 	err := svcMock.refresh()
 	is.NoErr(err)
 
+	svc = testutils.NewMockServiceThat(
+		Expects(is, anyInput()),
+		Returns(
+			response.Code(http.StatusOK),
+			response.ContentType("application/ld+json"),
+			response.Body([]byte(singleWaterQuality)),
+		),
+	)
+
+	svcMock.contextBrokerURL = svc.URL() // doing this to ensure the request in svcMock.GetByID reaches the correct response body
+
 	wqo, err := svcMock.GetByID("urn:ngsi-ld:WaterQualityObserved:testID")
 	is.NoErr(err)
 
 	wqoJson, _ := json.Marshal(wqo)
 
-	expectation := `[]`
+	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:testID","location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[18.8,63]}},"temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"},{"value":8.1,"observedAt":"2021-05-18T17:23:09Z"}],"dateObserved":{"type":"Property","value":{"@type":"DateTime","@value":"2021-05-18T19:23:09Z"}}}`
 
 	is.Equal(string(wqoJson), expectation)
-}*/
+}
 
 var Expects = testutils.Expects
 var Returns = testutils.Returns
@@ -127,6 +138,42 @@ func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, zerolo
 
 	return is, log, ms
 }
+
+const singleWaterQuality string = `{
+	"@context": [
+	  "https://schema.lab.fiware.org/ld/context",
+	  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
+	],
+	"dateObserved": {
+	  "type": "Property",
+	  "value": {
+		"@type": "DateTime",
+		"@value": "2021-05-18T19:23:09Z"
+	  }
+	},
+	"id": "urn:ngsi-ld:WaterQualityObserved:testID",
+	"location": {
+	  "type": "GeoProperty",
+	  "value": {
+		"coordinates": [
+		  18.80000,
+		  63.000000
+		],
+		"type": "Point"
+	  }
+	},
+	"temperature": [{
+	  "type": "Property",
+	  "value": 10.8,
+	  "observedAt": "2021-05-18T19:23:09Z"
+	},
+	{
+		"type": "Property",
+		"value": 8.1,
+		"observedAt": "2021-05-18T17:23:09Z"
+	}],
+	"type": "WaterQualityObserved"
+  }`
 
 const waterqualityJson string = `[{
 	"@context": [
