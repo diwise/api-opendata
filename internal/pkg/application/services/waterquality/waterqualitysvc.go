@@ -109,9 +109,9 @@ func (svc *wqsvc) GetAllNearPoint(pt Point, maxDistance int) (*[]WaterQualityTem
 
 	wqs := []WaterQualityTemporal{}
 
-	err := json.Unmarshal(svc.waterQualities, wqs)
+	err := json.Unmarshal(svc.waterQualities, &wqs)
 	if err != nil {
-		fmt.Errorf("failed to unmarshal stored water qualities")
+		return nil, fmt.Errorf("failed to unmarshal stored water qualities")
 	}
 
 	for _, storedWQ := range wqs {
@@ -130,8 +130,6 @@ func (svc *wqsvc) GetAllNearPoint(pt Point, maxDistance int) (*[]WaterQualityTem
 }
 
 func (svc *wqsvc) GetByID(id string) (*WaterQualityTemporal, error) {
-	//Check if we have the entity stored.
-	//If yes, fetch the temporal data from context broker for that particular entity
 	svc.wqoMutex.Lock()
 	defer svc.wqoMutex.Unlock()
 
@@ -141,6 +139,16 @@ func (svc *wqsvc) GetByID(id string) (*WaterQualityTemporal, error) {
 	}
 
 	wqo := WaterQualityTemporal{}
+
+	wqoBytes, err := svc.requestTemporalDataForSingleEntity(svc.ctx, svc.log, svc.contextBrokerURL, id)
+	if err != nil {
+		return nil, fmt.Errorf("no water quality found with id %s: %s", id, err.Error())
+	}
+
+	err = json.Unmarshal(wqoBytes, &wqo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal water quality with id %s: %s", id, err.Error())
+	}
 
 	return &wqo, nil
 }
@@ -240,7 +248,7 @@ func (q *wqsvc) requestAllData(ctx context.Context, log zerolog.Logger, ctxBroke
 	}
 
 	url := fmt.Sprintf(
-		"%s/ngsi-ld/v1/temporal/entities?type=WaterQualityObserved",
+		"%s/ngsi-ld/v1/entities?type=WaterQualityObserved",
 		ctxBrokerURL,
 	)
 
@@ -275,7 +283,7 @@ func (q *wqsvc) requestAllData(ctx context.Context, log zerolog.Logger, ctxBroke
 	return b, nil
 }
 
-func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, log zerolog.Logger, ctxBrokerURL string) ([]byte, error) {
+func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, log zerolog.Logger, ctxBrokerURL, id string) ([]byte, error) {
 	var err error
 
 	httpClient := http.Client{
@@ -283,8 +291,8 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, log zero
 	}
 
 	url := fmt.Sprintf(
-		"%s/ngsi-ld/v1/temporal/entities?type=WaterQualityObserved",
-		ctxBrokerURL,
+		"%s/ngsi-ld/v1/temporal/entities/%s?attrs=temperature",
+		ctxBrokerURL, id,
 	)
 
 	if !q.from.IsZero() && !q.to.IsZero() {

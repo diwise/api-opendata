@@ -27,11 +27,14 @@ var _ WaterQualityService = &WaterQualityServiceMock{}
 // 			DistanceFunc: func(distance int)  {
 // 				panic("mock out the Distance method")
 // 			},
-// 			GetAllFunc: func() []WaterQualityTemporal {
+// 			GetAllFunc: func() []byte {
 // 				panic("mock out the GetAll method")
 // 			},
 // 			GetAllNearPointFunc: func(pt Point, distance int) (*[]WaterQualityTemporal, error) {
 // 				panic("mock out the GetAllNearPoint method")
+// 			},
+// 			GetByIDFunc: func(id string) (*WaterQualityTemporal, error) {
+// 				panic("mock out the GetByID method")
 // 			},
 // 			LocationFunc: func(latitude float64, longitude float64)  {
 // 				panic("mock out the Location method")
@@ -62,10 +65,13 @@ type WaterQualityServiceMock struct {
 	DistanceFunc func(distance int)
 
 	// GetAllFunc mocks the GetAll method.
-	GetAllFunc func() []WaterQualityTemporal
+	GetAllFunc func() []byte
 
 	// GetAllNearPointFunc mocks the GetAllNearPoint method.
 	GetAllNearPointFunc func(pt Point, distance int) (*[]WaterQualityTemporal, error)
+
+	// GetByIDFunc mocks the GetByID method.
+	GetByIDFunc func(id string) (*WaterQualityTemporal, error)
 
 	// LocationFunc mocks the Location method.
 	LocationFunc func(latitude float64, longitude float64)
@@ -106,6 +112,11 @@ type WaterQualityServiceMock struct {
 			// Distance is the distance argument value.
 			Distance int
 		}
+		// GetByID holds details about calls to the GetByID method.
+		GetByID []struct {
+			// ID is the id argument value.
+			ID string
+		}
 		// Location holds details about calls to the Location method.
 		Location []struct {
 			// Latitude is the latitude argument value.
@@ -128,6 +139,7 @@ type WaterQualityServiceMock struct {
 	lockDistance        sync.RWMutex
 	lockGetAll          sync.RWMutex
 	lockGetAllNearPoint sync.RWMutex
+	lockGetByID         sync.RWMutex
 	lockLocation        sync.RWMutex
 	lockShutdown        sync.RWMutex
 	lockStart           sync.RWMutex
@@ -227,7 +239,7 @@ func (mock *WaterQualityServiceMock) DistanceCalls() []struct {
 }
 
 // GetAll calls GetAllFunc.
-func (mock *WaterQualityServiceMock) GetAll() []WaterQualityTemporal {
+func (mock *WaterQualityServiceMock) GetAll() []byte {
 	if mock.GetAllFunc == nil {
 		panic("WaterQualityServiceMock.GetAllFunc: method is nil but WaterQualityService.GetAll was just called")
 	}
@@ -284,6 +296,37 @@ func (mock *WaterQualityServiceMock) GetAllNearPointCalls() []struct {
 	mock.lockGetAllNearPoint.RLock()
 	calls = mock.calls.GetAllNearPoint
 	mock.lockGetAllNearPoint.RUnlock()
+	return calls
+}
+
+// GetByID calls GetByIDFunc.
+func (mock *WaterQualityServiceMock) GetByID(id string) (*WaterQualityTemporal, error) {
+	if mock.GetByIDFunc == nil {
+		panic("WaterQualityServiceMock.GetByIDFunc: method is nil but WaterQualityService.GetByID was just called")
+	}
+	callInfo := struct {
+		ID string
+	}{
+		ID: id,
+	}
+	mock.lockGetByID.Lock()
+	mock.calls.GetByID = append(mock.calls.GetByID, callInfo)
+	mock.lockGetByID.Unlock()
+	return mock.GetByIDFunc(id)
+}
+
+// GetByIDCalls gets all the calls that were made to GetByID.
+// Check the length with:
+//     len(mockedWaterQualityService.GetByIDCalls())
+func (mock *WaterQualityServiceMock) GetByIDCalls() []struct {
+	ID string
+} {
+	var calls []struct {
+		ID string
+	}
+	mock.lockGetByID.RLock()
+	calls = mock.calls.GetByID
+	mock.lockGetByID.RUnlock()
 	return calls
 }
 
