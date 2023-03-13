@@ -221,16 +221,39 @@ func (svc *wqsvc) refresh() error {
 		return err
 	}
 
-	/*wqos := []WaterQualityTemporal{}
-	err = json.Unmarshal(wqoBytes, &wqos)
+	wqosTemp := []WaterQualityTemporal{}
+	err = json.Unmarshal(wqoBytes, &wqosTemp)
 	if err != nil {
 		svc.log.Error().Err(err).Msg("failed to unmarshal water qualities")
 		return err
-	}*/
+	}
 
-	svc.storeWaterQualityList(wqoBytes)
+	for _, q := range wqosTemp {
+		qBytes, err := json.Marshal(q)
+		if err != nil {
+			svc.log.Error().Err(err).Msg("failed to unmarshal water quality details")
+			return err
+		}
+
+		svc.storeWaterQualityDetails(q.ID, qBytes)
+	}
+
+	waterQualityBytes, err := json.Marshal(wqosTemp)
+	if err != nil {
+		svc.log.Error().Err(err).Msg("failed to unmarshal water qualities")
+		return err
+	}
+
+	svc.storeWaterQualityList(waterQualityBytes)
 
 	return nil
+}
+
+func (svc *wqsvc) storeWaterQualityDetails(id string, body []byte) {
+	svc.wqoMutex.Lock()
+	defer svc.wqoMutex.Unlock()
+
+	svc.waterQualityDetails[id] = body
 }
 
 func (svc *wqsvc) storeWaterQualityList(wqs []byte) {

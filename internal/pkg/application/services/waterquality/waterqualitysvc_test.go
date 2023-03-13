@@ -32,15 +32,16 @@ func TestGetAll(t *testing.T) {
 
 	err := svcMock.refresh()
 	is.NoErr(err)
+	is.Equal(len(svcMock.waterQualityDetails), 2)
 
 	wqos := svcMock.GetAll()
 	is.True(wqos != nil)
 
-	wqoJson, _ := json.Marshal(wqos)
+	//wqoJson, _ := json.Marshal(wqos)
 
-	expectation := `[{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[17.39364,62.297684]}},"temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}],"dateObserved":{"type":"Property","value":{"@type":"DateTime","@value":"2021-05-18T19:23:09Z"}}}]`
+	expectation := `[{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[17.39364,62.297684]}},"temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}],"dateObserved":{"type":"Property","value":{"@type":"DateTime","@value":"2021-05-18T19:23:09Z"}}},{"id":"urn:ngsi-ld:WaterQualityObserved:testID","location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[18.8,63]}},"temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"},{"value":8.1,"observedAt":"2021-05-18T17:23:09Z"}],"dateObserved":{"type":"Property","value":{"@type":"DateTime","@value":"2021-05-18T19:23:09Z"}}}]`
 
-	is.Equal(string(wqoJson), expectation)
+	is.Equal(string(wqos), expectation)
 }
 
 func TestGetAllNearPoint(t *testing.T) {
@@ -86,6 +87,26 @@ func TestGetAllNearPointReturnsErrorIfNoPointsAreWithinRange(t *testing.T) {
 
 	is.Equal(string(wqoJson), expectation)
 }
+
+/*func TestGetByID(t *testing.T) {
+	is, log, svc := testSetup(t, http.StatusOK, waterqualityJson)
+
+	wq := NewWaterQualityService(context.Background(), log, svc.URL(), "default")
+
+	svcMock := wq.(*wqsvc)
+
+	err := svcMock.refresh()
+	is.NoErr(err)
+
+	wqo, err := svcMock.GetByID("urn:ngsi-ld:WaterQualityObserved:testID")
+	is.NoErr(err)
+
+	wqoJson, _ := json.Marshal(wqo)
+
+	expectation := `[]`
+
+	is.Equal(string(wqoJson), expectation)
+}*/
 
 var Expects = testutils.Expects
 var Returns = testutils.Returns
@@ -138,6 +159,45 @@ const waterqualityJson string = `[{
 	  "type": "Property",
 	  "value": 10.8,
 	  "observedAt": "2021-05-18T19:23:09Z"
+	}],
+	"type": "WaterQualityObserved"
+  },
+  {
+	"@context": [
+	  "https://schema.lab.fiware.org/ld/context",
+	  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
+	],
+	"dateObserved": {
+	  "type": "Property",
+	  "value": {
+		"@type": "DateTime",
+		"@value": "2021-05-18T19:23:09Z"
+	  }
+	},
+	"id": "urn:ngsi-ld:WaterQualityObserved:testID",
+	"location": {
+	  "type": "GeoProperty",
+	  "value": {
+		"coordinates": [
+		  18.80000,
+		  63.000000
+		],
+		"type": "Point"
+	  }
+	},
+	"refDevice": {
+	  "object": "urn:ngsi-ld:Device:temperature:se:servanet:lora:sk-elt-temp-02",
+	  "type": "Relationship"
+	},
+	"temperature": [{
+	  "type": "Property",
+	  "value": 10.8,
+	  "observedAt": "2021-05-18T19:23:09Z"
+	},
+	{
+		"type": "Property",
+		"value": 8.1,
+		"observedAt": "2021-05-18T17:23:09Z"
 	}],
 	"type": "WaterQualityObserved"
   }]`
