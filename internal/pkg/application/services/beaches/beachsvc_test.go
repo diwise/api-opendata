@@ -36,7 +36,7 @@ func TestBeachServiceStartsProperly(t *testing.T) {
 	is.Equal(len(wq.GetAllNearPointCalls()), 2)
 }
 
-func TestBeachServiceGetsAll(t *testing.T) {
+func TestBeachServiceGetsByID(t *testing.T) {
 	is, log, mockBeachSvc := testSetup(t, 200, beachesJson)
 	wq := &waterquality.WaterQualityServiceMock{
 		GetAllNearPointFunc: func(pt waterquality.Point, distance int) (*[]waterquality.WaterQualityTemporal, error) {
@@ -52,8 +52,6 @@ func TestBeachServiceGetsAll(t *testing.T) {
 	bs.Start()
 
 	svc := bs.(*beachSvc)
-
-	svc.beachMaxWQODistance = 1000
 
 	_, err := svc.refresh()
 	is.NoErr(err)
