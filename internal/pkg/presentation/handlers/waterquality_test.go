@@ -28,6 +28,20 @@ func TestGetWaterQuality(t *testing.T) {
 	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 
+func TestGetWaterQualityByID(t *testing.T) {
+	is, log, server := testSetup(t, http.StatusOK, waterqualityJson)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/api/waterquality", nil)
+
+	wqSvc := waterquality.NewWaterQualityService(context.Background(), log, server.URL(), "default")
+	wqSvc.Start()
+
+	NewRetrieveWaterQualityByIDHandler(log, wqSvc).ServeHTTP(w, req)
+
+	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
+}
+
 func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, zerolog.Logger, testutils.MockService) {
 	is := is.New(t)
 	log := zerolog.Logger{}

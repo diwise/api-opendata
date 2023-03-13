@@ -26,8 +26,9 @@ type WaterQualityService interface {
 	Distance(distance int)
 	Location(latitude, longitude float64)
 
-	GetAll() []WaterQualityTemporal
+	GetAll() []byte
 	GetAllNearPoint(pt Point, distance int) (*[]WaterQualityTemporal, error)
+	GetByID(id string) (*WaterQualityTemporal, error)
 }
 
 func NewWaterQualityService(ctx context.Context, log zerolog.Logger, url, tenant string) WaterQualityService {
@@ -35,8 +36,9 @@ func NewWaterQualityService(ctx context.Context, log zerolog.Logger, url, tenant
 		contextBrokerURL: url,
 		tenant:           tenant,
 
-		waterQualities: []WaterQualityTemporal{},
-		keepRunning:    true,
+		waterQualities:      []byte{},
+		waterQualityDetails: map[string][]byte{},
+		keepRunning:         true,
 
 		ctx: ctx,
 		log: log,
@@ -53,8 +55,9 @@ type wqsvc struct {
 	longitude float64
 	distance  int
 
-	wqoMutex       sync.Mutex
-	waterQualities []WaterQualityTemporal
+	wqoMutex            sync.Mutex
+	waterQualities      []byte
+	waterQualityDetails map[string][]byte
 
 	ctx context.Context
 	log zerolog.Logger
@@ -94,7 +97,7 @@ func (svc *wqsvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *wqsvc) GetAll() []WaterQualityTemporal {
+func (svc *wqsvc) GetAll() []byte {
 	svc.wqoMutex.Lock()
 	defer svc.wqoMutex.Unlock()
 
@@ -104,7 +107,14 @@ func (svc *wqsvc) GetAll() []WaterQualityTemporal {
 func (svc *wqsvc) GetAllNearPoint(pt Point, maxDistance int) (*[]WaterQualityTemporal, error) {
 	waterQualitiesWithinDistance := []WaterQualityTemporal{}
 
-	for _, storedWQ := range svc.waterQualities {
+	wqs := []WaterQualityTemporal{}
+
+	err := json.Unmarshal(svc.waterQualities, wqs)
+	if err != nil {
+		fmt.Errorf("failed to unmarshal stored water qualities")
+	}
+
+	for _, storedWQ := range wqs {
 		wqPoint := NewPoint(storedWQ.Location.Value.Coordinates[1], storedWQ.Location.Value.Coordinates[0])
 		distanceBetweenPoints := Distance(wqPoint, pt)
 
@@ -117,6 +127,22 @@ func (svc *wqsvc) GetAllNearPoint(pt Point, maxDistance int) (*[]WaterQualityTem
 	}
 
 	return &waterQualitiesWithinDistance, nil
+}
+
+func (svc *wqsvc) GetByID(id string) (*WaterQualityTemporal, error) {
+	//Check if we have the entity stored.
+	//If yes, fetch the temporal data from context broker for that particular entity
+	svc.wqoMutex.Lock()
+	defer svc.wqoMutex.Unlock()
+
+	_, ok := svc.waterQualityDetails[id]
+	if !ok {
+		return nil, fmt.Errorf("no water quality found with id %s", id)
+	}
+
+	wqo := WaterQualityTemporal{}
+
+	return &wqo, nil
 }
 
 type Point struct {
@@ -181,32 +207,75 @@ func (svc *wqsvc) run() {
 }
 
 func (svc *wqsvc) refresh() error {
-	wqoBytes, err := svc.requestData(svc.ctx, svc.log, svc.contextBrokerURL)
+	wqoBytes, err := svc.requestAllData(svc.ctx, svc.log, svc.contextBrokerURL)
 	if err != nil {
 		svc.log.Error().Err(err).Msg("failed to retrieve water quality data")
-		return nil
+		return err
 	}
 
-	wqos := []WaterQualityTemporal{}
+	/*wqos := []WaterQualityTemporal{}
 	err = json.Unmarshal(wqoBytes, &wqos)
 	if err != nil {
 		svc.log.Error().Err(err).Msg("failed to unmarshal water qualities")
 		return err
-	}
+	}*/
 
-	svc.storeWaterQualityList(wqos)
+	svc.storeWaterQualityList(wqoBytes)
 
 	return nil
 }
 
-func (svc *wqsvc) storeWaterQualityList(wqs []WaterQualityTemporal) {
+func (svc *wqsvc) storeWaterQualityList(wqs []byte) {
 	svc.wqoMutex.Lock()
 	defer svc.wqoMutex.Unlock()
 
 	svc.waterQualities = wqs
 }
 
-func (q *wqsvc) requestData(ctx context.Context, log zerolog.Logger, ctxBrokerURL string) ([]byte, error) {
+func (q *wqsvc) requestAllData(ctx context.Context, log zerolog.Logger, ctxBrokerURL string) ([]byte, error) {
+	var err error
+
+	httpClient := http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+
+	url := fmt.Sprintf(
+		"%s/ngsi-ld/v1/temporal/entities?type=WaterQualityObserved",
+		ctxBrokerURL,
+	)
+
+	/*if !q.from.IsZero() && !q.to.IsZero() {
+		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
+	} else {
+		q.from = time.Now().UTC().Add(-24 * time.Hour)
+		q.to = time.Now().UTC()
+		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
+	}*/
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create http request: %w", err)
+	}
+
+	response, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed, status code not ok: %d", response.StatusCode)
+	}
+
+	b, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %s", err)
+	}
+
+	return b, nil
+}
+
+func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, log zerolog.Logger, ctxBrokerURL string) ([]byte, error) {
 	var err error
 
 	httpClient := http.Client{
@@ -219,15 +288,11 @@ func (q *wqsvc) requestData(ctx context.Context, log zerolog.Logger, ctxBrokerUR
 	)
 
 	if !q.from.IsZero() && !q.to.IsZero() {
-		url = fmt.Sprintf("%s&timerel=between&time=%s&endTime=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
+		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
 	} else {
 		q.from = time.Now().UTC().Add(-24 * time.Hour)
 		q.to = time.Now().UTC()
-		url = fmt.Sprintf("%s&timerel=between&time=%s&endTime=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
-	}
-
-	if q.latitude > 0.0 && q.longitude > 0.0 {
-		url = fmt.Sprintf("%s&georel=near%%3BmaxDistance==%d&geometry=Point&coordinates=[%f,%f]", url, q.distance, q.latitude, q.longitude)
+		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

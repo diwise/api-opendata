@@ -65,3 +65,34 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 
 	})
 }
+
+func NewRetrieveWaterQualityByIDHandler(logger zerolog.Logger, svc waterquality.WaterQualityService) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
+		ctx, span := tracer.Start(r.Context(), "retrieve-water-qualities")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+
+		id := r.URL.Query().Get("id")
+
+		wqos, err := svc.GetByID(id)
+
+		body, err := json.Marshal(wqos)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to marshal waterqualities")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Printf("body: %s", string(body))
+
+		waterQualityJSON := "{\n  \"data\": " + string(body) + "\n}"
+
+		w.Header().Add("Content-Type", "application/json")
+		w.Header().Add("Cache-Control", "max-age=3600")
+		w.Write([]byte(waterQualityJSON))
+
+	})
+}
