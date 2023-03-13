@@ -126,6 +126,10 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger, orgfil
 		handlers.NewRetrieveWaterQualityHandler(log, waterqualitySvc),
 	)
 	r.Get(
+		"/api/waterquality/{id}",
+		handlers.NewRetrieveWaterQualityByIDHandler(log, waterqualitySvc),
+	)
+	r.Get(
 		"/api/beaches",
 		handlers.NewRetrieveBeachesHandler(log, beachService),
 	)
