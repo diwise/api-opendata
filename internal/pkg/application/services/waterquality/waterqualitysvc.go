@@ -275,32 +275,36 @@ func (q *wqsvc) requestAllData(ctx context.Context, log zerolog.Logger, ctxBroke
 		ctxBrokerURL,
 	)
 
-	/*if !q.from.IsZero() && !q.to.IsZero() {
+	if !q.from.IsZero() && !q.to.IsZero() {
 		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
 	} else {
 		q.from = time.Now().UTC().Add(-24 * time.Hour)
 		q.to = time.Now().UTC()
 		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
-	}*/
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create http request: %w", err)
+		q.log.Error().Err(err).Msg("failed to create http request")
+		return nil, err
 	}
 
 	response, err := httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		q.log.Error().Err(err).Msg("request failed")
+		return nil, err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request failed, status code not ok: %d", response.StatusCode)
+		q.log.Error().Err(err).Msg("request failed, status code not ok")
+		return nil, err
 	}
 
 	b, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %s", err)
+		q.log.Error().Err(err).Msg("failed to read response body")
+		return nil, err
 	}
 
 	return b, nil
@@ -328,22 +332,26 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, log zero
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create http request: %w", err)
+		q.log.Error().Err(err).Msg("failed to create http request")
+		return nil, err
 	}
 
 	response, err := httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		q.log.Error().Err(err).Msg("request failed")
+		return nil, err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request failed, status code not ok: %d", response.StatusCode)
+		q.log.Error().Err(err).Msg("request failed, status code not ok")
+		return nil, err
 	}
 
 	b, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %s", err)
+		q.log.Error().Err(err).Msg("failed to read response body")
+		return nil, err
 	}
 
 	return b, nil

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -48,16 +47,7 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 
 		wqos := svc.GetAll()
 
-		body, err := json.Marshal(wqos)
-		if err != nil {
-			log.Error().Err(err).Msg("failed to marshal waterqualities")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		fmt.Printf("body: %s", string(body))
-
-		waterQualityJSON := "{\n  \"data\": " + string(body) + "\n}"
+		waterQualityJSON := "{\n  \"data\": " + string(wqos) + "\n}"
 
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=3600")
@@ -77,16 +67,14 @@ func NewRetrieveWaterQualityByIDHandler(logger zerolog.Logger, svc waterquality.
 
 		id := r.URL.Query().Get("id")
 
-		wqos, err := svc.GetByID(id)
+		wqo, err := svc.GetByID(id)
 
-		body, err := json.Marshal(wqos)
+		body, err := json.Marshal(wqo)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to marshal waterqualities")
+			log.Error().Err(err).Msg("failed to marshal water quality")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
-		fmt.Printf("body: %s", string(body))
 
 		waterQualityJSON := "{\n  \"data\": " + string(body) + "\n}"
 
