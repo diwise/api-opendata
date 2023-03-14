@@ -11,9 +11,15 @@ import (
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
+	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 )
+
+var tracer = otel.Tracer("api-opendata/svcs/waterquality")
 
 type WaterQualityService interface {
 	Start()
@@ -26,9 +32,9 @@ type WaterQualityService interface {
 	Distance(distance int)
 	Location(latitude, longitude float64)
 
-	GetAll() []byte
-	GetAllNearPoint(pt Point, distance int) (*[]WaterQualityTemporal, error)
-	GetByID(id string) (*WaterQualityTemporal, error)
+	GetAll() []domain.WaterQuality
+	GetAllNearPoint(pt Point, distance int) (*[]domain.WaterQuality, error)
+	GetByID(id string) (*domain.WaterQualityTemporal, error)
 }
 
 func NewWaterQualityService(ctx context.Context, log zerolog.Logger, url, tenant string) WaterQualityService {
@@ -36,9 +42,9 @@ func NewWaterQualityService(ctx context.Context, log zerolog.Logger, url, tenant
 		contextBrokerURL: url,
 		tenant:           tenant,
 
-		waterQualities:      []byte{},
-		waterQualityDetails: map[string][]byte{},
-		keepRunning:         true,
+		waterQualities:   []domain.WaterQuality{},
+		waterQualityByID: map[string]domain.WaterQuality{},
+		keepRunning:      true,
 
 		ctx: ctx,
 		log: log,
@@ -55,9 +61,9 @@ type wqsvc struct {
 	longitude float64
 	distance  int
 
-	wqoMutex            sync.Mutex
-	waterQualities      []byte
-	waterQualityDetails map[string][]byte
+	wqoMutex         sync.Mutex
+	waterQualities   []domain.WaterQuality
+	waterQualityByID map[string]domain.WaterQuality
 
 	ctx context.Context
 	log zerolog.Logger
@@ -97,25 +103,18 @@ func (svc *wqsvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *wqsvc) GetAll() []byte {
+func (svc *wqsvc) GetAll() []domain.WaterQuality {
 	svc.wqoMutex.Lock()
 	defer svc.wqoMutex.Unlock()
 
 	return svc.waterQualities
 }
 
-func (svc *wqsvc) GetAllNearPoint(pt Point, maxDistance int) (*[]WaterQualityTemporal, error) {
-	waterQualitiesWithinDistance := []WaterQualityTemporal{}
+func (svc *wqsvc) GetAllNearPoint(pt Point, maxDistance int) (*[]domain.WaterQuality, error) {
+	waterQualitiesWithinDistance := []domain.WaterQuality{}
 
-	wqs := []WaterQualityTemporal{}
-
-	err := json.Unmarshal(svc.waterQualities, &wqs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal stored water qualities")
-	}
-
-	for _, storedWQ := range wqs {
-		wqPoint := NewPoint(storedWQ.Location.Value.Coordinates[1], storedWQ.Location.Value.Coordinates[0])
+	for _, storedWQ := range svc.waterQualities {
+		wqPoint := NewPoint(storedWQ.Location.Coordinates[1], storedWQ.Location.Coordinates[0])
 		distanceBetweenPoints := Distance(wqPoint, pt)
 
 		if distanceBetweenPoints < maxDistance {
@@ -123,22 +122,22 @@ func (svc *wqsvc) GetAllNearPoint(pt Point, maxDistance int) (*[]WaterQualityTem
 		}
 	}
 	if len(waterQualitiesWithinDistance) == 0 {
-		return &[]WaterQualityTemporal{}, fmt.Errorf("no stored water qualities exist within %d meters of point %f,%f", maxDistance, pt.Longitude, pt.Latitude)
+		return &[]domain.WaterQuality{}, fmt.Errorf("no stored water qualities exist within %d meters of point %f,%f", maxDistance, pt.Longitude, pt.Latitude)
 	}
 
 	return &waterQualitiesWithinDistance, nil
 }
 
-func (svc *wqsvc) GetByID(id string) (*WaterQualityTemporal, error) {
+func (svc *wqsvc) GetByID(id string) (*domain.WaterQualityTemporal, error) {
 	svc.wqoMutex.Lock()
 	defer svc.wqoMutex.Unlock()
 
-	_, ok := svc.waterQualityDetails[id]
+	_, ok := svc.waterQualityByID[id]
 	if !ok {
 		return nil, fmt.Errorf("no water quality found with id %s", id)
 	}
 
-	wqo := WaterQualityTemporal{}
+	wqo := domain.WaterQualityTemporal{}
 
 	wqoBytes, err := svc.requestTemporalDataForSingleEntity(svc.ctx, svc.log, svc.contextBrokerURL, id)
 	if err != nil {
@@ -214,100 +213,54 @@ func (svc *wqsvc) run() {
 	svc.log.Info().Msg("water quality service exiting")
 }
 
-func (svc *wqsvc) refresh() error {
-	wqoBytes, err := svc.requestAllData(svc.ctx, svc.log, svc.contextBrokerURL)
-	if err != nil {
-		svc.log.Error().Err(err).Msg("failed to retrieve water quality data")
-		return err
-	}
+func (svc *wqsvc) refresh() (err error) {
 
-	wqosTemp := []WaterQualityTemporal{}
-	err = json.Unmarshal(wqoBytes, &wqosTemp)
-	if err != nil {
-		svc.log.Error().Err(err).Msg("failed to unmarshal water qualities")
-		return err
-	}
+	ctx, span := tracer.Start(svc.ctx, "refresh-water-quality")
+	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	for _, q := range wqosTemp {
-		qBytes, err := json.Marshal(q)
-		if err != nil {
-			svc.log.Error().Err(err).Msg("failed to unmarshal water quality details")
-			return err
+	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
+
+	waterqualities := []domain.WaterQuality{}
+
+	_, err = contextbroker.QueryEntities(ctx, svc.Broker(), svc.Tenant(), "WaterQualityObserved", nil, func(w WaterQualityDTO) {
+		waterquality := domain.WaterQuality{
+			ID:           w.ID,
+			Temperature:  w.Temperature.Value,
+			DateObserved: w.DateObserved.Value,
+			Location:     *domain.NewPoint(w.Location.Value.Coordinates[1], w.Location.Value.Coordinates[0]),
 		}
 
-		svc.storeWaterQualityDetails(q.ID, qBytes)
-	}
+		if w.Source != "" {
+			waterquality.Source = &w.Source
+		}
 
-	waterQualityBytes, err := json.Marshal(wqosTemp)
+		svc.storeWaterQuality(w.ID, waterquality)
+
+		waterqualities = append(waterqualities, waterquality)
+	})
+
 	if err != nil {
-		svc.log.Error().Err(err).Msg("failed to unmarshal water qualities")
-		return err
+		err = fmt.Errorf("failed to retrieve water qualities from context broker: %w", err)
+		return
 	}
 
-	svc.storeWaterQualityList(waterQualityBytes)
+	svc.storeWaterQualityList(waterqualities)
 
 	return nil
 }
 
-func (svc *wqsvc) storeWaterQualityDetails(id string, body []byte) {
+func (svc *wqsvc) storeWaterQuality(id string, body domain.WaterQuality) {
 	svc.wqoMutex.Lock()
 	defer svc.wqoMutex.Unlock()
 
-	svc.waterQualityDetails[id] = body
+	svc.waterQualityByID[id] = body
 }
 
-func (svc *wqsvc) storeWaterQualityList(wqs []byte) {
+func (svc *wqsvc) storeWaterQualityList(wqs []domain.WaterQuality) {
 	svc.wqoMutex.Lock()
 	defer svc.wqoMutex.Unlock()
 
 	svc.waterQualities = wqs
-}
-
-func (q *wqsvc) requestAllData(ctx context.Context, log zerolog.Logger, ctxBrokerURL string) ([]byte, error) {
-	var err error
-
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
-	url := fmt.Sprintf(
-		"%s/ngsi-ld/v1/entities?type=WaterQualityObserved",
-		ctxBrokerURL,
-	)
-
-	if !q.from.IsZero() && !q.to.IsZero() {
-		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
-	} else {
-		q.from = time.Now().UTC().Add(-24 * time.Hour)
-		q.to = time.Now().UTC()
-		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		q.log.Error().Err(err).Msg("failed to create http request")
-		return nil, err
-	}
-
-	response, err := httpClient.Do(req)
-	if err != nil {
-		q.log.Error().Err(err).Msg("request failed")
-		return nil, err
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		q.log.Error().Err(err).Msg("request failed, status code not ok")
-		return nil, err
-	}
-
-	b, err := io.ReadAll(response.Body)
-	if err != nil {
-		q.log.Error().Err(err).Msg("failed to read response body")
-		return nil, err
-	}
-
-	return b, nil
 }
 
 func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, log zerolog.Logger, ctxBrokerURL, id string) ([]byte, error) {
@@ -357,7 +310,7 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, log zero
 	return b, nil
 }
 
-type WaterQualityTemporal struct {
+type WaterQualityTemporalDTO struct {
 	ID       string `json:"id"`
 	Location struct {
 		Type  string       `json:"type"`
@@ -365,6 +318,20 @@ type WaterQualityTemporal struct {
 	} `json:"location"`
 	Temperature  []domain.Value `json:"temperature"`
 	Source       string         `json:"source,omitempty"`
+	DateObserved struct {
+		Type            string `json:"type"`
+		domain.DateTime `json:"value"`
+	} `json:"dateObserved,omitempty"`
+}
+
+type WaterQualityDTO struct {
+	ID       string `json:"id"`
+	Location struct {
+		Type  string       `json:"type"`
+		Value domain.Point `json:"value"`
+	} `json:"location"`
+	Temperature  domain.Value `json:"temperature"`
+	Source       string       `json:"source,omitempty"`
 	DateObserved struct {
 		Type            string `json:"type"`
 		domain.DateTime `json:"value"`

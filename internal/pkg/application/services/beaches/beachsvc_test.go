@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
+	"github.com/diwise/api-opendata/internal/pkg/domain"
 	testutils "github.com/diwise/service-chassis/pkg/test/http"
 	"github.com/diwise/service-chassis/pkg/test/http/expects"
 	"github.com/diwise/service-chassis/pkg/test/http/response"
@@ -14,17 +15,33 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func TestBeachServiceStartsProperly(t *testing.T) {
-	is, log, mockBeachSvc := testSetup(t, 200, beachesJson)
-	wq := &waterquality.WaterQualityServiceMock{
-		GetAllNearPointFunc: func(pt waterquality.Point, distance int) (*[]waterquality.WaterQualityTemporal, error) {
-			wqo := []waterquality.WaterQualityTemporal{}
-			err := json.Unmarshal([]byte(waterqualityJson), &wqo)
+func mockWaterService(is *is.I) *waterquality.WaterQualityServiceMock {
+	return &waterquality.WaterQualityServiceMock{
+		GetAllNearPointFunc: func(pt waterquality.Point, distance int) (*[]domain.WaterQuality, error) {
+			dto := []waterquality.WaterQualityDTO{}
+			err := json.Unmarshal([]byte(waterqualityJson), &dto)
 			is.NoErr(err)
 
-			return &wqo, nil
+			wqos := []domain.WaterQuality{}
+			for _, d := range dto {
+				wq := domain.WaterQuality{
+					ID:           d.ID,
+					Temperature:  d.Temperature.Value,
+					Source:       &d.Source,
+					DateObserved: d.DateObserved.Value,
+					Location:     d.Location.Value,
+				}
+
+				wqos = append(wqos, wq)
+			}
+
+			return &wqos, nil
 		},
 	}
+}
+func TestBeachServiceStartsProperly(t *testing.T) {
+	is, log, mockBeachSvc := testSetup(t, 200, beachesJson)
+	wq := mockWaterService(is)
 
 	bs := NewBeachService(context.Background(), log, mockBeachSvc.URL(), "default", 1000, wq)
 	bs.Start()
@@ -38,15 +55,7 @@ func TestBeachServiceStartsProperly(t *testing.T) {
 
 func TestBeachServiceGetsByID(t *testing.T) {
 	is, log, mockBeachSvc := testSetup(t, 200, beachesJson)
-	wq := &waterquality.WaterQualityServiceMock{
-		GetAllNearPointFunc: func(pt waterquality.Point, distance int) (*[]waterquality.WaterQualityTemporal, error) {
-			wqo := []waterquality.WaterQualityTemporal{}
-			err := json.Unmarshal([]byte(waterqualityJson), &wqo)
-			is.NoErr(err)
-
-			return &wqo, nil
-		},
-	}
+	wq := mockWaterService(is)
 
 	bs := NewBeachService(context.Background(), log, mockBeachSvc.URL(), "default", 1000, wq)
 	bs.Start()
@@ -60,8 +69,7 @@ func TestBeachServiceGetsByID(t *testing.T) {
 	is.NoErr(err)
 	is.True(b != nil)
 
-	expectation := `"waterquality":[{"temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}]`
-
+	expectation := `"waterquality":[{"temperature":10.8,"dateObserved":"2021-05-18T19:23:09Z","source":""}]`
 	is.True(strings.Contains(string(b), expectation))
 }
 
@@ -167,14 +175,10 @@ const waterqualityJson string = `[{
 			"type": "Point"
 		  }
 		},
-		"refDevice": {
-		  "object": "urn:ngsi-ld:Device:temperature:se:servanet:lora:sk-elt-temp-02",
-		  "type": "Relationship"
-		},
-		"temperature": [{
+		"temperature": {
 		  "type": "Property",
 		  "value": 10.8,
 		  "observedAt": "2021-05-18T19:23:09Z"
-		}],
+		},
 		"type": "WaterQualityObserved"
 	  }]`

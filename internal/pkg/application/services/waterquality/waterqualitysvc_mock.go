@@ -4,6 +4,7 @@
 package waterquality
 
 import (
+	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"sync"
 	"time"
 )
@@ -27,13 +28,13 @@ var _ WaterQualityService = &WaterQualityServiceMock{}
 // 			DistanceFunc: func(distance int)  {
 // 				panic("mock out the Distance method")
 // 			},
-// 			GetAllFunc: func() []byte {
+// 			GetAllFunc: func() []domain.WaterQuality {
 // 				panic("mock out the GetAll method")
 // 			},
-// 			GetAllNearPointFunc: func(pt Point, distance int) (*[]WaterQualityTemporal, error) {
+// 			GetAllNearPointFunc: func(pt Point, distance int) (*[]domain.WaterQuality, error) {
 // 				panic("mock out the GetAllNearPoint method")
 // 			},
-// 			GetByIDFunc: func(id string) (*WaterQualityTemporal, error) {
+// 			GetByIDFunc: func(id string) (*domain.WaterQualityTemporal, error) {
 // 				panic("mock out the GetByID method")
 // 			},
 // 			LocationFunc: func(latitude float64, longitude float64)  {
@@ -65,13 +66,13 @@ type WaterQualityServiceMock struct {
 	DistanceFunc func(distance int)
 
 	// GetAllFunc mocks the GetAll method.
-	GetAllFunc func() []byte
+	GetAllFunc func() []domain.WaterQuality
 
 	// GetAllNearPointFunc mocks the GetAllNearPoint method.
-	GetAllNearPointFunc func(pt Point, distance int) (*[]WaterQualityTemporal, error)
+	GetAllNearPointFunc func(pt Point, distance int) (*[]domain.WaterQuality, error)
 
 	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(id string) (*WaterQualityTemporal, error)
+	GetByIDFunc func(id string) (*domain.WaterQualityTemporal, error)
 
 	// LocationFunc mocks the Location method.
 	LocationFunc func(latitude float64, longitude float64)
@@ -239,7 +240,7 @@ func (mock *WaterQualityServiceMock) DistanceCalls() []struct {
 }
 
 // GetAll calls GetAllFunc.
-func (mock *WaterQualityServiceMock) GetAll() []byte {
+func (mock *WaterQualityServiceMock) GetAll() []domain.WaterQuality {
 	if mock.GetAllFunc == nil {
 		panic("WaterQualityServiceMock.GetAllFunc: method is nil but WaterQualityService.GetAll was just called")
 	}
@@ -265,7 +266,7 @@ func (mock *WaterQualityServiceMock) GetAllCalls() []struct {
 }
 
 // GetAllNearPoint calls GetAllNearPointFunc.
-func (mock *WaterQualityServiceMock) GetAllNearPoint(pt Point, distance int) (*[]WaterQualityTemporal, error) {
+func (mock *WaterQualityServiceMock) GetAllNearPoint(pt Point, distance int) (*[]domain.WaterQuality, error) {
 	if mock.GetAllNearPointFunc == nil {
 		panic("WaterQualityServiceMock.GetAllNearPointFunc: method is nil but WaterQualityService.GetAllNearPoint was just called")
 	}
@@ -300,7 +301,7 @@ func (mock *WaterQualityServiceMock) GetAllNearPointCalls() []struct {
 }
 
 // GetByID calls GetByIDFunc.
-func (mock *WaterQualityServiceMock) GetByID(id string) (*WaterQualityTemporal, error) {
+func (mock *WaterQualityServiceMock) GetByID(id string) (*domain.WaterQualityTemporal, error) {
 	if mock.GetByIDFunc == nil {
 		panic("WaterQualityServiceMock.GetByIDFunc: method is nil but WaterQualityService.GetByID was just called")
 	}

@@ -47,7 +47,13 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 
 		wqos := svc.GetAll()
 
-		waterQualityJSON := "{\n  \"data\": " + string(wqos) + "\n}"
+		wqosBytes, err := json.Marshal(wqos)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to marshal water quality into json")
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
+		waterQualityJSON := "{\n  \"data\": " + string(wqosBytes) + "\n}"
 
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=3600")

@@ -134,12 +134,12 @@ func (svc *beachSvc) refresh() (count int, err error) {
 
 	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
 
-	beaches := []domain.Beach{}
+	beaches := []Beach{}
 
 	_, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "Beach", nil, func(b beachDTO) {
 		latitude, longitude := b.LatLon()
 
-		details := domain.BeachDetails{
+		details := BeachDetails{
 			ID:          b.ID,
 			Name:        b.Name,
 			Description: &b.Description,
@@ -156,17 +156,21 @@ func (svc *beachSvc) refresh() (count int, err error) {
 		if err_ != nil {
 			logger.Error().Err(err_).Msgf("failed to get water qualities near %s (%s)", b.Name, b.ID)
 		} else {
-			wq := []domain.WaterQualityTemporal{}
+			wq := []WaterQuality{}
 
 			for _, t := range *wqots {
-				newWQ := domain.WaterQualityTemporal{}
+				newWQ := WaterQuality{}
 
-				if len(t.Temperature) > 0 {
+				if t.Temperature > 0 {
 					newWQ.Temperature = t.Temperature
 				}
 
-				if t.Source != "" {
+				if t.Source != nil {
 					newWQ.Source = t.Source
+				}
+
+				if t.DateObserved != "" {
+					newWQ.DateObserved = t.DateObserved
 				}
 
 				wq = append(wq, newWQ)
@@ -183,7 +187,7 @@ func (svc *beachSvc) refresh() (count int, err error) {
 
 		svc.storeBeachDetails(b.ID, jsonBytes)
 
-		beach := domain.Beach{
+		beach := Beach{
 			ID:       b.ID,
 			Name:     b.Name,
 			Location: details.Location,
@@ -191,11 +195,11 @@ func (svc *beachSvc) refresh() (count int, err error) {
 
 		if details.WaterQuality != nil && len(*details.WaterQuality) > 0 {
 			mostRecentWQ := (*details.WaterQuality)[0]
-			if mostRecentWQ.Temperature[0].Age() < 24*time.Hour {
-				beach.WaterQuality = &domain.WaterQuality{
-					Temperature:  mostRecentWQ.Temperature[0].Value,
-					DateObserved: mostRecentWQ.Temperature[0].ObservedAt,
-					Source:       &mostRecentWQ.Source,
+			if mostRecentWQ.Age() < 24*time.Hour {
+				beach.WaterQuality = &WaterQuality{
+					Temperature:  mostRecentWQ.Temperature,
+					DateObserved: mostRecentWQ.DateObserved,
+					Source:       mostRecentWQ.Source,
 				}
 			}
 		}
@@ -279,4 +283,36 @@ func (b *beachDTO) SeeAlso() []string {
 	}
 
 	return refsAsArray
+}
+
+type WaterQuality struct {
+	Temperature  float64 `json:"temperature"`
+	DateObserved string  `json:"dateObserved"`
+	Source       *string `json:"source,omitempty"`
+}
+
+func (w WaterQuality) Age() time.Duration {
+	observedAt, err := time.Parse(time.RFC3339, w.DateObserved)
+	if err != nil {
+		// Pretend it was almost 100 years ago
+		return 100 * 365 * 24 * time.Hour
+	}
+
+	return time.Since(observedAt)
+}
+
+type Beach struct {
+	ID           string        `json:"id"`
+	Name         string        `json:"name"`
+	Location     domain.Point  `json:"location"`
+	WaterQuality *WaterQuality `json:"waterquality"`
+}
+
+type BeachDetails struct {
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Description  *string         `json:"description,omitempty"`
+	Location     domain.Point    `json:"location"`
+	WaterQuality *[]WaterQuality `json:"waterquality"`
+	SeeAlso      *[]string       `json:"seeAlso,omitempty"`
 }

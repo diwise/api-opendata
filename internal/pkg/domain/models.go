@@ -48,22 +48,6 @@ type Organisation struct {
 	Name string `json:"name"`
 }
 
-type Beach struct {
-	ID           string        `json:"id"`
-	Name         string        `json:"name"`
-	Location     Point         `json:"location"`
-	WaterQuality *WaterQuality `json:"waterquality"`
-}
-
-type BeachDetails struct {
-	ID           string                  `json:"id"`
-	Name         string                  `json:"name"`
-	Description  *string                 `json:"description,omitempty"`
-	Location     Point                   `json:"location"`
-	WaterQuality *[]WaterQualityTemporal `json:"waterquality"`
-	SeeAlso      *[]string               `json:"seeAlso,omitempty"`
-}
-
 type ExerciseTrail struct {
 	ID                  string        `json:"id"`
 	Name                string        `json:"name"`
@@ -190,15 +174,25 @@ type RoadAccidentDetails struct {
 	Status       string `json:"status"`
 }
 
-type WaterQuality struct {
+type WaterQualityForBeach struct {
 	Temperature  float64 `json:"temperature"`
 	DateObserved string  `json:"dateObserved"`
 	Source       *string `json:"source,omitempty"`
 }
 
+type WaterQuality struct {
+	ID           string  `json:"id"`
+	Temperature  float64 `json:"temperature"`
+	DateObserved string  `json:"dateObserved"`
+	Source       *string `json:"source,omitempty"`
+	Location     Point   `json:"location"`
+}
+
 type WaterQualityTemporal struct {
+	ID          string  `json:"id"`
 	Temperature []Value `json:"temperature"`
 	Source      string  `json:"source,omitempty"`
+	Location    Point   `json:"location"`
 }
 
 type Value struct {
@@ -206,8 +200,8 @@ type Value struct {
 	ObservedAt string  `json:"observedAt"`
 }
 
-func (v Value) Age() time.Duration {
-	observedAt, err := time.Parse(time.RFC3339, v.ObservedAt)
+func (w WaterQuality) Age() time.Duration {
+	observedAt, err := time.Parse(time.RFC3339, w.DateObserved)
 	if err != nil {
 		// Pretend it was almost 100 years ago
 		return 100 * 365 * 24 * time.Hour
