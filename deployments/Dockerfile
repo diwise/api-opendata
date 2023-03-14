@@ -1,4 +1,4 @@
-FROM golang:1.19 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.20 AS builder
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
@@ -14,7 +14,9 @@ COPY . .
 
 WORKDIR /app/cmd/api-opendata
 
-RUN GOOS=linux GOARCH=amd64 go build
+ARG TARGETARCH
+ARG TARGETOS
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal
 WORKDIR /opt/diwise
