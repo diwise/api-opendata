@@ -196,6 +196,7 @@ type WaterQualityTemporal struct {
 }
 
 type Value struct {
+	Type       string  `json:"property,omitempty"`
 	Value      float64 `json:"value"`
 	ObservedAt string  `json:"observedAt"`
 }

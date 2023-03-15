@@ -55,7 +55,7 @@ func mockWaterQualitySvc(is *is.I) *waterquality.WaterQualityServiceMock {
 
 			wq := domain.WaterQuality{
 				ID:           dto.ID,
-				Temperature:  dto.Temperature.Value,
+				Temperature:  dto.Temperature,
 				DateObserved: dto.DateObserved.Value,
 				Location:     *domain.NewPoint(dto.Location.Value.Coordinates[0], dto.Location.Value.Coordinates[1]),
 			}

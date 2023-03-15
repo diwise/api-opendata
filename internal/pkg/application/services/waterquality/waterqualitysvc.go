@@ -204,7 +204,7 @@ func (svc *wqsvc) run() {
 			} else {
 				svc.log.Info().Msgf("refreshed water qualities")
 				// Refresh every 5 minutes of success
-				nextRefreshTime = time.Now().Add(5 * time.Minute)
+				nextRefreshTime = time.Now().Add(30 * time.Second)
 			}
 		}
 
@@ -225,7 +225,7 @@ func (svc *wqsvc) refresh() (err error) {
 	_, err = contextbroker.QueryEntities(ctx, svc.Broker(), svc.Tenant(), "WaterQualityObserved", nil, func(w WaterQualityDTO) {
 		waterquality := domain.WaterQuality{
 			ID:           w.ID,
-			Temperature:  w.Temperature.Value,
+			Temperature:  w.Temperature,
 			DateObserved: w.DateObserved.Value,
 			Location:     *domain.NewPoint(w.Location.Value.Coordinates[1], w.Location.Value.Coordinates[0]),
 		}
@@ -238,7 +238,6 @@ func (svc *wqsvc) refresh() (err error) {
 
 		waterqualities = append(waterqualities, waterquality)
 	})
-
 	if err != nil {
 		err = fmt.Errorf("failed to retrieve water qualities from context broker: %w", err)
 		return
@@ -330,8 +329,8 @@ type WaterQualityDTO struct {
 		Type  string       `json:"type"`
 		Value domain.Point `json:"value"`
 	} `json:"location"`
-	Temperature  domain.Value `json:"temperature"`
-	Source       string       `json:"source,omitempty"`
+	Temperature  float64 `json:"temperature"`
+	Source       string  `json:"source,omitempty"`
 	DateObserved struct {
 		Type            string `json:"type"`
 		domain.DateTime `json:"value"`

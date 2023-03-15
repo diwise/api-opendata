@@ -26,7 +26,7 @@ func mockWaterService(is *is.I) *waterquality.WaterQualityServiceMock {
 			for _, d := range dto {
 				wq := domain.WaterQuality{
 					ID:           d.ID,
-					Temperature:  d.Temperature.Value,
+					Temperature:  d.Temperature,
 					Source:       &d.Source,
 					DateObserved: d.DateObserved.Value,
 					Location:     d.Location.Value,
