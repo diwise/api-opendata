@@ -39,7 +39,7 @@ func TestGetAll(t *testing.T) {
 
 	wqoJson, _ := json.Marshal(wqos)
 
-	expectation := `[{"id":"urn:ngsi-ld:WaterQualityObserved:testID","temperature":10.8,"dateObserved":"2021-05-18T19:23:09Z","location":{"type":"Point","coordinates":[18.8,63]}},{"id":"urn:ngsi-ld:WaterQualityObserved:testID2","temperature":10.8,"dateObserved":"2021-05-18T19:23:09Z","location":{"type":"Point","coordinates":[17.47263962458644,62.435152221329254]}}]`
+	expectation := `[{"id":"urn:ngsi-ld:WaterQualityObserved:testID","temperature":10.8,"dateObserved":"2021-05-18T19:23:09Z","location":{"type":"Point","coordinates":[17.57263982458684,62.53515242132986]}},{"id":"urn:ngsi-ld:WaterQualityObserved:testID2","temperature":10.8,"dateObserved":"2021-05-18T19:23:09Z","location":{"type":"Point","coordinates":[17.47263962458644,62.435152221329254]}}]`
 
 	is.Equal(string(wqoJson), expectation)
 }
@@ -177,17 +177,13 @@ const waterQualityJSON string = `[{
 	  "type": "GeoProperty",
 	  "value": {
 		"coordinates": [
-		  18.80000,
-		  63.000000
+			17.57263982458684,
+			62.535152421329864
 		],
 		"type": "Point"
 	  }
 	},
-	"temperature": {
-	  "type": "Property",
-	  "value": 10.8,
-	  "observedAt": "2021-05-18T19:23:09Z"
-	},
+	"temperature": 10.8,
 	"type": "WaterQualityObserved"
   },
   {
@@ -213,10 +209,6 @@ const waterQualityJSON string = `[{
 		"type": "Point"
 	  }
 	},
-	"temperature": {
-	  "type": "Property",
-	  "value": 10.8,
-	  "observedAt": "2021-05-18T19:23:09Z"
-	},
+	"temperature": 10.8,
 	"type": "WaterQualityObserved"
   }]`
