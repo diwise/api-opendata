@@ -30,6 +30,7 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 			if err != nil {
 				log.Error().Err(err).Msg("failed to parse distance from query parameters")
 				w.WriteHeader(http.StatusInternalServerError)
+				return
 			}
 
 			svc.Distance(int(distance))
@@ -51,6 +52,7 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 		if err != nil {
 			log.Error().Err(err).Msg("failed to marshal water quality into json")
 			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
 		waterQualityJSON := "{\n  \"data\": " + string(wqosBytes) + "\n}"
@@ -74,6 +76,11 @@ func NewRetrieveWaterQualityByIDHandler(logger zerolog.Logger, svc waterquality.
 		id := r.URL.Query().Get("id")
 
 		wqo, err := svc.GetByID(id)
+		if err != nil {
+			log.Error().Err(err).Msgf("no water quality found with id %s", id)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 
 		body, err := json.Marshal(wqo)
 		if err != nil {

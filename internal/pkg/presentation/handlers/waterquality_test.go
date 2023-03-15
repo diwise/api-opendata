@@ -1,64 +1,78 @@
 package handlers
 
 import (
-	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
-	testutils "github.com/diwise/service-chassis/pkg/test/http"
-	"github.com/diwise/service-chassis/pkg/test/http/expects"
-	"github.com/diwise/service-chassis/pkg/test/http/response"
+	"github.com/diwise/api-opendata/internal/pkg/domain"
+	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 )
 
 func TestGetWaterQuality(t *testing.T) {
-	is, log, server := testSetup(t, http.StatusOK, waterqualityJson)
+	is := is.New(t)
+
+	wqSvc := mockWaterQualitySvc(is)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/api/waterquality", nil)
 
-	wqSvc := waterquality.NewWaterQualityService(context.Background(), log, server.URL(), "default")
-	wqSvc.Start()
-
-	NewRetrieveWaterQualityHandler(log, wqSvc).ServeHTTP(w, req)
+	NewRetrieveWaterQualityHandler(zerolog.Logger{}, wqSvc).ServeHTTP(w, req)
 
 	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }
 
 func TestGetWaterQualityByID(t *testing.T) {
-	is, log, server := testSetup(t, http.StatusOK, waterqualityJson)
+	is, router, testServer := testSetup(t)
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/api/waterquality", nil)
+	wqSvc := mockWaterQualitySvc(is)
 
-	wqSvc := waterquality.NewWaterQualityService(context.Background(), log, server.URL(), "default")
-	wqSvc.Start()
+	router.Get("/{id}", NewRetrieveWaterQualityByIDHandler(zerolog.Logger{}, wqSvc))
+	resp, _ := newGetRequest(is, testServer, "application/ld+json", "/urn:ngsi-ld:WaterQualityObserved:testID", nil)
 
-	NewRetrieveWaterQualityByIDHandler(log, wqSvc).ServeHTTP(w, req)
-
-	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
+	is.Equal(resp.StatusCode, http.StatusOK) // Request failed, status code not OK
+	is.Equal(len(wqSvc.GetByIDCalls()), 1)   // GetByID should have been called exactly once
 }
 
-func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, zerolog.Logger, testutils.MockService) {
+func testSetup(t *testing.T) (*is.I, *chi.Mux, *httptest.Server) {
 	is := is.New(t)
-	log := zerolog.Logger{}
+	r := chi.NewRouter()
+	ts := httptest.NewServer(r)
 
-	ms := testutils.NewMockServiceThat(
-		testutils.Expects(is, expects.AnyInput()),
-		testutils.Returns(
-			response.Code(statusCode),
-			response.ContentType("application/ld+json"),
-			response.Body([]byte(responseBody)),
-		),
-	)
-
-	return is, log, ms
+	return is, r, ts
 }
 
-const waterqualityJson string = `[{
+func mockWaterQualitySvc(is *is.I) *waterquality.WaterQualityServiceMock {
+	return &waterquality.WaterQualityServiceMock{
+		GetAllFunc: func() []domain.WaterQuality {
+			dto := waterquality.WaterQualityDTO{}
+			err := json.Unmarshal([]byte(waterqualityJson), &dto)
+			is.NoErr(err)
+
+			wq := domain.WaterQuality{
+				ID:           dto.ID,
+				Temperature:  dto.Temperature.Value,
+				DateObserved: dto.DateObserved.Value,
+				Location:     *domain.NewPoint(dto.Location.Value.Coordinates[0], dto.Location.Value.Coordinates[1]),
+			}
+
+			return []domain.WaterQuality{wq}
+		},
+		GetByIDFunc: func(id string) (*domain.WaterQualityTemporal, error) {
+			wqt := &domain.WaterQualityTemporal{}
+			err := json.Unmarshal([]byte(waterqualityTemporalJson), wqt)
+			is.NoErr(err)
+
+			return wqt, nil
+		},
+	}
+}
+
+const waterqualityTemporalJson string = `{
 	"@context": [
 	  "https://schema.lab.fiware.org/ld/context",
 	  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
@@ -70,7 +84,7 @@ const waterqualityJson string = `[{
 		"@value": "2021-05-18T19:23:09Z"
 	  }
 	},
-	"id": "urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z",
+	"id": "urn:ngsi-ld:WaterQualityObserved:testID",
 	"location": {
 	  "type": "GeoProperty",
 	  "value": {
@@ -81,14 +95,41 @@ const waterqualityJson string = `[{
 		"type": "Point"
 	  }
 	},
-	"refDevice": {
-	  "object": "urn:ngsi-ld:Device:temperature:se:servanet:lora:sk-elt-temp-02",
-	  "type": "Relationship"
-	},
 	"temperature": [{
 		"type": "Property",
 		"value": 10.8,
 		"observedAt": "2021-05-18T19:23:09Z"
 	}],
 	"type": "WaterQualityObserved"
-  }]`
+  }`
+
+const waterqualityJson string = `{
+	"@context": [
+	  "https://schema.lab.fiware.org/ld/context",
+	  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
+	],
+	"dateObserved": {
+	  "type": "Property",
+	  "value": {
+		"@type": "DateTime",
+		"@value": "2021-05-18T19:23:09Z"
+	  }
+	},
+	"id": "urn:ngsi-ld:WaterQualityObserved:testID",
+	"location": {
+	  "type": "GeoProperty",
+	  "value": {
+		"coordinates": [
+		  17.39364,
+		  62.297684
+		],
+		"type": "Point"
+	  }
+	},
+	"temperature": {
+		"type": "Property",
+		"value": 10.8,
+		"observedAt": "2021-05-18T19:23:09Z"
+	},
+	"type": "WaterQualityObserved"
+  }`
