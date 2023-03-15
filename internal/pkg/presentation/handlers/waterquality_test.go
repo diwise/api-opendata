@@ -126,10 +126,6 @@ const waterqualityJson string = `{
 		"type": "Point"
 	  }
 	},
-	"temperature": {
-		"type": "Property",
-		"value": 10.8,
-		"observedAt": "2021-05-18T19:23:09Z"
-	},
+	"temperature": 10.8,
 	"type": "WaterQualityObserved"
   }`
