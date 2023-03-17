@@ -53,7 +53,7 @@ func TestBeachServiceStartsProperly(t *testing.T) {
 	is.Equal(len(wq.GetAllNearPointCalls()), 2)
 }
 
-func TestBeachServiceGetsByID(t *testing.T) {
+func TestBeachServiceGetsByIDContainsWaterQuality(t *testing.T) {
 	is, log, mockBeachSvc := testSetup(t, 200, beachesJson)
 	wq := mockWaterService(is)
 
@@ -69,7 +69,7 @@ func TestBeachServiceGetsByID(t *testing.T) {
 	is.NoErr(err)
 	is.True(b != nil)
 
-	expectation := `"waterquality":[{"temperature":10.8,"dateObserved":"2021-05-18T19:23:09Z","source":""}]`
+	expectation := `"waterquality":[{"temperature":10.8,"dateObserved":"2021-05-18T19:23:09Z"}]`
 	is.True(strings.Contains(string(b), expectation))
 }
 
@@ -158,11 +158,8 @@ const waterqualityJson string = `[{
 		  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
 		],
 		"dateObserved": {
-		  "type": "Property",
-		  "value": {
 			"@type": "DateTime",
 			"@value": "2021-05-18T19:23:09Z"
-		  }
 		},
 		"id": "urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z",
 		"location": {
