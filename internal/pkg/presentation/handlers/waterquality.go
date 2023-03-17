@@ -2,13 +2,16 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
+	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
 )
@@ -73,11 +76,17 @@ func NewRetrieveWaterQualityByIDHandler(logger zerolog.Logger, svc waterquality.
 
 		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		id := r.URL.Query().Get("id")
+		waterqualityID, err := url.QueryUnescape(chi.URLParam(r, "id"))
+		if waterqualityID == "" {
+			err = fmt.Errorf("no water quality id is supplied in query")
+			log.Error().Err(err).Msg("bad request")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-		wqo, err := svc.GetByID(id)
+		wqo, err := svc.GetByID(waterqualityID)
 		if err != nil {
-			log.Error().Err(err).Msgf("no water quality found with id %s", id)
+			log.Error().Err(err).Msgf("no water quality found with id %s", waterqualityID)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}

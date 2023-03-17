@@ -174,25 +174,19 @@ type RoadAccidentDetails struct {
 	Status       string `json:"status"`
 }
 
-type WaterQualityForBeach struct {
-	Temperature  float64 `json:"temperature"`
-	DateObserved string  `json:"dateObserved"`
-	Source       *string `json:"source,omitempty"`
-}
-
 type WaterQuality struct {
 	ID           string  `json:"id"`
 	Temperature  float64 `json:"temperature"`
 	DateObserved string  `json:"dateObserved"`
 	Source       *string `json:"source,omitempty"`
-	Location     Point   `json:"location"`
+	Location     *Point  `json:"location,omitempty"`
 }
 
 type WaterQualityTemporal struct {
 	ID          string  `json:"id"`
 	Temperature []Value `json:"temperature"`
 	Source      string  `json:"source,omitempty"`
-	Location    Point   `json:"location"`
+	Location    *Point  `json:"location,omitempty"`
 }
 
 type Value struct {

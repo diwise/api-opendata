@@ -12,6 +12,7 @@ import (
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
@@ -111,6 +112,9 @@ func (svc *wqsvc) GetAll() []domain.WaterQuality {
 }
 
 func (svc *wqsvc) GetAllNearPoint(pt Point, maxDistance int) (*[]domain.WaterQuality, error) {
+	svc.wqoMutex.Lock()
+	defer svc.wqoMutex.Unlock()
+
 	waterQualitiesWithinDistance := []domain.WaterQuality{}
 
 	for _, storedWQ := range svc.waterQualities {
@@ -134,19 +138,19 @@ func (svc *wqsvc) GetByID(id string) (*domain.WaterQualityTemporal, error) {
 
 	_, ok := svc.waterQualityByID[id]
 	if !ok {
-		return nil, fmt.Errorf("no water quality found with id %s", id)
+		return nil, fmt.Errorf("no stored water quality found with id %s", id)
 	}
 
 	wqo := domain.WaterQualityTemporal{}
 
 	wqoBytes, err := svc.requestTemporalDataForSingleEntity(svc.ctx, svc.log, svc.contextBrokerURL, id)
 	if err != nil {
-		return nil, fmt.Errorf("no water quality found with id %s: %s", id, err.Error())
+		return nil, fmt.Errorf("no temporal data found for water quality with id %s", id)
 	}
 
 	err = json.Unmarshal(wqoBytes, &wqo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal water quality with id %s: %s", id, err.Error())
+		return nil, fmt.Errorf("failed to unmarshal temporal water quality with id %s", id)
 	}
 
 	return &wqo, nil
@@ -223,15 +227,19 @@ func (svc *wqsvc) refresh() (err error) {
 	waterqualities := []domain.WaterQuality{}
 
 	_, err = contextbroker.QueryEntities(ctx, svc.Broker(), svc.Tenant(), "WaterQualityObserved", nil, func(w WaterQualityDTO) {
+
 		waterquality := domain.WaterQuality{
 			ID:           w.ID,
 			Temperature:  w.Temperature,
 			DateObserved: w.DateObserved.Value,
-			Location:     *domain.NewPoint(w.Location.Value.Coordinates[1], w.Location.Value.Coordinates[0]),
 		}
 
-		if w.Source != "" {
-			waterquality.Source = &w.Source
+		if w.Location != nil {
+			waterquality.Location = domain.NewPoint(w.Location.Coordinates[1], w.Location.Coordinates[0])
+		}
+
+		if w.Source != nil {
+			waterquality.Source = w.Source
 		}
 
 		svc.storeWaterQuality(w.ID, waterquality)
@@ -288,6 +296,9 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, log zero
 		return nil, err
 	}
 
+	req.Header.Add("Accept", "application/ld+json")
+	req.Header.Add("Link", entities.LinkHeader)
+
 	response, err := httpClient.Do(req)
 	if err != nil {
 		q.log.Error().Err(err).Msg("request failed")
@@ -310,29 +321,17 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, log zero
 }
 
 type WaterQualityTemporalDTO struct {
-	ID       string `json:"id"`
-	Location struct {
-		Type  string       `json:"type"`
-		Value domain.Point `json:"value"`
-	} `json:"location"`
-	Temperature  []domain.Value `json:"temperature"`
-	Source       string         `json:"source,omitempty"`
-	DateObserved struct {
-		Type            string `json:"type"`
-		domain.DateTime `json:"value"`
-	} `json:"dateObserved,omitempty"`
+	ID           string          `json:"id"`
+	Location     *domain.Point   `json:"location,omitempty"`
+	Temperature  []domain.Value  `json:"temperature"`
+	Source       *string         `json:"source,omitempty"`
+	DateObserved domain.DateTime `json:"dateObserved,omitempty"`
 }
 
 type WaterQualityDTO struct {
-	ID       string `json:"id"`
-	Location struct {
-		Type  string       `json:"type"`
-		Value domain.Point `json:"value"`
-	} `json:"location"`
-	Temperature  float64 `json:"temperature"`
-	Source       string  `json:"source,omitempty"`
-	DateObserved struct {
-		Type            string `json:"type"`
-		domain.DateTime `json:"value"`
-	} `json:"dateObserved,omitempty"`
+	ID           string          `json:"id"`
+	Location     *domain.Point   `json:"location,omitempty"`
+	Temperature  float64         `json:"temperature"`
+	Source       *string         `json:"source,omitempty"`
+	DateObserved domain.DateTime `json:"dateObserved,omitempty"`
 }

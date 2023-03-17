@@ -27,9 +27,9 @@ func mockWaterService(is *is.I) *waterquality.WaterQualityServiceMock {
 				wq := domain.WaterQuality{
 					ID:           d.ID,
 					Temperature:  d.Temperature,
-					Source:       &d.Source,
+					Source:       d.Source,
 					DateObserved: d.DateObserved.Value,
-					Location:     d.Location.Value,
+					Location:     d.Location,
 				}
 
 				wqos = append(wqos, wq)

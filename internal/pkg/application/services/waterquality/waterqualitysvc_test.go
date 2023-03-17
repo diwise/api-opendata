@@ -114,7 +114,7 @@ func TestGetByID(t *testing.T) {
 
 	wqoJson, _ := json.Marshal(wqo)
 
-	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}],"location":{"type":"","coordinates":null}}`
+	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}]}`
 
 	is.Equal(string(wqoJson), expectation)
 }
@@ -166,22 +166,16 @@ const waterQualityJSON string = `[{
 	  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
 	],
 	"dateObserved": {
-	  "type": "Property",
-	  "value": {
 		"@type": "DateTime",
 		"@value": "2021-05-18T19:23:09Z"
-	  }
 	},
 	"id": "urn:ngsi-ld:WaterQualityObserved:testID",
 	"location": {
-	  "type": "GeoProperty",
-	  "value": {
 		"coordinates": [
 			17.57263982458684,
 			62.535152421329864
 		],
 		"type": "Point"
-	  }
 	},
 	"temperature": 10.8,
 	"type": "WaterQualityObserved"
@@ -192,22 +186,16 @@ const waterQualityJSON string = `[{
 	  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
 	],
 	"dateObserved": {
-	  "type": "Property",
-	  "value": {
 		"@type": "DateTime",
 		"@value": "2021-05-18T19:23:09Z"
-	  }
 	},
 	"id": "urn:ngsi-ld:WaterQualityObserved:testID2",
 	"location": {
-	  "type": "GeoProperty",
-	  "value": {
 		"coordinates": [
 			17.47263962458644,
 			62.435152221329254
 		],
 		"type": "Point"
-	  }
 	},
 	"temperature": 10.8,
 	"type": "WaterQualityObserved"
