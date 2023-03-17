@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 )
@@ -259,20 +261,25 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
-	url := fmt.Sprintf(
-		"%s/ngsi-ld/v1/temporal/entities/%s?attrs=temperature",
-		ctxBrokerURL, id,
-	)
+	params := url.Values{}
 
-	if !from.IsZero() && !to.IsZero() {
-		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, from.Format(time.RFC3339), to.Format(time.RFC3339))
-	} else {
+	if from.IsZero() && to.IsZero() {
 		from = time.Now().UTC().Add(-24 * time.Hour)
 		to = time.Now().UTC()
-		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, from.Format(time.RFC3339), to.Format(time.RFC3339))
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	params.Add("timerel", "between")
+	params.Add("timeAt", from.Format(time.RFC3339))
+	params.Add("endTimeAt", to.Format(time.RFC3339))
+
+	requestURL := fmt.Sprintf(
+		"%s/ngsi-ld/v1/temporal/entities/%s?%s",
+		ctxBrokerURL, id, params.Encode(),
+	)
+
+	log.Debug().Msgf("request url for retrieving single entity: %s", requestURL)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 	if err != nil {
 		logger := logging.GetFromContext(ctx)
 		logger.Error().Err(err).Msg("failed to create http request")
@@ -308,7 +315,6 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 
 type WaterQualityTemporalDTO struct {
 	ID           string          `json:"id"`
-	Location     *domain.Point   `json:"location,omitempty"`
 	Temperature  []domain.Value  `json:"temperature"`
 	Source       *string         `json:"source,omitempty"`
 	DateObserved domain.DateTime `json:"dateObserved,omitempty"`
