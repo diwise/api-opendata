@@ -120,6 +120,40 @@ func TestGetByID(t *testing.T) {
 	is.Equal(string(wqoJson), expectation)
 }
 
+func TestGetByIDWithTimespan(t *testing.T) {
+	is, log, svc := testSetup(t, http.StatusOK, waterQualityJSON)
+
+	wq := NewWaterQualityService(context.Background(), log, svc.URL(), "default")
+
+	svcMock := wq.(*wqsvc)
+
+	err := svcMock.refresh(context.Background())
+	is.NoErr(err)
+
+	svc = testutils.NewMockServiceThat(
+		Expects(is, anyInput()),
+		Returns(
+			response.Code(http.StatusOK),
+			response.ContentType("application/ld+json"),
+			response.Body([]byte(singleTemporalJSON)),
+		),
+	)
+
+	svcMock.contextBrokerURL = svc.URL() // doing this to ensure the request in svcMock.GetByID receives the correct response body
+
+	from, _ := time.Parse(time.RFC3339, "2021-05-18T19:23:09Z")
+	to, _ := time.Parse(time.RFC3339, "2021-05-18T19:23:09Z")
+
+	wqo, err := svcMock.GetByID(context.Background(), "urn:ngsi-ld:WaterQualityObserved:testID", from, to)
+	is.NoErr(err)
+
+	wqoJson, _ := json.Marshal(wqo)
+
+	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}]}`
+
+	is.Equal(string(wqoJson), expectation)
+}
+
 var Expects = testutils.Expects
 var Returns = testutils.Returns
 var anyInput = expects.AnyInput
