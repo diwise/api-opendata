@@ -14,6 +14,7 @@ import (
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -23,19 +24,15 @@ import (
 var tracer = otel.Tracer("api-opendata/svcs/waterquality")
 
 type WaterQualityService interface {
-	Start()
-	Shutdown()
+	Start(ctx context.Context)
+	Shutdown(ctx context.Context)
 
 	Tenant() string
 	Broker() string
 
-	BetweenTimes(from, to time.Time)
-	Distance(distance int)
-	Location(latitude, longitude float64)
-
-	GetAll() []domain.WaterQuality
-	GetAllNearPoint(pt Point, distance int) (*[]domain.WaterQuality, error)
-	GetByID(id string) (*domain.WaterQualityTemporal, error)
+	GetAll(ctx context.Context) []domain.WaterQuality
+	GetAllNearPoint(ctx context.Context, pt Point, distance int) ([]domain.WaterQuality, error)
+	GetByID(ctx context.Context, id string) (*domain.WaterQualityTemporal, error)
 }
 
 func NewWaterQualityService(ctx context.Context, log zerolog.Logger, url, tenant string) WaterQualityService {
@@ -46,9 +43,6 @@ func NewWaterQualityService(ctx context.Context, log zerolog.Logger, url, tenant
 		waterQualities:   []domain.WaterQuality{},
 		waterQualityByID: map[string]domain.WaterQuality{},
 		keepRunning:      true,
-
-		ctx: ctx,
-		log: log,
 	}
 }
 
@@ -56,43 +50,22 @@ type wqsvc struct {
 	contextBrokerURL string
 	tenant           string
 
-	from      time.Time
-	to        time.Time
-	latitude  float64
-	longitude float64
-	distance  int
-
 	wqoMutex         sync.Mutex
 	waterQualities   []domain.WaterQuality
 	waterQualityByID map[string]domain.WaterQuality
 
-	ctx context.Context
-	log zerolog.Logger
-
 	keepRunning bool
 }
 
-func (svc *wqsvc) BetweenTimes(from, to time.Time) {
-	svc.from = from
-	svc.to = to
+func (svc *wqsvc) Start(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("starting water quality service")
+	go svc.run(ctx)
 }
 
-func (svc *wqsvc) Distance(distance int) {
-	svc.distance = distance
-}
-
-func (svc *wqsvc) Location(latitude, longitude float64) {
-	svc.latitude = latitude
-	svc.longitude = longitude
-}
-
-func (svc *wqsvc) Start() {
-	svc.log.Info().Msg("starting water quality service")
-	go svc.run()
-}
-
-func (svc *wqsvc) Shutdown() {
-	svc.log.Info().Msg("shutting down water quality service")
+func (svc *wqsvc) Shutdown(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("shutting down water quality service")
 	svc.keepRunning = false
 }
 
@@ -104,14 +77,14 @@ func (svc *wqsvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *wqsvc) GetAll() []domain.WaterQuality {
+func (svc *wqsvc) GetAll(ctx context.Context) []domain.WaterQuality {
 	svc.wqoMutex.Lock()
 	defer svc.wqoMutex.Unlock()
 
 	return svc.waterQualities
 }
 
-func (svc *wqsvc) GetAllNearPoint(pt Point, maxDistance int) (*[]domain.WaterQuality, error) {
+func (svc *wqsvc) GetAllNearPoint(ctx context.Context, pt Point, maxDistance int) ([]domain.WaterQuality, error) {
 	svc.wqoMutex.Lock()
 	defer svc.wqoMutex.Unlock()
 
@@ -125,14 +98,15 @@ func (svc *wqsvc) GetAllNearPoint(pt Point, maxDistance int) (*[]domain.WaterQua
 			waterQualitiesWithinDistance = append(waterQualitiesWithinDistance, storedWQ)
 		}
 	}
+
 	if len(waterQualitiesWithinDistance) == 0 {
-		return &[]domain.WaterQuality{}, fmt.Errorf("no stored water qualities exist within %d meters of point %f,%f", maxDistance, pt.Longitude, pt.Latitude)
+		return []domain.WaterQuality{}, fmt.Errorf("no stored water qualities exist within %d meters of point %f,%f", maxDistance, pt.Longitude, pt.Latitude)
 	}
 
-	return &waterQualitiesWithinDistance, nil
+	return waterQualitiesWithinDistance, nil
 }
 
-func (svc *wqsvc) GetByID(id string) (*domain.WaterQualityTemporal, error) {
+func (svc *wqsvc) GetByID(ctx context.Context, id string) (*domain.WaterQualityTemporal, error) {
 	svc.wqoMutex.Lock()
 	defer svc.wqoMutex.Unlock()
 
@@ -143,7 +117,10 @@ func (svc *wqsvc) GetByID(id string) (*domain.WaterQualityTemporal, error) {
 
 	wqo := domain.WaterQualityTemporal{}
 
-	wqoBytes, err := svc.requestTemporalDataForSingleEntity(svc.ctx, svc.log, svc.contextBrokerURL, id)
+	to := time.Now().UTC()
+	from := to.Add(-24 * time.Hour)
+
+	wqoBytes, err := svc.requestTemporalDataForSingleEntity(ctx, svc.contextBrokerURL, id, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("no temporal data found for water quality with id %s", id)
 	}
@@ -194,19 +171,22 @@ func Distance(point1, point2 Point) int {
 	return int(distanceInM)
 }
 
-func (svc *wqsvc) run() {
+func (svc *wqsvc) run(ctx context.Context) {
 	nextRefreshTime := time.Now()
+
+	logger := logging.GetFromContext(ctx)
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing water quality info")
-			err := svc.refresh()
+			logger.Info().Msg("refreshing water quality info")
+
+			err := svc.refresh(context.Background())
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh water quality info")
+				logger.Error().Err(err).Msg("failed to refresh water quality info")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
-				svc.log.Info().Msgf("refreshed water qualities")
+				logger.Info().Msgf("refreshed water qualities")
 				// Refresh every 5 minutes of success
 				nextRefreshTime = time.Now().Add(30 * time.Second)
 			}
@@ -214,15 +194,17 @@ func (svc *wqsvc) run() {
 
 		time.Sleep(1 * time.Second)
 	}
-	svc.log.Info().Msg("water quality service exiting")
+
+	logger.Info().Msg("water quality service exiting")
 }
 
-func (svc *wqsvc) refresh() (err error) {
+func (svc *wqsvc) refresh(ctx context.Context) (err error) {
 
-	ctx, span := tracer.Start(svc.ctx, "refresh-water-quality")
+	ctx, span := tracer.Start(ctx, "refresh-water-quality")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
+	logger := logging.GetFromContext(ctx)
+	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 	waterqualities := []domain.WaterQuality{}
 
@@ -270,7 +252,7 @@ func (svc *wqsvc) storeWaterQualityList(wqs []domain.WaterQuality) {
 	svc.waterQualities = wqs
 }
 
-func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, log zerolog.Logger, ctxBrokerURL, id string) ([]byte, error) {
+func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBrokerURL, id string, from, to time.Time) ([]byte, error) {
 	var err error
 
 	httpClient := http.Client{
@@ -282,17 +264,18 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, log zero
 		ctxBrokerURL, id,
 	)
 
-	if !q.from.IsZero() && !q.to.IsZero() {
-		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
+	if !from.IsZero() && !to.IsZero() {
+		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, from.Format(time.RFC3339), to.Format(time.RFC3339))
 	} else {
-		q.from = time.Now().UTC().Add(-24 * time.Hour)
-		q.to = time.Now().UTC()
-		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, q.from.Format(time.RFC3339), q.to.Format(time.RFC3339))
+		from = time.Now().UTC().Add(-24 * time.Hour)
+		to = time.Now().UTC()
+		url = fmt.Sprintf("%s&timerel=between&timeAt=%s&endTimeAt=%s", url, from.Format(time.RFC3339), to.Format(time.RFC3339))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		q.log.Error().Err(err).Msg("failed to create http request")
+		logger := logging.GetFromContext(ctx)
+		logger.Error().Err(err).Msg("failed to create http request")
 		return nil, err
 	}
 
@@ -301,19 +284,22 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, log zero
 
 	response, err := httpClient.Do(req)
 	if err != nil {
-		q.log.Error().Err(err).Msg("request failed")
+		logger := logging.GetFromContext(ctx)
+		logger.Error().Err(err).Msg("request failed")
 		return nil, err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		q.log.Error().Err(err).Msg("request failed, status code not ok")
+		logger := logging.GetFromContext(ctx)
+		logger.Error().Err(err).Msg("request failed, status code not ok")
 		return nil, err
 	}
 
 	b, err := io.ReadAll(response.Body)
 	if err != nil {
-		q.log.Error().Err(err).Msg("failed to read response body")
+		logger := logging.GetFromContext(ctx)
+		logger.Error().Err(err).Msg("failed to read response body")
 		return nil, err
 	}
 

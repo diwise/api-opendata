@@ -93,7 +93,7 @@ func main() {
 
 		r := chi.NewRouter()
 
-		api := presentation.NewAPI(r, ctx, datasetResponseBuffer, oasResponseBuffer, orgFile)
+		api := presentation.NewAPI(ctx, r, datasetResponseBuffer, oasResponseBuffer, orgFile)
 		err = api.Start(port)
 		if err != nil {
 			log.Fatal().Msgf("failed to start router: %s", err.Error())

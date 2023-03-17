@@ -64,7 +64,7 @@ func TestGetBeaches(t *testing.T) {
 	req.Header.Add("Accept", "application/json")
 
 	wqsvc := waterquality.NewWaterQualityService(context.Background(), zerolog.Logger{}, server.URL, "default")
-	defer wqsvc.Shutdown()
+	defer wqsvc.Shutdown(context.Background())
 
 	beachSvc := beaches.NewBeachService(context.Background(), zerolog.Logger{}, server.URL, "default", 500, wqsvc)
 	defer beachSvc.Shutdown()

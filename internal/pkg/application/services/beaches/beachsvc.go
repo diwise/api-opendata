@@ -152,13 +152,13 @@ func (svc *beachSvc) refresh() (count int, err error) {
 		}
 
 		pt := waterquality.NewPoint(latitude, longitude)
-		wqots, err_ := svc.wqsvc.GetAllNearPoint(pt, svc.beachMaxWQODistance)
+		wqots, err_ := svc.wqsvc.GetAllNearPoint(ctx, pt, svc.beachMaxWQODistance)
 		if err_ != nil {
 			logger.Error().Err(err_).Msgf("failed to get water qualities near %s (%s)", b.Name, b.ID)
 		} else {
 			wq := []WaterQuality{}
 
-			for _, t := range *wqots {
+			for _, t := range wqots {
 				newWQ := WaterQuality{}
 
 				if t.Temperature > 0 {

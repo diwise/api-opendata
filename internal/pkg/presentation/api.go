@@ -40,11 +40,11 @@ type opendataAPI struct {
 	log    zerolog.Logger
 }
 
-func NewAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer, orgfile io.Reader) API {
-	return newOpendataAPI(r, ctx, dcatResponse, openapiResponse, orgfile)
+func NewAPI(ctx context.Context, r chi.Router, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer, orgfile io.Reader) API {
+	return newOpendataAPI(ctx, r, dcatResponse, openapiResponse, orgfile)
 }
 
-func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer, orgfile io.Reader) *opendataAPI {
+func newOpendataAPI(ctx context.Context, r chi.Router, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer, orgfile io.Reader) *opendataAPI {
 	log := logging.GetFromContext(ctx)
 
 	r.Use(cors.New(cors.Options{
@@ -66,7 +66,7 @@ func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffe
 		log:    log,
 	}
 
-	o.addDiwiseHandlers(r, log, orgfile)
+	o.addDiwiseHandlers(ctx, r, log, orgfile)
 	o.addProbeHandlers(r)
 
 	o.router.Get("/api/datasets/dcat", o.newRetrieveDatasetsHandler(log, dcatResponse))
@@ -81,7 +81,7 @@ func (a *opendataAPI) Start(port string) error {
 	return http.ListenAndServe(":"+port, a.router)
 }
 
-func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger, orgfile io.Reader) {
+func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, log zerolog.Logger, orgfile io.Reader) {
 	contextBrokerURL := env.GetVariableOrDie(log, "DIWISE_CONTEXT_BROKER_URL", "context broker URL")
 	contextBrokerTenant := env.GetVariableOrDefault(log, "DIWISE_CONTEXT_BROKER_TENANT", entities.DefaultNGSITenant)
 	maxWQODistStr := env.GetVariableOrDefault(log, "WATER_QUALITY_MAX_DISTANCE", "1000")
@@ -93,25 +93,25 @@ func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger, orgfil
 
 	organisationsRegistry, _ := organisations.NewRegistry(orgfile)
 
-	waterqualitySvc := waterquality.NewWaterQualityService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
-	waterqualitySvc.Start()
+	waterqualitySvc := waterquality.NewWaterQualityService(ctx, log, contextBrokerURL, contextBrokerTenant)
+	waterqualitySvc.Start(ctx)
 
-	beachService := beaches.NewBeachService(context.Background(), log, contextBrokerURL, contextBrokerTenant, int(maxWQODistance), waterqualitySvc)
+	beachService := beaches.NewBeachService(ctx, log, contextBrokerURL, contextBrokerTenant, int(maxWQODistance), waterqualitySvc)
 	beachService.Start()
 
-	trailService := exercisetrails.NewExerciseTrailService(context.Background(), log, contextBrokerURL, contextBrokerTenant, organisationsRegistry)
+	trailService := exercisetrails.NewExerciseTrailService(ctx, log, contextBrokerURL, contextBrokerTenant, organisationsRegistry)
 	trailService.Start()
 
-	cityworkService := citywork.NewCityworksService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
+	cityworkService := citywork.NewCityworksService(ctx, log, contextBrokerURL, contextBrokerTenant)
 	cityworkService.Start()
 
-	roadAccidentSvc := roadaccidents.NewRoadAccidentService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
+	roadAccidentSvc := roadaccidents.NewRoadAccidentService(ctx, log, contextBrokerURL, contextBrokerTenant)
 	roadAccidentSvc.Start()
 
-	sportsfieldsSvc := sportsfields.NewSportsFieldService(context.Background(), log, contextBrokerURL, contextBrokerTenant, organisationsRegistry)
+	sportsfieldsSvc := sportsfields.NewSportsFieldService(ctx, log, contextBrokerURL, contextBrokerTenant, organisationsRegistry)
 	sportsfieldsSvc.Start()
 
-	sportsvenuesSvc := sportsvenues.NewSportsVenueService(context.Background(), log, contextBrokerURL, contextBrokerTenant, organisationsRegistry)
+	sportsvenuesSvc := sportsvenues.NewSportsVenueService(ctx, log, contextBrokerURL, contextBrokerTenant, organisationsRegistry)
 	sportsvenuesSvc.Start()
 
 	stratsysEnabled := (env.GetVariableOrDefault(log, "STRATSYS_ENABLED", "true") != "false")

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
+	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
@@ -25,31 +26,35 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 		ctx, span := tracer.Start(r.Context(), "retrieve-water-qualities")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		maxDistance := r.URL.Query().Get("maxDistance")
+		var distance int64
 		if maxDistance != "" {
-			distance, err := strconv.ParseInt(maxDistance, 0, 64)
+			distance, err = strconv.ParseInt(maxDistance, 0, 64)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to parse distance from query parameters")
-				w.WriteHeader(http.StatusInternalServerError)
+				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-
-			svc.Distance(int(distance))
 		}
 
 		coordinates := r.URL.Query().Get("coordinates")
+		var longitude, latitude float64
 		if coordinates != "" {
 			coords := strings.Split(coordinates, ",")
 
-			longitude, _ := strconv.ParseFloat(coords[0], 64)
-			latitude, _ := strconv.ParseFloat(coords[1], 64)
-
-			svc.Location(latitude, longitude)
+			longitude, _ = strconv.ParseFloat(coords[0], 64)
+			latitude, _ = strconv.ParseFloat(coords[1], 64)
 		}
 
-		wqos := svc.GetAll()
+		var wqos []domain.WaterQuality
+
+		if distance != 0 {
+			wqos, err = svc.GetAllNearPoint(ctx, waterquality.NewPoint(latitude, longitude), int(distance))
+		} else {
+			wqos = svc.GetAll(ctx)
+		}
 
 		wqosBytes, err := json.Marshal(wqos)
 		if err != nil {
@@ -84,7 +89,7 @@ func NewRetrieveWaterQualityByIDHandler(logger zerolog.Logger, svc waterquality.
 			return
 		}
 
-		wqo, err := svc.GetByID(waterqualityID)
+		wqo, err := svc.GetByID(ctx, waterqualityID)
 		if err != nil {
 			log.Error().Err(err).Msgf("no water quality found with id %s", waterqualityID)
 			w.WriteHeader(http.StatusNotFound)

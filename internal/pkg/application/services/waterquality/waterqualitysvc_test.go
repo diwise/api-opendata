@@ -19,7 +19,7 @@ func TestWaterQualityRuns(t *testing.T) {
 
 	svcMock := wq.(*wqsvc)
 
-	err := svcMock.refresh()
+	err := svcMock.refresh(context.Background())
 
 	is.NoErr(err)
 }
@@ -30,11 +30,11 @@ func TestGetAll(t *testing.T) {
 
 	svcMock := wq.(*wqsvc)
 
-	err := svcMock.refresh()
+	err := svcMock.refresh(context.Background())
 	is.NoErr(err)
 	is.Equal(len(svcMock.waterQualities), 2)
 
-	wqos := svcMock.GetAll()
+	wqos := svcMock.GetAll(context.Background())
 	is.True(wqos != nil)
 
 	wqoJson, _ := json.Marshal(wqos)
@@ -51,11 +51,11 @@ func TestGetAllNearPoint(t *testing.T) {
 
 	svcMock := wq.(*wqsvc)
 
-	err := svcMock.refresh()
+	err := svcMock.refresh(context.Background())
 	is.NoErr(err)
 
 	pt := NewPoint(62.435152221329260, 17.47263962458650)
-	wqos, err := svcMock.GetAllNearPoint(pt, 500)
+	wqos, err := svcMock.GetAllNearPoint(context.Background(), pt, 500)
 	is.NoErr(err)
 	is.True(wqos != nil)
 
@@ -73,13 +73,13 @@ func TestGetAllNearPointReturnsErrorIfNoPointsAreWithinRange(t *testing.T) {
 
 	svcMock := wq.(*wqsvc)
 
-	err := svcMock.refresh()
+	err := svcMock.refresh(context.Background())
 	is.NoErr(err)
 
 	pt := NewPoint(0.0, 0.0)
-	wqos, err := svcMock.GetAllNearPoint(pt, 500)
+	wqos, err := svcMock.GetAllNearPoint(context.Background(), pt, 500)
 	is.True(err != nil)
-	is.Equal(len(*wqos), 0)
+	is.Equal(len(wqos), 0)
 
 	wqoJson, _ := json.Marshal(wqos)
 
@@ -95,7 +95,7 @@ func TestGetByID(t *testing.T) {
 
 	svcMock := wq.(*wqsvc)
 
-	err := svcMock.refresh()
+	err := svcMock.refresh(context.Background())
 	is.NoErr(err)
 
 	svc = testutils.NewMockServiceThat(
@@ -109,7 +109,7 @@ func TestGetByID(t *testing.T) {
 
 	svcMock.contextBrokerURL = svc.URL() // doing this to ensure the request in svcMock.GetByID reaches the correct response body
 
-	wqo, err := svcMock.GetByID("urn:ngsi-ld:WaterQualityObserved:testID")
+	wqo, err := svcMock.GetByID(context.Background(), "urn:ngsi-ld:WaterQualityObserved:testID")
 	is.NoErr(err)
 
 	wqoJson, _ := json.Marshal(wqo)

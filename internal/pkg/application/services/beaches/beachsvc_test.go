@@ -17,7 +17,7 @@ import (
 
 func mockWaterService(is *is.I) *waterquality.WaterQualityServiceMock {
 	return &waterquality.WaterQualityServiceMock{
-		GetAllNearPointFunc: func(pt waterquality.Point, distance int) (*[]domain.WaterQuality, error) {
+		GetAllNearPointFunc: func(ctx context.Context, pt waterquality.Point, distance int) ([]domain.WaterQuality, error) {
 			dto := []waterquality.WaterQualityDTO{}
 			err := json.Unmarshal([]byte(waterqualityJson), &dto)
 			is.NoErr(err)
@@ -35,7 +35,7 @@ func mockWaterService(is *is.I) *waterquality.WaterQualityServiceMock {
 				wqos = append(wqos, wq)
 			}
 
-			return &wqos, nil
+			return wqos, nil
 		},
 	}
 }

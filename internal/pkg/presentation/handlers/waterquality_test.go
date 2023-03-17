@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -48,7 +49,7 @@ func testSetup(t *testing.T) (*is.I, *chi.Mux, *httptest.Server) {
 
 func mockWaterQualitySvc(is *is.I) *waterquality.WaterQualityServiceMock {
 	return &waterquality.WaterQualityServiceMock{
-		GetAllFunc: func() []domain.WaterQuality {
+		GetAllFunc: func(ctx context.Context) []domain.WaterQuality {
 			dto := waterquality.WaterQualityDTO{}
 			err := json.Unmarshal([]byte(waterqualityJson), &dto)
 			is.NoErr(err)
@@ -62,7 +63,7 @@ func mockWaterQualitySvc(is *is.I) *waterquality.WaterQualityServiceMock {
 
 			return []domain.WaterQuality{wq}
 		},
-		GetByIDFunc: func(id string) (*domain.WaterQualityTemporal, error) {
+		GetByIDFunc: func(ctx context.Context, id string) (*domain.WaterQualityTemporal, error) {
 			wqt := &domain.WaterQualityTemporal{}
 			err := json.Unmarshal([]byte(waterqualityTemporalJson), wqt)
 			is.NoErr(err)
