@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
@@ -89,7 +90,29 @@ func NewRetrieveWaterQualityByIDHandler(logger zerolog.Logger, svc waterquality.
 			return
 		}
 
-		wqo, err := svc.GetByID(ctx, waterqualityID)
+		from := time.Time{}
+		to := time.Time{}
+
+		fromStr := chi.URLParam(r, "from")
+		if fromStr != "" {
+			from, err = time.Parse(time.RFC3339, fromStr)
+			if err != nil {
+				log.Error().Err(err).Msg("time parameter from is incorrect format")
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
+		toStr := chi.URLParam(r, "to")
+		if toStr != "" {
+			to, err = time.Parse(time.RFC3339, toStr)
+			if err != nil {
+				log.Error().Err(err).Msg("time parameter to is incorrect format")
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
+
+		wqo, err := svc.GetByID(ctx, waterqualityID, from, to)
 		if err != nil {
 			log.Error().Err(err).Msgf("no water quality found with id %s", waterqualityID)
 			w.WriteHeader(http.StatusNotFound)

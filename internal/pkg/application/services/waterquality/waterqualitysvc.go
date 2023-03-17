@@ -34,7 +34,7 @@ type WaterQualityService interface {
 
 	GetAll(ctx context.Context) []domain.WaterQuality
 	GetAllNearPoint(ctx context.Context, pt Point, distance int) ([]domain.WaterQuality, error)
-	GetByID(ctx context.Context, id string) (*domain.WaterQualityTemporal, error)
+	GetByID(ctx context.Context, id string, from, to time.Time) (*domain.WaterQualityTemporal, error)
 }
 
 func NewWaterQualityService(ctx context.Context, log zerolog.Logger, url, tenant string) WaterQualityService {
@@ -108,7 +108,7 @@ func (svc *wqsvc) GetAllNearPoint(ctx context.Context, pt Point, maxDistance int
 	return waterQualitiesWithinDistance, nil
 }
 
-func (svc *wqsvc) GetByID(ctx context.Context, id string) (*domain.WaterQualityTemporal, error) {
+func (svc *wqsvc) GetByID(ctx context.Context, id string, from, to time.Time) (*domain.WaterQualityTemporal, error) {
 	svc.wqoMutex.Lock()
 	defer svc.wqoMutex.Unlock()
 
@@ -119,8 +119,10 @@ func (svc *wqsvc) GetByID(ctx context.Context, id string) (*domain.WaterQualityT
 
 	wqo := domain.WaterQualityTemporal{}
 
-	to := time.Now().UTC()
-	from := to.Add(-24 * time.Hour)
+	if from.IsZero() && to.IsZero() {
+		to = time.Now().UTC()
+		from = to.Add(-24 * time.Hour)
+	}
 
 	wqoBytes, err := svc.requestTemporalDataForSingleEntity(ctx, svc.contextBrokerURL, id, from, to)
 	if err != nil {

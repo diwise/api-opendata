@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
@@ -63,7 +64,7 @@ func mockWaterQualitySvc(is *is.I) *waterquality.WaterQualityServiceMock {
 
 			return []domain.WaterQuality{wq}
 		},
-		GetByIDFunc: func(ctx context.Context, id string) (*domain.WaterQualityTemporal, error) {
+		GetByIDFunc: func(ctx context.Context, id string, from, to time.Time) (*domain.WaterQualityTemporal, error) {
 			wqt := &domain.WaterQualityTemporal{}
 			err := json.Unmarshal([]byte(waterqualityTemporalJson), wqt)
 			is.NoErr(err)
