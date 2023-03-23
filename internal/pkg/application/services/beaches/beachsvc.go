@@ -305,7 +305,7 @@ type Beach struct {
 	ID           string        `json:"id"`
 	Name         string        `json:"name"`
 	Location     domain.Point  `json:"location"`
-	WaterQuality *WaterQuality `json:"waterquality"`
+	WaterQuality *WaterQuality `json:"waterquality,omitempty"`
 }
 
 type BeachDetails struct {
