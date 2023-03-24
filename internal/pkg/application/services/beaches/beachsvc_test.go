@@ -39,30 +39,31 @@ func mockWaterService(is *is.I) *waterquality.WaterQualityServiceMock {
 		},
 	}
 }
+
 func TestBeachServiceStartsProperly(t *testing.T) {
-	is, log, mockBeachSvc := testSetup(t, 200, beachesJson)
+	is, mockBeachSvc := testSetup(t, 200, beachesJson)
 	wq := mockWaterService(is)
 
-	bs := NewBeachService(context.Background(), log, mockBeachSvc.URL(), "default", 1000, wq)
-	bs.Start()
+	bs := NewBeachService(context.Background(), mockBeachSvc.URL(), "default", 1000, wq)
+	bs.Start(context.Background())
 
 	svc := bs.(*beachSvc)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), zerolog.Logger{})
 	is.NoErr(err)
 	is.Equal(len(wq.GetAllNearPointCalls()), 2)
 }
 
 func TestBeachServiceGetsByIDContainsWaterQuality(t *testing.T) {
-	is, log, mockBeachSvc := testSetup(t, 200, beachesJson)
+	is, mockBeachSvc := testSetup(t, 200, beachesJson)
 	wq := mockWaterService(is)
 
-	bs := NewBeachService(context.Background(), log, mockBeachSvc.URL(), "default", 1000, wq)
-	bs.Start()
+	bs := NewBeachService(context.Background(), mockBeachSvc.URL(), "default", 1000, wq)
+	bs.Start(context.Background())
 
 	svc := bs.(*beachSvc)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), zerolog.Logger{})
 	is.NoErr(err)
 
 	b, err := svc.GetByID("urn:ngsi-ld:Beach:se:sundsvall:anlaggning:283")
@@ -77,9 +78,8 @@ var Expects = testutils.Expects
 var Returns = testutils.Returns
 var anyInput = expects.AnyInput
 
-func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, zerolog.Logger, testutils.MockService) {
+func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, testutils.MockService) {
 	is := is.New(t)
-	log := zerolog.Logger{}
 
 	ms := testutils.NewMockServiceThat(
 		Expects(is, anyInput()),
@@ -90,7 +90,7 @@ func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, zerolo
 		),
 	)
 
-	return is, log, ms
+	return is, ms
 }
 
 const beachesJson string = `[

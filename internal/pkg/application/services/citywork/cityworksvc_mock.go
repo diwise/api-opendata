@@ -4,6 +4,7 @@
 package citywork
 
 import (
+	"context"
 	"sync"
 )
 
@@ -13,34 +14,34 @@ var _ CityworksService = &CityworksServiceMock{}
 
 // CityworksServiceMock is a mock implementation of CityworksService.
 //
-// 	func TestSomethingThatUsesCityworksService(t *testing.T) {
+//	func TestSomethingThatUsesCityworksService(t *testing.T) {
 //
-// 		// make and configure a mocked CityworksService
-// 		mockedCityworksService := &CityworksServiceMock{
-// 			BrokerFunc: func() string {
-// 				panic("mock out the Broker method")
-// 			},
-// 			GetAllFunc: func() []byte {
-// 				panic("mock out the GetAll method")
-// 			},
-// 			GetByIDFunc: func(id string) ([]byte, error) {
-// 				panic("mock out the GetByID method")
-// 			},
-// 			ShutdownFunc: func()  {
-// 				panic("mock out the Shutdown method")
-// 			},
-// 			StartFunc: func()  {
-// 				panic("mock out the Start method")
-// 			},
-// 			TenantFunc: func() string {
-// 				panic("mock out the Tenant method")
-// 			},
-// 		}
+//		// make and configure a mocked CityworksService
+//		mockedCityworksService := &CityworksServiceMock{
+//			BrokerFunc: func() string {
+//				panic("mock out the Broker method")
+//			},
+//			GetAllFunc: func() []byte {
+//				panic("mock out the GetAll method")
+//			},
+//			GetByIDFunc: func(id string) ([]byte, error) {
+//				panic("mock out the GetByID method")
+//			},
+//			ShutdownFunc: func(ctx context.Context)  {
+//				panic("mock out the Shutdown method")
+//			},
+//			StartFunc: func(ctx context.Context)  {
+//				panic("mock out the Start method")
+//			},
+//			TenantFunc: func() string {
+//				panic("mock out the Tenant method")
+//			},
+//		}
 //
-// 		// use mockedCityworksService in code that requires CityworksService
-// 		// and then make assertions.
+//		// use mockedCityworksService in code that requires CityworksService
+//		// and then make assertions.
 //
-// 	}
+//	}
 type CityworksServiceMock struct {
 	// BrokerFunc mocks the Broker method.
 	BrokerFunc func() string
@@ -52,10 +53,10 @@ type CityworksServiceMock struct {
 	GetByIDFunc func(id string) ([]byte, error)
 
 	// ShutdownFunc mocks the Shutdown method.
-	ShutdownFunc func()
+	ShutdownFunc func(ctx context.Context)
 
 	// StartFunc mocks the Start method.
-	StartFunc func()
+	StartFunc func(ctx context.Context)
 
 	// TenantFunc mocks the Tenant method.
 	TenantFunc func() string
@@ -75,9 +76,13 @@ type CityworksServiceMock struct {
 		}
 		// Shutdown holds details about calls to the Shutdown method.
 		Shutdown []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// Start holds details about calls to the Start method.
 		Start []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// Tenant holds details about calls to the Tenant method.
 		Tenant []struct {
@@ -106,7 +111,8 @@ func (mock *CityworksServiceMock) Broker() string {
 
 // BrokerCalls gets all the calls that were made to Broker.
 // Check the length with:
-//     len(mockedCityworksService.BrokerCalls())
+//
+//	len(mockedCityworksService.BrokerCalls())
 func (mock *CityworksServiceMock) BrokerCalls() []struct {
 } {
 	var calls []struct {
@@ -132,7 +138,8 @@ func (mock *CityworksServiceMock) GetAll() []byte {
 
 // GetAllCalls gets all the calls that were made to GetAll.
 // Check the length with:
-//     len(mockedCityworksService.GetAllCalls())
+//
+//	len(mockedCityworksService.GetAllCalls())
 func (mock *CityworksServiceMock) GetAllCalls() []struct {
 } {
 	var calls []struct {
@@ -161,7 +168,8 @@ func (mock *CityworksServiceMock) GetByID(id string) ([]byte, error) {
 
 // GetByIDCalls gets all the calls that were made to GetByID.
 // Check the length with:
-//     len(mockedCityworksService.GetByIDCalls())
+//
+//	len(mockedCityworksService.GetByIDCalls())
 func (mock *CityworksServiceMock) GetByIDCalls() []struct {
 	ID string
 } {
@@ -175,24 +183,30 @@ func (mock *CityworksServiceMock) GetByIDCalls() []struct {
 }
 
 // Shutdown calls ShutdownFunc.
-func (mock *CityworksServiceMock) Shutdown() {
+func (mock *CityworksServiceMock) Shutdown(ctx context.Context) {
 	if mock.ShutdownFunc == nil {
 		panic("CityworksServiceMock.ShutdownFunc: method is nil but CityworksService.Shutdown was just called")
 	}
 	callInfo := struct {
-	}{}
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
 	mock.lockShutdown.Lock()
 	mock.calls.Shutdown = append(mock.calls.Shutdown, callInfo)
 	mock.lockShutdown.Unlock()
-	mock.ShutdownFunc()
+	mock.ShutdownFunc(ctx)
 }
 
 // ShutdownCalls gets all the calls that were made to Shutdown.
 // Check the length with:
-//     len(mockedCityworksService.ShutdownCalls())
+//
+//	len(mockedCityworksService.ShutdownCalls())
 func (mock *CityworksServiceMock) ShutdownCalls() []struct {
+	Ctx context.Context
 } {
 	var calls []struct {
+		Ctx context.Context
 	}
 	mock.lockShutdown.RLock()
 	calls = mock.calls.Shutdown
@@ -201,24 +215,30 @@ func (mock *CityworksServiceMock) ShutdownCalls() []struct {
 }
 
 // Start calls StartFunc.
-func (mock *CityworksServiceMock) Start() {
+func (mock *CityworksServiceMock) Start(ctx context.Context) {
 	if mock.StartFunc == nil {
 		panic("CityworksServiceMock.StartFunc: method is nil but CityworksService.Start was just called")
 	}
 	callInfo := struct {
-	}{}
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
 	mock.lockStart.Lock()
 	mock.calls.Start = append(mock.calls.Start, callInfo)
 	mock.lockStart.Unlock()
-	mock.StartFunc()
+	mock.StartFunc(ctx)
 }
 
 // StartCalls gets all the calls that were made to Start.
 // Check the length with:
-//     len(mockedCityworksService.StartCalls())
+//
+//	len(mockedCityworksService.StartCalls())
 func (mock *CityworksServiceMock) StartCalls() []struct {
+	Ctx context.Context
 } {
 	var calls []struct {
+		Ctx context.Context
 	}
 	mock.lockStart.RLock()
 	calls = mock.calls.Start
@@ -241,7 +261,8 @@ func (mock *CityworksServiceMock) Tenant() string {
 
 // TenantCalls gets all the calls that were made to Tenant.
 // Check the length with:
-//     len(mockedCityworksService.TenantCalls())
+//
+//	len(mockedCityworksService.TenantCalls())
 func (mock *CityworksServiceMock) TenantCalls() []struct {
 } {
 	var calls []struct {

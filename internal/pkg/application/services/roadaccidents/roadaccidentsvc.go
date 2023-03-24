@@ -10,6 +10,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
@@ -24,20 +25,17 @@ type RoadAccidentService interface {
 	GetAll() []byte
 	GetByID(id string) ([]byte, error)
 
-	Start()
-	Shutdown()
+	Start(ctx context.Context)
+	Shutdown(ctx context.Context)
 }
 
-func NewRoadAccidentService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string) RoadAccidentService {
+func NewRoadAccidentService(ctx context.Context, contextBrokerURL, tenant string) RoadAccidentService {
 	svc := &roadAccidentSvc{
 		contextBrokerURL: contextBrokerURL,
 		tenant:           tenant,
 
 		roadAccidents:       []byte("[]"),
 		roadAccidentDetails: map[string][]byte{},
-
-		ctx: ctx,
-		log: logger,
 
 		keepRunning: true,
 	}
@@ -52,9 +50,6 @@ type roadAccidentSvc struct {
 	roadAccidentMutex   sync.Mutex
 	roadAccidents       []byte
 	roadAccidentDetails map[string][]byte
-
-	ctx context.Context
-	log zerolog.Logger
 
 	keepRunning bool
 }
@@ -86,31 +81,34 @@ func (svc *roadAccidentSvc) GetByID(id string) ([]byte, error) {
 	return body, nil
 }
 
-func (svc *roadAccidentSvc) Start() {
-	svc.log.Info().Msg("starting road accident service")
+func (svc *roadAccidentSvc) Start(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("starting road accident service")
 	// TODO: Prevent multiple starts on the same service
-	go svc.run()
+	go svc.run(ctx)
 }
 
-func (svc *roadAccidentSvc) Shutdown() {
-	svc.log.Info().Msg("shutting down road accident service")
+func (svc *roadAccidentSvc) Shutdown(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("shutting down road accident service")
 	svc.keepRunning = false
 }
 
-func (svc *roadAccidentSvc) run() {
+func (svc *roadAccidentSvc) run(ctx context.Context) {
 	nextRefreshTime := time.Now()
+	logger := logging.GetFromContext(ctx)
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing road accident info")
-			count, err := svc.refresh()
+			logger.Info().Msg("refreshing road accident info")
+			count, err := svc.refresh(ctx, logger)
 
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh road accidents")
+				logger.Error().Err(err).Msg("failed to refresh road accidents")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
-				svc.log.Info().Msgf("refreshed %d road accidents", count)
+				logger.Info().Msgf("refreshed %d road accidents", count)
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
 			}
@@ -120,15 +118,15 @@ func (svc *roadAccidentSvc) run() {
 		time.Sleep(1 * time.Second)
 	}
 
-	svc.log.Info().Msg("road accident service exiting")
+	logger.Info().Msg("road accident service exiting")
 }
 
-func (svc *roadAccidentSvc) refresh() (count int, err error) {
+func (svc *roadAccidentSvc) refresh(ctx context.Context, log zerolog.Logger) (count int, err error) {
 
-	ctx, span := tracer.Start(svc.ctx, "refresh-roadaccidents")
+	ctx, span := tracer.Start(ctx, "refresh-roadaccidents")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
+	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, log, ctx)
 
 	roadAccidents := []domain.RoadAccident{}
 

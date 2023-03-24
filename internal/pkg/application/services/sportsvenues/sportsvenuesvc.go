@@ -11,6 +11,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
@@ -25,19 +26,17 @@ type SportsVenueService interface {
 	GetAll(requiredCategories []string) []domain.SportsVenue
 	GetByID(id string) (*domain.SportsVenue, error)
 
-	Start()
-	Shutdown()
+	Start(ctx context.Context)
+	Shutdown(ctx context.Context)
 }
 
-func NewSportsVenueService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string, orgreg organisations.Registry) SportsVenueService {
+func NewSportsVenueService(ctx context.Context, contextBrokerURL, tenant string, orgreg organisations.Registry) SportsVenueService {
 	svc := &sportsvenueSvc{
-		ctx:                 ctx,
 		sportsvenues:        []domain.SportsVenue{},
 		sportsvenuesDetails: map[string]int{},
 		contextBrokerURL:    contextBrokerURL,
 		orgRegistry:         orgreg,
 		tenant:              tenant,
-		log:                 logger,
 		keepRunning:         true,
 	}
 
@@ -45,14 +44,12 @@ func NewSportsVenueService(ctx context.Context, logger zerolog.Logger, contextBr
 }
 
 type sportsvenueSvc struct {
-	ctx                 context.Context
 	sportsvenuesMutex   sync.Mutex
 	sportsvenues        []domain.SportsVenue
 	sportsvenuesDetails map[string]int
 	orgRegistry         organisations.Registry
 	contextBrokerURL    string
 	tenant              string
-	log                 zerolog.Logger
 	keepRunning         bool
 }
 
@@ -107,31 +104,34 @@ func (svc *sportsvenueSvc) GetByID(id string) (*domain.SportsVenue, error) {
 	return &svc.sportsvenues[index], nil
 }
 
-func (svc *sportsvenueSvc) Start() {
-	svc.log.Info().Msg("starting sports venues service")
+func (svc *sportsvenueSvc) Start(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("starting sports venues service")
 	// TODO: Prevent multiple starts on the same service
-	go svc.run()
+	go svc.run(ctx)
 }
 
-func (svc *sportsvenueSvc) Shutdown() {
-	svc.log.Info().Msg("shutting down sports venues service")
+func (svc *sportsvenueSvc) Shutdown(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("shutting down sports venues service")
 	svc.keepRunning = false
 }
 
-func (svc *sportsvenueSvc) run() {
+func (svc *sportsvenueSvc) run(ctx context.Context) {
 	nextRefreshTime := time.Now()
+	logger := logging.GetFromContext(ctx)
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing sports venue info")
-			count, err := svc.refresh()
+			logger.Info().Msg("refreshing sports venue info")
+			count, err := svc.refresh(ctx, logger)
 
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh sports venues")
+				logger.Error().Err(err).Msg("failed to refresh sports venues")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
-				svc.log.Info().Msgf("refreshed %d sports venues", count)
+				logger.Info().Msgf("refreshed %d sports venues", count)
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
 			}
@@ -141,15 +141,15 @@ func (svc *sportsvenueSvc) run() {
 		time.Sleep(1 * time.Second)
 	}
 
-	svc.log.Info().Msg("sports venues service exiting")
+	logger.Info().Msg("sports venues service exiting")
 }
 
-func (svc *sportsvenueSvc) refresh() (count int, err error) {
+func (svc *sportsvenueSvc) refresh(ctx context.Context, log zerolog.Logger) (count int, err error) {
 
-	ctx, span := tracer.Start(svc.ctx, "refresh-sports-venues")
+	ctx, span := tracer.Start(ctx, "refresh-sports-venues")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
+	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, log, ctx)
 
 	sportsvenues := []domain.SportsVenue{}
 
@@ -169,14 +169,14 @@ func (svc *sportsvenueSvc) refresh() (count int, err error) {
 		if len(sv.ManagedBy) > 0 {
 			venue.ManagedBy, err = svc.orgRegistry.Get(sv.ManagedBy)
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+				logger.Error().Err(err).Msg("failed to resolve organisation")
 			}
 		}
 
 		if len(sv.Owner) > 0 {
 			venue.Owner, err = svc.orgRegistry.Get(sv.Owner)
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+				logger.Error().Err(err).Msg("failed to resolve organisation")
 			}
 		}
 

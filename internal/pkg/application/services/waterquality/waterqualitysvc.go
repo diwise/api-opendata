@@ -17,7 +17,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
@@ -37,7 +36,7 @@ type WaterQualityService interface {
 	GetByID(ctx context.Context, id string, from, to time.Time) (*domain.WaterQualityTemporal, error)
 }
 
-func NewWaterQualityService(ctx context.Context, log zerolog.Logger, url, tenant string) WaterQualityService {
+func NewWaterQualityService(ctx context.Context, url, tenant string) WaterQualityService {
 	return &wqsvc{
 		contextBrokerURL: url,
 		tenant:           tenant,
