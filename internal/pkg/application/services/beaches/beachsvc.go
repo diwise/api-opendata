@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
@@ -24,10 +25,11 @@ type BeachService interface {
 	Broker() string
 	Tenant() string
 
-	GetAll() []byte
-	GetByID(id string) ([]byte, error)
+	GetAll(ctx context.Context) []byte
+	GetByID(ctx context.Context, id string) ([]byte, error)
 
 	Start(context.Context)
+	Refresh(context.Context) (int, error)
 	Shutdown(context.Context)
 }
 
@@ -39,7 +41,8 @@ func NewBeachService(ctx context.Context, contextBrokerURL, tenant string, maxWQ
 		beachMaxWQODistance: maxWQODistance,
 		contextBrokerURL:    contextBrokerURL,
 		tenant:              tenant,
-		keepRunning:         true,
+		queue:               make(chan func()),
+		keepRunning:         &atomic.Bool{},
 	}
 
 	return svc
@@ -51,12 +54,14 @@ type beachSvc struct {
 	contextBrokerURL string
 	tenant           string
 
-	beachMutex          sync.Mutex
 	beaches             []byte
 	beachDetails        map[string][]byte
 	beachMaxWQODistance int
 
-	keepRunning bool
+	queue chan func()
+
+	keepRunning *atomic.Bool
+	wg          sync.WaitGroup
 }
 
 func (svc *beachSvc) Broker() string {
@@ -67,60 +72,114 @@ func (svc *beachSvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *beachSvc) GetAll() []byte {
-	svc.beachMutex.Lock()
-	defer svc.beachMutex.Unlock()
+func (svc *beachSvc) GetAll(ctx context.Context) []byte {
+	result := make(chan []byte)
 
-	return svc.beaches
-}
-
-func (svc *beachSvc) GetByID(id string) ([]byte, error) {
-	svc.beachMutex.Lock()
-	defer svc.beachMutex.Unlock()
-
-	body, ok := svc.beachDetails[id]
-	if !ok {
-		return []byte{}, fmt.Errorf("no such beach")
+	svc.queue <- func() {
+		result <- svc.beaches
 	}
 
-	return body, nil
+	return <-result
+}
+
+func (svc *beachSvc) GetByID(ctx context.Context, id string) ([]byte, error) {
+	result := make(chan []byte)
+	err := make(chan error)
+
+	svc.queue <- func() {
+		body, ok := svc.beachDetails[id]
+		if !ok {
+			err <- fmt.Errorf("no such beach")
+		} else {
+			result <- body
+		}
+	}
+
+	select {
+	case r := <-result:
+		return r, nil
+	case e := <-err:
+		return nil, e
+	}
 }
 
 func (svc *beachSvc) Start(ctx context.Context) {
-	logger := logging.GetFromContext(ctx)
-	logger.Info().Msg("starting beach service")
-	// TODO: Prevent multiple starts on the same service
 	go svc.run(ctx)
 }
 
-func (svc *beachSvc) Shutdown(ctx context.Context) {
+func (svc *beachSvc) Refresh(ctx context.Context) (int, error) {
 	logger := logging.GetFromContext(ctx)
-	logger.Info().Msg("shutting down beach service")
-	svc.keepRunning = false
+
+	refreshDone := make(chan int)
+	refreshFailed := make(chan error)
+
+	svc.queue <- func() {
+		count, err := svc.refresh(ctx, logger)
+		if err != nil {
+			refreshFailed <- err
+		} else {
+			refreshDone <- count
+		}
+	}
+
+	select {
+	case c := <-refreshDone:
+		return c, nil
+	case e := <-refreshFailed:
+		return 0, e
+	}
+}
+
+func (svc *beachSvc) Shutdown(ctx context.Context) {
+	svc.queue <- func() {
+		svc.keepRunning.Store(false)
+	}
+
+	svc.wg.Wait()
 }
 
 func (svc *beachSvc) run(ctx context.Context) {
-	nextRefreshTime := time.Now()
+	svc.wg.Add(1)
+	defer svc.wg.Done()
+
 	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("starting up beach service")
 
-	for svc.keepRunning {
-		if time.Now().After(nextRefreshTime) {
-			logger.Info().Msg("refreshing beach info")
+	// use atomic swap to avoid startup races
+	alreadyStarted := svc.keepRunning.Swap(true)
+	if alreadyStarted {
+		logger.Error().Msg("attempt to start the beach service multiple times")
+		return
+	}
+
+	const RefreshIntervalOnFail time.Duration = 5 * time.Second
+	const RefreshIntervalOnSuccess time.Duration = 5 * time.Minute
+
+	var refreshTimer *time.Timer
+	count, err := svc.refresh(ctx, logger)
+
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to refresh beaches")
+		refreshTimer = time.NewTimer(RefreshIntervalOnFail)
+	} else {
+		logger.Info().Msgf("refreshed %d beaches", count)
+		refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
+	}
+
+	for svc.keepRunning.Load() {
+		select {
+		case fn := <-svc.queue:
+			fn()
+		case <-refreshTimer.C:
 			count, err := svc.refresh(ctx, logger)
-
 			if err != nil {
 				logger.Error().Err(err).Msg("failed to refresh beaches")
-				// Retry every 10 seconds on error
-				nextRefreshTime = time.Now().Add(10 * time.Second)
+				refreshTimer = time.NewTimer(RefreshIntervalOnFail)
 			} else {
 				logger.Info().Msgf("refreshed %d beaches", count)
-				// Refresh every 5 minutes on success
-				nextRefreshTime = time.Now().Add(5 * time.Minute)
+				refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
 			}
 		}
-
-		// TODO: Use blocking channels instead of sleeps
-		time.Sleep(1 * time.Second)
 	}
 
 	logger.Info().Msg("beach service exiting")
@@ -132,6 +191,8 @@ func (svc *beachSvc) refresh(ctx context.Context, log zerolog.Logger) (count int
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, log, ctx)
+
+	logger.Info().Msg("refreshing beach info")
 
 	beaches := []Beach{}
 
@@ -184,7 +245,7 @@ func (svc *beachSvc) refresh(ctx context.Context, log zerolog.Logger) (count int
 			return
 		}
 
-		svc.storeBeachDetails(b.ID, jsonBytes)
+		svc.beachDetails[b.ID] = jsonBytes
 
 		beach := Beach{
 			ID:       b.ID,
@@ -216,23 +277,9 @@ func (svc *beachSvc) refresh(ctx context.Context, log zerolog.Logger) (count int
 		return
 	}
 
-	svc.storeBeachList(jsonBytes)
+	svc.beaches = jsonBytes
 
 	return
-}
-
-func (svc *beachSvc) storeBeachDetails(id string, body []byte) {
-	svc.beachMutex.Lock()
-	defer svc.beachMutex.Unlock()
-
-	svc.beachDetails[id] = body
-}
-
-func (svc *beachSvc) storeBeachList(body []byte) {
-	svc.beachMutex.Lock()
-	defer svc.beachMutex.Unlock()
-
-	svc.beaches = body
 }
 
 type beachDTO struct {
