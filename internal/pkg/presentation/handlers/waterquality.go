@@ -90,25 +90,32 @@ func NewRetrieveWaterQualityByIDHandler(logger zerolog.Logger, svc waterquality.
 			return
 		}
 
+		values, err := url.ParseQuery(r.URL.RawQuery)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to parse parameters from query")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
 		from := time.Time{}
 		to := time.Time{}
 
-		fromStr := chi.URLParam(r, "from")
-		if fromStr != "" {
-			from, err = time.Parse(time.RFC3339, fromStr)
-			if err != nil {
-				log.Error().Err(err).Msg("time parameter from is incorrect format")
-				w.WriteHeader(http.StatusBadRequest)
-				return
+		if len(values) != 0 {
+			if values.Get("from") != "" {
+				from, err = time.Parse(time.RFC3339, values.Get("from"))
+				if err != nil {
+					log.Error().Err(err).Msg("time parameter from is incorrect format")
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
 			}
-		}
-		toStr := chi.URLParam(r, "to")
-		if toStr != "" {
-			to, err = time.Parse(time.RFC3339, toStr)
-			if err != nil {
-				log.Error().Err(err).Msg("time parameter to is incorrect format")
-				w.WriteHeader(http.StatusBadRequest)
-				return
+			if values.Get("to") != "" {
+				to, err = time.Parse(time.RFC3339, values.Get("to"))
+				if err != nil {
+					log.Error().Err(err).Msg("time parameter to is incorrect format")
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
 			}
 		}
 

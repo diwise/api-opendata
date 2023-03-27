@@ -44,7 +44,7 @@ func TestGetWaterQualityByIDWithTimespan(t *testing.T) {
 	wqSvc := mockWaterQualitySvc(is)
 
 	router.Get("/{id}", NewRetrieveWaterQualityByIDHandler(zerolog.Logger{}, wqSvc))
-	resp, _ := newGetRequest(is, testServer, "application/ld+json", "/urn:ngsi-ld:WaterQualityObserved:testID?from=2023-03-16T11:10:00Z&to=2023-17-07T13:10:00Z", nil)
+	resp, _ := newGetRequest(is, testServer, "application/ld+json", "/urn:ngsi-ld:WaterQualityObserved:testID?from=2023-03-16T11:10:00Z&to=2023-03-20T13:10:00Z", nil)
 
 	is.Equal(resp.StatusCode, http.StatusOK) // Request failed, status code not OK
 	is.Equal(len(wqSvc.GetByIDCalls()), 1)   // GetByID should have been called exactly once
