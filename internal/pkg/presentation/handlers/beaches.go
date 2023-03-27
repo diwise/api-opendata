@@ -25,7 +25,7 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, beachService beaches.Bea
 		ctx, span := tracer.Start(r.Context(), "retrieve-beach-by-id")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		beachID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if beachID == "" {
@@ -35,7 +35,7 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, beachService beaches.Bea
 			return
 		}
 
-		body, err := beachService.GetByID(beachID)
+		body, err := beachService.GetByID(ctx, beachID)
 
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
@@ -57,7 +57,9 @@ func NewRetrieveBeachesHandler(logger zerolog.Logger, beachService beaches.Beach
 		_, span := tracer.Start(r.Context(), "retrieve-beaches")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		body := beachService.GetAll()
+		_, ctx, _ := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, r.Context())
+
+		body := beachService.GetAll(ctx)
 
 		beachJSON := "{\n  \"data\": " + string(body) + "\n}"
 

@@ -12,7 +12,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/test/http/expects"
 	"github.com/diwise/service-chassis/pkg/test/http/response"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func mockWaterService(is *is.I) *waterquality.WaterQualityServiceMock {
@@ -43,30 +42,31 @@ func mockWaterService(is *is.I) *waterquality.WaterQualityServiceMock {
 func TestBeachServiceStartsProperly(t *testing.T) {
 	is, mockBeachSvc := testSetup(t, 200, beachesJson)
 	wq := mockWaterService(is)
+	ctx := context.Background()
 
-	bs := NewBeachService(context.Background(), mockBeachSvc.URL(), "default", 1000, wq)
-	bs.Start(context.Background())
+	bs := NewBeachService(ctx, mockBeachSvc.URL(), "default", 1000, wq)
+	bs.Start(ctx)
+	defer bs.Shutdown(ctx)
 
-	svc := bs.(*beachSvc)
-
-	_, err := svc.refresh(context.Background(), zerolog.Logger{})
+	_, err := bs.Refresh(ctx)
 	is.NoErr(err)
+
 	is.Equal(len(wq.GetAllNearPointCalls()), 2)
 }
 
 func TestBeachServiceGetsByIDContainsWaterQuality(t *testing.T) {
 	is, mockBeachSvc := testSetup(t, 200, beachesJson)
 	wq := mockWaterService(is)
+	ctx := context.Background()
 
-	bs := NewBeachService(context.Background(), mockBeachSvc.URL(), "default", 1000, wq)
-	bs.Start(context.Background())
+	bs := NewBeachService(ctx, mockBeachSvc.URL(), "default", 1000, wq)
+	bs.Start(ctx)
+	defer bs.Shutdown(ctx)
 
-	svc := bs.(*beachSvc)
-
-	_, err := svc.refresh(context.Background(), zerolog.Logger{})
+	_, err := bs.Refresh(ctx)
 	is.NoErr(err)
 
-	b, err := svc.GetByID("urn:ngsi-ld:Beach:se:sundsvall:anlaggning:283")
+	b, err := bs.GetByID(ctx, "urn:ngsi-ld:Beach:se:sundsvall:anlaggning:283")
 	is.NoErr(err)
 	is.True(b != nil)
 

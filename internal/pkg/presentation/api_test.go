@@ -65,9 +65,11 @@ func TestGetBeaches(t *testing.T) {
 	req.Header.Add("Accept", "application/json")
 
 	wqsvc := waterquality.NewWaterQualityService(ctx, ms.URL, "default")
+	wqsvc.Start(ctx)
 	defer wqsvc.Shutdown(ctx)
 
 	beachSvc := beaches.NewBeachService(ctx, ms.URL, "default", 500, wqsvc)
+	beachSvc.Start(ctx)
 	defer beachSvc.Shutdown(ctx)
 
 	handlers.NewRetrieveBeachesHandler(zerolog.Logger{}, beachSvc).ServeHTTP(w, req)
