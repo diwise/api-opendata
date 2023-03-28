@@ -25,8 +25,8 @@ type BeachService interface {
 	Broker() string
 	Tenant() string
 
-	GetAll(ctx context.Context) []byte
-	GetByID(ctx context.Context, id string) ([]byte, error)
+	GetAll(ctx context.Context) []Beach
+	GetByID(ctx context.Context, id string) (*BeachDetails, error)
 
 	Start(context.Context)
 	Refresh(context.Context) (int, error)
@@ -36,8 +36,8 @@ type BeachService interface {
 func NewBeachService(ctx context.Context, contextBrokerURL, tenant string, maxWQODistance int, wqsvc waterquality.WaterQualityService) BeachService {
 	svc := &beachSvc{
 		wqsvc:               wqsvc,
-		beaches:             []byte("[]"),
-		beachDetails:        map[string][]byte{},
+		beaches:             []Beach{},
+		beachDetails:        map[string]BeachDetails{},
 		beachMaxWQODistance: maxWQODistance,
 		contextBrokerURL:    contextBrokerURL,
 		tenant:              tenant,
@@ -54,8 +54,8 @@ type beachSvc struct {
 	contextBrokerURL string
 	tenant           string
 
-	beaches             []byte
-	beachDetails        map[string][]byte
+	beaches             []Beach
+	beachDetails        map[string]BeachDetails
 	beachMaxWQODistance int
 
 	queue chan func()
@@ -72,8 +72,8 @@ func (svc *beachSvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *beachSvc) GetAll(ctx context.Context) []byte {
-	result := make(chan []byte)
+func (svc *beachSvc) GetAll(ctx context.Context) []Beach {
+	result := make(chan []Beach)
 
 	svc.queue <- func() {
 		result <- svc.beaches
@@ -82,8 +82,8 @@ func (svc *beachSvc) GetAll(ctx context.Context) []byte {
 	return <-result
 }
 
-func (svc *beachSvc) GetByID(ctx context.Context, id string) ([]byte, error) {
-	result := make(chan []byte)
+func (svc *beachSvc) GetByID(ctx context.Context, id string) (*BeachDetails, error) {
+	result := make(chan BeachDetails)
 	err := make(chan error)
 
 	svc.queue <- func() {
@@ -97,7 +97,7 @@ func (svc *beachSvc) GetByID(ctx context.Context, id string) ([]byte, error) {
 
 	select {
 	case r := <-result:
-		return r, nil
+		return &r, nil
 	case e := <-err:
 		return nil, e
 	}
@@ -239,13 +239,7 @@ func (svc *beachSvc) refresh(ctx context.Context, log zerolog.Logger) (count int
 			details.WaterQuality = &wq
 		}
 
-		jsonBytes, err_ := json.Marshal(details)
-		if err_ != nil {
-			err = fmt.Errorf("failed to marshal beach to json: %w", err_)
-			return
-		}
-
-		svc.beachDetails[b.ID] = jsonBytes
+		svc.beachDetails[b.ID] = details
 
 		beach := Beach{
 			ID:       b.ID,
@@ -271,13 +265,7 @@ func (svc *beachSvc) refresh(ctx context.Context, log zerolog.Logger) (count int
 		return
 	}
 
-	jsonBytes, err_ := json.Marshal(beaches)
-	if err_ != nil {
-		err = fmt.Errorf("failed to marshal beaches to json: %w", err_)
-		return
-	}
-
-	svc.beaches = jsonBytes
+	svc.beaches = beaches
 
 	return
 }

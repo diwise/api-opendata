@@ -39,7 +39,23 @@ func mockWaterService(is *is.I) *waterquality.WaterQualityServiceMock {
 	}
 }
 
-func TestBeachServiceStartsProperly(t *testing.T) {
+func TestBeachServiceGetAll(t *testing.T) {
+	is, mockBeachSvc := testSetup(t, 200, beachesJson)
+	wq := mockWaterService(is)
+	ctx := context.Background()
+
+	bs := NewBeachService(ctx, mockBeachSvc.URL(), "default", 1000, wq)
+	bs.Start(ctx)
+	defer bs.Shutdown(ctx)
+
+	_, err := bs.Refresh(ctx)
+	is.NoErr(err)
+
+	beaches := bs.GetAll(ctx)
+	is.Equal(len(beaches), 1)
+}
+
+func TestBeachServiceRetrievesWaterQuality(t *testing.T) {
 	is, mockBeachSvc := testSetup(t, 200, beachesJson)
 	wq := mockWaterService(is)
 	ctx := context.Background()
@@ -70,8 +86,11 @@ func TestBeachServiceGetsByIDContainsWaterQuality(t *testing.T) {
 	is.NoErr(err)
 	is.True(b != nil)
 
+	bJson, err := json.Marshal(b)
+	is.NoErr(err)
+
 	expectation := `"waterquality":[{"temperature":10.8,"dateObserved":"2021-05-18T19:23:09Z"}]`
-	is.True(strings.Contains(string(b), expectation))
+	is.True(strings.Contains(string(bJson), expectation))
 }
 
 var Expects = testutils.Expects
