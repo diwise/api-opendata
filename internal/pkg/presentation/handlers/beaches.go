@@ -9,6 +9,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
+	"github.com/diwise/service-chassis/pkg/presentation/api/http/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -33,13 +34,15 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, beachService beaches.Bea
 		if beachID == "" {
 			err = fmt.Errorf("no beach id supplied in query")
 			log.Error().Err(err).Msg("bad request")
-			w.WriteHeader(http.StatusBadRequest)
+			problem := errors.NewProblemReport(http.StatusBadRequest, "badrequest", errors.Detail(err.Error()))
+			problem.WriteResponse(w)
 			return
 		}
 
 		beach, err := beachService.GetByID(ctx, beachID)
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
+			problem := errors.NewProblemReport(http.StatusNotFound, "notfound", errors.Detail("no such beach"))
+			problem.WriteResponse(w)
 			return
 		}
 
