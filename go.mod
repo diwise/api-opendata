@@ -51,7 +51,7 @@ require (
 )
 
 require (
-	github.com/diwise/service-chassis v0.0.0-20230323081250-d669c693b52d
+	github.com/diwise/service-chassis v0.0.0-20230328091322-2d5d6ed7c9d3
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.38.0
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect

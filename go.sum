@@ -64,8 +64,8 @@ github.com/diwise/context-broker v0.0.0-20230210114057-055408ac89da h1:FhHiXxgTy
 github.com/diwise/context-broker v0.0.0-20230210114057-055408ac89da/go.mod h1:cQjuo44u5/qM4+jpx3GlIAF6B7eGSzpWMGFMHoq/xvU=
 github.com/diwise/ngsi-ld-golang v0.0.0-20220518083256-2e7d28ad5f2e h1:J1d9tsocRRw33wwxS87/Gw1Cuco4ItJnycznVRQoRZ0=
 github.com/diwise/ngsi-ld-golang v0.0.0-20220518083256-2e7d28ad5f2e/go.mod h1:rJEtJBmPwq3c+0leOb2Zy/u/Z9eTIT8RJQFyGJzoMrM=
-github.com/diwise/service-chassis v0.0.0-20230323081250-d669c693b52d h1:kfNepohvKfxIS0DfdGTmmJGAc/Q1oZl5o5XnkybGPwU=
-github.com/diwise/service-chassis v0.0.0-20230323081250-d669c693b52d/go.mod h1:tk/TsBCs+uu8Gyvw7/mrbfcHtY3ygcBT1b4O2FoX6ak=
+github.com/diwise/service-chassis v0.0.0-20230328091322-2d5d6ed7c9d3 h1:8V9ZAsxdpoSxLuq4n/lsVLMWRi6kR2xUv/gxXOMIaGQ=
+github.com/diwise/service-chassis v0.0.0-20230328091322-2d5d6ed7c9d3/go.mod h1:tk/TsBCs+uu8Gyvw7/mrbfcHtY3ygcBT1b4O2FoX6ak=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1mIlRU8Am5FuJP05cCM98=
