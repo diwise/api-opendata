@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,6 +11,7 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -25,7 +27,7 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, beachService beaches.Bea
 		ctx, span := tracer.Start(r.Context(), "retrieve-beach-by-id")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		beachID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if beachID == "" {
@@ -35,14 +37,15 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, beachService beaches.Bea
 			return
 		}
 
-		body, err := beachService.GetByID(beachID)
-
+		beach, err := beachService.GetByID(ctx, beachID)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		body = []byte("{\n  \"data\": " + string(body) + "\n}")
+		beachJSON, err := json.Marshal(beach)
+
+		body := []byte("{\n  \"data\": " + string(beachJSON) + "\n}")
 
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=600")
@@ -57,12 +60,22 @@ func NewRetrieveBeachesHandler(logger zerolog.Logger, beachService beaches.Beach
 		_, span := tracer.Start(r.Context(), "retrieve-beaches")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		body := beachService.GetAll()
+		_, ctx, _ := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, r.Context())
 
-		beachJSON := "{\n  \"data\": " + string(body) + "\n}"
+		beaches := beachService.GetAll(ctx)
+
+		beachesJSON, err := json.Marshal(beaches)
+		if err != nil {
+			err = fmt.Errorf("failed to marshal beaches into json")
+			log.Error().Err(err).Msg("internal server error")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		body := "{\n  \"data\": " + string(beachesJSON) + "\n}"
 
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=3600")
-		w.Write([]byte(beachJSON))
+		w.Write([]byte(body))
 	})
 }

@@ -4,6 +4,7 @@
 package exercisetrails
 
 import (
+	"context"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"sync"
 )
@@ -14,34 +15,34 @@ var _ ExerciseTrailService = &ExerciseTrailServiceMock{}
 
 // ExerciseTrailServiceMock is a mock implementation of ExerciseTrailService.
 //
-// 	func TestSomethingThatUsesExerciseTrailService(t *testing.T) {
+//	func TestSomethingThatUsesExerciseTrailService(t *testing.T) {
 //
-// 		// make and configure a mocked ExerciseTrailService
-// 		mockedExerciseTrailService := &ExerciseTrailServiceMock{
-// 			BrokerFunc: func() string {
-// 				panic("mock out the Broker method")
-// 			},
-// 			GetAllFunc: func(requiredCategories []string) []domain.ExerciseTrail {
-// 				panic("mock out the GetAll method")
-// 			},
-// 			GetByIDFunc: func(id string) (*domain.ExerciseTrail, error) {
-// 				panic("mock out the GetByID method")
-// 			},
-// 			ShutdownFunc: func()  {
-// 				panic("mock out the Shutdown method")
-// 			},
-// 			StartFunc: func()  {
-// 				panic("mock out the Start method")
-// 			},
-// 			TenantFunc: func() string {
-// 				panic("mock out the Tenant method")
-// 			},
-// 		}
+//		// make and configure a mocked ExerciseTrailService
+//		mockedExerciseTrailService := &ExerciseTrailServiceMock{
+//			BrokerFunc: func() string {
+//				panic("mock out the Broker method")
+//			},
+//			GetAllFunc: func(requiredCategories []string) []domain.ExerciseTrail {
+//				panic("mock out the GetAll method")
+//			},
+//			GetByIDFunc: func(id string) (*domain.ExerciseTrail, error) {
+//				panic("mock out the GetByID method")
+//			},
+//			ShutdownFunc: func(ctx context.Context)  {
+//				panic("mock out the Shutdown method")
+//			},
+//			StartFunc: func(ctx context.Context)  {
+//				panic("mock out the Start method")
+//			},
+//			TenantFunc: func() string {
+//				panic("mock out the Tenant method")
+//			},
+//		}
 //
-// 		// use mockedExerciseTrailService in code that requires ExerciseTrailService
-// 		// and then make assertions.
+//		// use mockedExerciseTrailService in code that requires ExerciseTrailService
+//		// and then make assertions.
 //
-// 	}
+//	}
 type ExerciseTrailServiceMock struct {
 	// BrokerFunc mocks the Broker method.
 	BrokerFunc func() string
@@ -53,10 +54,10 @@ type ExerciseTrailServiceMock struct {
 	GetByIDFunc func(id string) (*domain.ExerciseTrail, error)
 
 	// ShutdownFunc mocks the Shutdown method.
-	ShutdownFunc func()
+	ShutdownFunc func(ctx context.Context)
 
 	// StartFunc mocks the Start method.
-	StartFunc func()
+	StartFunc func(ctx context.Context)
 
 	// TenantFunc mocks the Tenant method.
 	TenantFunc func() string
@@ -78,9 +79,13 @@ type ExerciseTrailServiceMock struct {
 		}
 		// Shutdown holds details about calls to the Shutdown method.
 		Shutdown []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// Start holds details about calls to the Start method.
 		Start []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// Tenant holds details about calls to the Tenant method.
 		Tenant []struct {
@@ -109,7 +114,8 @@ func (mock *ExerciseTrailServiceMock) Broker() string {
 
 // BrokerCalls gets all the calls that were made to Broker.
 // Check the length with:
-//     len(mockedExerciseTrailService.BrokerCalls())
+//
+//	len(mockedExerciseTrailService.BrokerCalls())
 func (mock *ExerciseTrailServiceMock) BrokerCalls() []struct {
 } {
 	var calls []struct {
@@ -138,7 +144,8 @@ func (mock *ExerciseTrailServiceMock) GetAll(requiredCategories []string) []doma
 
 // GetAllCalls gets all the calls that were made to GetAll.
 // Check the length with:
-//     len(mockedExerciseTrailService.GetAllCalls())
+//
+//	len(mockedExerciseTrailService.GetAllCalls())
 func (mock *ExerciseTrailServiceMock) GetAllCalls() []struct {
 	RequiredCategories []string
 } {
@@ -169,7 +176,8 @@ func (mock *ExerciseTrailServiceMock) GetByID(id string) (*domain.ExerciseTrail,
 
 // GetByIDCalls gets all the calls that were made to GetByID.
 // Check the length with:
-//     len(mockedExerciseTrailService.GetByIDCalls())
+//
+//	len(mockedExerciseTrailService.GetByIDCalls())
 func (mock *ExerciseTrailServiceMock) GetByIDCalls() []struct {
 	ID string
 } {
@@ -183,24 +191,30 @@ func (mock *ExerciseTrailServiceMock) GetByIDCalls() []struct {
 }
 
 // Shutdown calls ShutdownFunc.
-func (mock *ExerciseTrailServiceMock) Shutdown() {
+func (mock *ExerciseTrailServiceMock) Shutdown(ctx context.Context) {
 	if mock.ShutdownFunc == nil {
 		panic("ExerciseTrailServiceMock.ShutdownFunc: method is nil but ExerciseTrailService.Shutdown was just called")
 	}
 	callInfo := struct {
-	}{}
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
 	mock.lockShutdown.Lock()
 	mock.calls.Shutdown = append(mock.calls.Shutdown, callInfo)
 	mock.lockShutdown.Unlock()
-	mock.ShutdownFunc()
+	mock.ShutdownFunc(ctx)
 }
 
 // ShutdownCalls gets all the calls that were made to Shutdown.
 // Check the length with:
-//     len(mockedExerciseTrailService.ShutdownCalls())
+//
+//	len(mockedExerciseTrailService.ShutdownCalls())
 func (mock *ExerciseTrailServiceMock) ShutdownCalls() []struct {
+	Ctx context.Context
 } {
 	var calls []struct {
+		Ctx context.Context
 	}
 	mock.lockShutdown.RLock()
 	calls = mock.calls.Shutdown
@@ -209,24 +223,30 @@ func (mock *ExerciseTrailServiceMock) ShutdownCalls() []struct {
 }
 
 // Start calls StartFunc.
-func (mock *ExerciseTrailServiceMock) Start() {
+func (mock *ExerciseTrailServiceMock) Start(ctx context.Context) {
 	if mock.StartFunc == nil {
 		panic("ExerciseTrailServiceMock.StartFunc: method is nil but ExerciseTrailService.Start was just called")
 	}
 	callInfo := struct {
-	}{}
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
 	mock.lockStart.Lock()
 	mock.calls.Start = append(mock.calls.Start, callInfo)
 	mock.lockStart.Unlock()
-	mock.StartFunc()
+	mock.StartFunc(ctx)
 }
 
 // StartCalls gets all the calls that were made to Start.
 // Check the length with:
-//     len(mockedExerciseTrailService.StartCalls())
+//
+//	len(mockedExerciseTrailService.StartCalls())
 func (mock *ExerciseTrailServiceMock) StartCalls() []struct {
+	Ctx context.Context
 } {
 	var calls []struct {
+		Ctx context.Context
 	}
 	mock.lockStart.RLock()
 	calls = mock.calls.Start
@@ -249,7 +269,8 @@ func (mock *ExerciseTrailServiceMock) Tenant() string {
 
 // TenantCalls gets all the calls that were made to Tenant.
 // Check the length with:
-//     len(mockedExerciseTrailService.TenantCalls())
+//
+//	len(mockedExerciseTrailService.TenantCalls())
 func (mock *ExerciseTrailServiceMock) TenantCalls() []struct {
 } {
 	var calls []struct {

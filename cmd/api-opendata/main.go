@@ -41,12 +41,13 @@ func openOrganisationsFile(ctx context.Context, path string) *os.File {
 	return openFile(ctx, "organisations registry", path)
 }
 
+const serviceName string = "api-opendata"
+
 var datasetFileName string
 var openApiSpecFileName string
 var organisationRegistryFile string
 
 func main() {
-	serviceName := "api-opendata"
 	serviceVersion := buildinfo.SourceVersion()
 
 	ctx, log, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
@@ -89,12 +90,17 @@ func main() {
 			}
 		}
 
-		port := env.GetVariableOrDefault(log, "SERVICE_PORT", "8080")
-
 		r := chi.NewRouter()
 
-		api := presentation.NewAPI(r, ctx, datasetResponseBuffer, oasResponseBuffer, orgFile)
-		err = api.Start(port)
+		var reader io.Reader = orgFile
+		if orgFile == nil {
+			reader = bytes.NewBufferString("")
+		}
+
+		api := presentation.NewAPI(ctx, r, datasetResponseBuffer, oasResponseBuffer, reader)
+
+		port := env.GetVariableOrDefault(log, "SERVICE_PORT", "8080")
+		err = api.Start(ctx, port)
 		if err != nil {
 			log.Fatal().Msgf("failed to start router: %s", err.Error())
 		}

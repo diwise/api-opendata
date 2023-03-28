@@ -17,11 +17,11 @@ func TestExpectedOutputOfGetByID(t *testing.T) {
 	is, log, server := testSetup(t, http.StatusOK, testData)
 	defer server.Close()
 
-	svci := NewSportsFieldService(context.Background(), log, server.URL(), "ignored", nil)
+	svci := NewSportsFieldService(context.Background(), server.URL(), "ignored", nil)
 	svc, ok := svci.(*sportsfieldSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.NoErr(err)
 
 	sportsfield, err := svc.GetByID("urn:ngsi-ld:SportsField:se:sundsvall:facilities:3142")
@@ -37,11 +37,11 @@ func TestExpectedOutputOfGetAll(t *testing.T) {
 	is, log, server := testSetup(t, http.StatusOK, testData)
 	defer server.Close()
 
-	svci := NewSportsFieldService(context.Background(), log, server.URL(), "ignored", nil)
+	svci := NewSportsFieldService(context.Background(), server.URL(), "ignored", nil)
 	svc, ok := svci.(*sportsfieldSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.NoErr(err)
 
 	sportsfields := svc.GetAll([]string{})

@@ -1,25 +1,26 @@
 package handlers
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
+	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
+	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 )
 
 var tracer = otel.Tracer("api-opendata/api")
 
-func NewRetrieveWaterQualityHandler(logger zerolog.Logger, contextBroker string, waterQualityQueryParams string) http.HandlerFunc {
+func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.WaterQualityService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 
@@ -28,75 +29,115 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, contextBroker string,
 
 		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		waterQualityCsv := bytes.NewBufferString("timestamp;latitude;longitude;temperature;sensor")
+		maxDistance := r.URL.Query().Get("maxDistance")
+		var distance int64
+		if maxDistance != "" {
+			distance, err = strconv.ParseInt(maxDistance, 0, 64)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to parse distance from query parameters")
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
 
-		waterquality, err := getWaterQualityFromContextBroker(ctx, log, contextBroker, waterQualityQueryParams)
+		coordinates := r.URL.Query().Get("coordinates")
+		var longitude, latitude float64
+		if coordinates != "" {
+			coords := strings.Split(coordinates, ",")
+
+			longitude, _ = strconv.ParseFloat(coords[0], 64)
+			latitude, _ = strconv.ParseFloat(coords[1], 64)
+		}
+
+		var wqos []domain.WaterQuality
+
+		if distance != 0 {
+			wqos, err = svc.GetAllNearPoint(ctx, waterquality.NewPoint(latitude, longitude), int(distance))
+		} else {
+			wqos = svc.GetAll(ctx)
+		}
+
+		wqosBytes, err := json.Marshal(wqos)
 		if err != nil {
-			log.Error().Err(err).Msgf("failed to get waterquality from %s", contextBroker)
+			log.Error().Err(err).Msg("failed to marshal water quality into json")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		for _, wq := range waterquality {
-			lonLat := wq.Location.GetAsPoint()
-			timestamp := wq.DateObserved.Value.Value
-			temp := strconv.FormatFloat(wq.Temperature.Value, 'f', -1, 64)
+		waterQualityJSON := "{\n  \"data\": " + string(wqosBytes) + "\n}"
 
-			var sensor string
-			if wq.RefDevice != nil {
-				sensor = strings.TrimPrefix(wq.RefDevice.Object, fiware.DeviceIDPrefix)
-			}
-
-			wqInfo := fmt.Sprintf("\r\n%s;%f;%f;%s;%s",
-				timestamp, lonLat.Coordinates[1], lonLat.Coordinates[0],
-				temp,
-				sensor,
-			)
-
-			waterQualityCsv.Write([]byte(wqInfo))
-		}
-
-		w.Header().Add("Content-Type", "text/csv")
-		w.Write(waterQualityCsv.Bytes())
+		w.Header().Add("Content-Type", "application/json")
+		w.Header().Add("Cache-Control", "max-age=3600")
+		w.Write([]byte(waterQualityJSON))
 
 	})
 }
 
-func getWaterQualityFromContextBroker(ctx context.Context, log zerolog.Logger, host string, queryParams string) ([]*fiware.WaterQualityObserved, error) {
-	var err error
+func NewRetrieveWaterQualityByIDHandler(logger zerolog.Logger, svc waterquality.WaterQualityService) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
 
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
+		ctx, span := tracer.Start(r.Context(), "retrieve-water-qualities")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	url := host + "/ngsi-ld/v1/entities?type=WaterQualityObserved"
-	if len(queryParams) > 0 {
-		url = url + "&" + queryParams
-	}
+		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		err = fmt.Errorf("failed to create http request: %w", err)
-		return nil, err
-	}
+		waterqualityID, err := url.QueryUnescape(chi.URLParam(r, "id"))
+		if waterqualityID == "" {
+			err = fmt.Errorf("no water quality id is supplied in query")
+			log.Error().Err(err).Msg("bad request")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-	response, err := httpClient.Do(req)
-	if err != nil {
-		err = fmt.Errorf("request failed: %w", err)
-		return nil, err
-	}
-	defer response.Body.Close()
+		values, err := url.ParseQuery(r.URL.RawQuery)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to parse parameters from query")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
-	if response.StatusCode != http.StatusOK {
-		err = fmt.Errorf("failed with status code %d", response.StatusCode)
-		return nil, err
-	}
+		from := time.Time{}
+		to := time.Time{}
 
-	waterquality := []*fiware.WaterQualityObserved{}
-	err = json.NewDecoder(response.Body).Decode(&waterquality)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
+		if len(values) != 0 {
+			if values.Get("from") != "" {
+				from, err = time.Parse(time.RFC3339, values.Get("from"))
+				if err != nil {
+					log.Error().Err(err).Msg("time parameter from is incorrect format")
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+			}
+			if values.Get("to") != "" {
+				to, err = time.Parse(time.RFC3339, values.Get("to"))
+				if err != nil {
+					log.Error().Err(err).Msg("time parameter to is incorrect format")
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+			}
+		}
 
-	return waterquality, err
+		wqo, err := svc.GetByID(ctx, waterqualityID, from, to)
+		if err != nil {
+			log.Error().Err(err).Msgf("no water quality found with id %s", waterqualityID)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		body, err := json.Marshal(wqo)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to marshal water quality")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		waterQualityJSON := "{\n  \"data\": " + string(body) + "\n}"
+
+		w.Header().Add("Content-Type", "application/json")
+		w.Header().Add("Cache-Control", "max-age=3600")
+		w.Write([]byte(waterQualityJSON))
+
+	})
 }

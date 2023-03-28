@@ -16,24 +16,24 @@ import (
 func TestThatRefreshReturnsErrorOnNoValidHostNotFound(t *testing.T) {
 	is, log, _ := testSetup(t, http.StatusOK, "")
 
-	cwSvc := NewCityworksService(context.Background(), log, "http://lolcat:1234", "default")
+	cwSvc := NewCityworksService(context.Background(), "http://lolcat:1234", "default")
 
 	svc, ok := cwSvc.(*cityworksSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.True(err != nil) // should return err due to invalid host
 }
 
 func TestThatRefreshFailsOnEmptyResponseBody(t *testing.T) {
 	is, log, server := testSetup(t, http.StatusOK, "")
 
-	cwSvc := NewCityworksService(context.Background(), log, server.URL(), "default")
+	cwSvc := NewCityworksService(context.Background(), server.URL(), "default")
 
 	svc, ok := cwSvc.(*cityworksSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.True(err != nil)
 	is.Equal("failed to retrieve cityworks from context broker: failed to unmarshal response: unexpected end of JSON input", err.Error()) // should fail to unmarshal due to empty response
 }
@@ -41,12 +41,12 @@ func TestThatRefreshFailsOnEmptyResponseBody(t *testing.T) {
 func TestThatRefreshFailsOnStatusCode400(t *testing.T) {
 	is, log, server := testSetup(t, http.StatusBadRequest, "")
 
-	cwSvc := NewCityworksService(context.Background(), log, server.URL(), "default")
+	cwSvc := NewCityworksService(context.Background(), server.URL(), "default")
 
 	svc, ok := cwSvc.(*cityworksSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.True(err != nil)
 	is.Equal("failed to retrieve cityworks from context broker: request failed", err.Error()) // should fail on failed get request to context broker
 }
@@ -54,12 +54,12 @@ func TestThatRefreshFailsOnStatusCode400(t *testing.T) {
 func TestThatItWorks(t *testing.T) {
 	is, log, server := testSetup(t, http.StatusOK, testData)
 
-	cwSvc := NewCityworksService(context.Background(), log, server.URL(), "default")
+	cwSvc := NewCityworksService(context.Background(), server.URL(), "default")
 
 	svc, ok := cwSvc.(*cityworksSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.NoErr(err)
 	is.Equal(len(svc.cityworksDetails), 2) // should be equal to 2
 }

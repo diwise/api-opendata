@@ -12,6 +12,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
@@ -26,19 +27,17 @@ type ExerciseTrailService interface {
 	GetAll(requiredCategories []string) []domain.ExerciseTrail
 	GetByID(id string) (*domain.ExerciseTrail, error)
 
-	Start()
-	Shutdown()
+	Start(ctx context.Context)
+	Shutdown(ctx context.Context)
 }
 
-func NewExerciseTrailService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string, orgreg organisations.Registry) ExerciseTrailService {
+func NewExerciseTrailService(ctx context.Context, contextBrokerURL, tenant string, orgreg organisations.Registry) ExerciseTrailService {
 	svc := &exerciseTrailSvc{
-		ctx:              ctx,
 		trails:           []domain.ExerciseTrail{},
 		trailDetails:     map[string]int{},
 		orgRegistry:      orgreg,
 		contextBrokerURL: contextBrokerURL,
 		tenant:           tenant,
-		log:              logger,
 		keepRunning:      true,
 	}
 
@@ -54,9 +53,6 @@ type exerciseTrailSvc struct {
 	trailMutex   sync.Mutex
 	trails       []domain.ExerciseTrail
 	trailDetails map[string]int
-
-	ctx context.Context
-	log zerolog.Logger
 
 	keepRunning bool
 }
@@ -112,31 +108,34 @@ func (svc *exerciseTrailSvc) GetByID(id string) (*domain.ExerciseTrail, error) {
 	return &svc.trails[index], nil
 }
 
-func (svc *exerciseTrailSvc) Start() {
-	svc.log.Info().Msg("starting exercise trail service")
+func (svc *exerciseTrailSvc) Start(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("starting exercise trail service")
 	// TODO: Prevent multiple starts on the same service
-	go svc.run()
+	go svc.run(ctx)
 }
 
-func (svc *exerciseTrailSvc) Shutdown() {
-	svc.log.Info().Msg("shutting down exercise trail service")
+func (svc *exerciseTrailSvc) Shutdown(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("shutting down exercise trail service")
 	svc.keepRunning = false
 }
 
-func (svc *exerciseTrailSvc) run() {
+func (svc *exerciseTrailSvc) run(ctx context.Context) {
 	nextRefreshTime := time.Now()
+	logger := logging.GetFromContext(ctx)
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing exercise trail info")
-			count, err := svc.refresh()
+			logger.Info().Msg("refreshing exercise trail info")
+			count, err := svc.refresh(ctx, logger)
 
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh exercise trails")
+				logger.Error().Err(err).Msg("failed to refresh exercise trails")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
-				svc.log.Info().Msgf("refreshed %d exercise trails", count)
+				logger.Info().Msgf("refreshed %d exercise trails", count)
 
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
@@ -147,15 +146,15 @@ func (svc *exerciseTrailSvc) run() {
 		time.Sleep(1 * time.Second)
 	}
 
-	svc.log.Info().Msg("exercise trail service exiting")
+	logger.Info().Msg("exercise trail service exiting")
 }
 
-func (svc *exerciseTrailSvc) refresh() (count int, err error) {
+func (svc *exerciseTrailSvc) refresh(ctx context.Context, log zerolog.Logger) (count int, err error) {
 
-	ctx, span := tracer.Start(svc.ctx, "refresh-trails")
+	ctx, span := tracer.Start(ctx, "refresh-trails")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
+	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, log, ctx)
 
 	trails := []domain.ExerciseTrail{}
 
@@ -181,14 +180,14 @@ func (svc *exerciseTrailSvc) refresh() (count int, err error) {
 		if len(t.ManagedBy) > 0 {
 			trail.ManagedBy, err = svc.orgRegistry.Get(t.ManagedBy)
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+				logger.Error().Err(err).Msg("failed to resolve organisation")
 			}
 		}
 
 		if len(t.Owner) > 0 {
 			trail.Owner, err = svc.orgRegistry.Get(t.Owner)
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to resolve organisation")
+				logger.Error().Err(err).Msg("failed to resolve organisation")
 			}
 		}
 

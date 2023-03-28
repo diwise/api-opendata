@@ -10,6 +10,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
@@ -24,19 +25,16 @@ type CityworksService interface {
 	GetAll() []byte
 	GetByID(id string) ([]byte, error)
 
-	Start()
-	Shutdown()
+	Start(ctx context.Context)
+	Shutdown(ctx context.Context)
 }
 
-func NewCityworksService(ctx context.Context, logger zerolog.Logger, contextBrokerUrl, tenant string) CityworksService {
+func NewCityworksService(ctx context.Context, contextBrokerUrl, tenant string) CityworksService {
 	svc := &cityworksSvc{
-		ctx: ctx,
-
 		cityworks:        []byte("[]"),
 		cityworksDetails: map[string][]byte{},
 		contextBrokerURL: contextBrokerUrl,
 		tenant:           tenant,
-		log:              logger,
 
 		keepRunning: true,
 	}
@@ -51,9 +49,6 @@ type cityworksSvc struct {
 	cityworksMutex   sync.Mutex
 	cityworks        []byte
 	cityworksDetails map[string][]byte
-
-	ctx context.Context
-	log zerolog.Logger
 
 	keepRunning bool
 }
@@ -85,30 +80,33 @@ func (svc *cityworksSvc) GetByID(id string) ([]byte, error) {
 	return body, nil
 }
 
-func (svc *cityworksSvc) Start() {
-	svc.log.Info().Msg("starting cityworks service")
-	go svc.run()
+func (svc *cityworksSvc) Start(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("starting cityworks service")
+	go svc.run(ctx)
 }
 
-func (svc *cityworksSvc) Shutdown() {
-	svc.log.Info().Msg("shutting down cityworks service")
+func (svc *cityworksSvc) Shutdown(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("shutting down cityworks service")
 	svc.keepRunning = false
 }
 
-func (svc *cityworksSvc) run() {
+func (svc *cityworksSvc) run(ctx context.Context) {
 	nextRefreshTime := time.Now()
+	logger := logging.GetFromContext(ctx)
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing cityworks info")
-			count, err := svc.refresh()
+			logger.Info().Msg("refreshing cityworks info")
+			count, err := svc.refresh(ctx, logger)
 
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh cityworks")
+				logger.Error().Err(err).Msg("failed to refresh cityworks")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
-				svc.log.Info().Msgf("refreshed %d cityworks", count)
+				logger.Info().Msgf("refreshed %d cityworks", count)
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
 			}
@@ -117,15 +115,15 @@ func (svc *cityworksSvc) run() {
 		time.Sleep(1 * time.Second)
 	}
 
-	svc.log.Info().Msg("cityworks service exiting")
+	logger.Info().Msg("cityworks service exiting")
 }
 
-func (svc *cityworksSvc) refresh() (count int, err error) {
+func (svc *cityworksSvc) refresh(ctx context.Context, logger zerolog.Logger) (count int, err error) {
 
-	ctx, span := tracer.Start(svc.ctx, "refresh-cityworks")
+	ctx, span := tracer.Start(ctx, "refresh-cityworks")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
+	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 	cityworks := []domain.Cityworks{}
 
