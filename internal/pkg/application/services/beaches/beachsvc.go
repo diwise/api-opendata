@@ -82,12 +82,12 @@ func (svc *beachSvc) GetAll(ctx context.Context) []byte {
 	return <-result
 }
 
-func (svc *beachSvc) GetByID(ctx context.Context, id string) ([]byte, error) {
+func (svc *beachSvc) GetByID(ctx context.Context, beachID string) ([]byte, error) {
 	result := make(chan []byte)
 	err := make(chan error)
 
 	svc.queue <- func() {
-		body, ok := svc.beachDetails[id]
+		body, ok := svc.beachDetails[beachID]
 		if !ok {
 			err <- fmt.Errorf("no such beach")
 		} else {
