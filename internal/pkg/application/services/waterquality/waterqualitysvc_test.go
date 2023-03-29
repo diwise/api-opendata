@@ -46,56 +46,52 @@ func TestGetAll(t *testing.T) {
 
 func TestGetAllNearPoint(t *testing.T) {
 	is, ms := testSetup(t, http.StatusOK, waterQualityJSON)
+	ctx := context.Background()
 
-	wq := NewWaterQualityService(context.Background(), ms.URL(), "default")
+	wq := NewWaterQualityService(ctx, ms.URL(), "default")
 
 	svc := wq.(*wqsvc)
-	err := svc.refresh(context.Background())
+	err := svc.refresh(ctx)
 	is.NoErr(err)
 
 	pt := NewPoint(62.43515222, 17.47263962)
-	wqos, err := wq.GetAllNearPoint(context.Background(), pt, 500)
+	wqos, err := wq.GetAllNearPoint(ctx, pt, 500)
 	is.NoErr(err)
-	is.True(wqos != nil)
+	is.Equal(len(wqos), 1)
 
 	wqoJson, _ := json.Marshal(wqos)
-
 	expectation := `[{"id":"urn:ngsi-ld:WaterQualityObserved:testID2","temperature":10.8,"dateObserved":"2021-05-18T19:23:09Z","location":{"type":"Point","coordinates":[17.47263962458644,62.435152221329254]}}]`
-
 	is.Equal(string(wqoJson), expectation)
 }
 
-func TestGetAllNearPointReturnsErrorIfNoPointsAreWithinRange(t *testing.T) {
+func TestGetAllNearPointReturnsEmptyListIfNoPointsAreWithinRange(t *testing.T) {
 	is, ms := testSetup(t, http.StatusOK, waterQualityJSON)
+	ctx := context.Background()
 
-	wq := NewWaterQualityService(context.Background(), ms.URL(), "default")
+	wq := NewWaterQualityService(ctx, ms.URL(), "default")
 
-	svcMock := wq.(*wqsvc)
+	svc := wq.(*wqsvc)
 
-	err := svcMock.refresh(context.Background())
+	err := svc.refresh(ctx)
 	is.NoErr(err)
 
 	pt := NewPoint(0.0, 0.0)
-	wqos, err := svcMock.GetAllNearPoint(context.Background(), pt, 500)
-	is.True(err != nil)
+	wqos, err := svc.GetAllNearPoint(ctx, pt, 500)
+
+	is.NoErr(err)
 	is.Equal(len(wqos), 0)
-
-	wqoJson, _ := json.Marshal(wqos)
-
-	expectation := `[]`
-
-	is.Equal(string(wqoJson), expectation)
 }
 
 func TestGetByID(t *testing.T) {
 	is, ms := testSetup(t, http.StatusOK, waterQualityJSON)
+	ctx := context.Background()
 	defer ms.Close()
 
-	wq := NewWaterQualityService(context.Background(), ms.URL(), "default")
+	wq := NewWaterQualityService(ctx, ms.URL(), "default")
 
-	svcMock := wq.(*wqsvc)
+	svc := wq.(*wqsvc)
 
-	err := svcMock.refresh(context.Background())
+	err := svc.refresh(ctx)
 	is.NoErr(err)
 
 	ms2 := testutils.NewMockServiceThat(
@@ -108,27 +104,26 @@ func TestGetByID(t *testing.T) {
 	)
 	defer ms2.Close()
 
-	svcMock.contextBrokerURL = ms2.URL() // doing this to ensure the request in svcMock.GetByID reaches the correct response body
+	svc.contextBrokerURL = ms2.URL() // doing this to ensure the request in svcMock.GetByID reaches the correct response body
 
-	wqo, err := svcMock.GetByID(context.Background(), "urn:ngsi-ld:WaterQualityObserved:testID", time.Time{}, time.Time{})
+	wqo, err := svc.GetByID(ctx, "urn:ngsi-ld:WaterQualityObserved:testID", time.Time{}, time.Time{})
 	is.NoErr(err)
 
 	wqoJson, _ := json.Marshal(wqo)
-
 	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}]}`
-
 	is.Equal(string(wqoJson), expectation)
 }
 
 func TestGetByIDWithTimespan(t *testing.T) {
 	is, ms := testSetup(t, http.StatusOK, waterQualityJSON)
+	ctx := context.Background()
 	defer ms.Close()
 
-	wq := NewWaterQualityService(context.Background(), ms.URL(), "default")
+	wq := NewWaterQualityService(ctx, ms.URL(), "default")
 
 	svc := wq.(*wqsvc)
 
-	err := svc.refresh(context.Background())
+	err := svc.refresh(ctx)
 	is.NoErr(err)
 
 	ms2 := testutils.NewMockServiceThat(
@@ -147,7 +142,7 @@ func TestGetByIDWithTimespan(t *testing.T) {
 	from, _ := time.Parse(time.RFC3339, "2021-05-18T19:23:09Z")
 	to, _ := time.Parse(time.RFC3339, "2021-05-18T19:23:09Z")
 
-	wqo, err := wq.GetByID(context.Background(), "urn:ngsi-ld:WaterQualityObserved:testID", from, to)
+	wqo, err := wq.GetByID(ctx, "urn:ngsi-ld:WaterQualityObserved:testID", from, to)
 	is.NoErr(err)
 
 	wqoJson, _ := json.Marshal(wqo)
