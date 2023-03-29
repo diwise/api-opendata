@@ -71,7 +71,9 @@ func NewRetrieveBeachesHandler(logger zerolog.Logger, beachService beaches.Beach
 		if err != nil {
 			err = fmt.Errorf("failed to marshal beaches into json")
 			log.Error().Err(err).Msg("internal server error")
-			w.WriteHeader(http.StatusInternalServerError)
+
+			problem := errors.NewProblemReport(http.StatusInternalServerError, "marshalingerror", errors.Detail(err.Error()))
+			problem.WriteResponse(w)
 			return
 		}
 
