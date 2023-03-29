@@ -127,11 +127,11 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 	stratsysDefaultUrl := os.Getenv("STRATSYS_DEFAULT_URL")
 
 	r.Get(
-		"/api/waterquality",
+		"/api/waterqualities",
 		handlers.NewRetrieveWaterQualityHandler(logger, waterqualitySvc),
 	)
 	r.Get(
-		"/api/waterquality/{id}",
+		"/api/waterqualities/{id}",
 		handlers.NewRetrieveWaterQualityByIDHandler(logger, waterqualitySvc),
 	)
 	r.Get(

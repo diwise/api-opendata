@@ -20,7 +20,7 @@ func TestGetWaterQuality(t *testing.T) {
 	wqSvc := mockWaterQualitySvc(is)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/api/waterquality", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/waterqualities", nil)
 	NewRetrieveWaterQualityHandler(zerolog.Logger{}, wqSvc).ServeHTTP(w, req)
 
 	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
