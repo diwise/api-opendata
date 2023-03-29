@@ -100,10 +100,6 @@ func (svc *wqsvc) GetAllNearPoint(ctx context.Context, pt Point, maxDistance int
 		}
 	}
 
-	if len(waterQualitiesWithinDistance) == 0 {
-		return []domain.WaterQuality{}, fmt.Errorf("no stored water qualities exist within %d meters of point %f,%f", maxDistance, pt.Longitude, pt.Latitude)
-	}
-
 	return waterQualitiesWithinDistance, nil
 }
 
