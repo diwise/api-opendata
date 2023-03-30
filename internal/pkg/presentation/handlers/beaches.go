@@ -100,7 +100,7 @@ func NewRetrieveBeachesHandler(logger zerolog.Logger, beachService beaches.Beach
 		if acceptedContentType == geoJSONContentType {
 			locationMapper := func(b *beaches.Beach) any { return b.Location }
 
-			fields = append([]string{"type", "name"}, fields...)
+			fields = append([]string{"type", "name", "location"}, fields...)
 			beachGeoJSON, err := marshalBeachToJSON(
 				allBeaches,
 				newBeachGeoJSONMapper(
@@ -123,7 +123,7 @@ func NewRetrieveBeachesHandler(logger zerolog.Logger, beachService beaches.Beach
 				return domain.NewPoint(b.Location.Coordinates[0][0][0][1], b.Location.Coordinates[0][0][0][0])
 			}
 
-			fields := append([]string{"id", "name"}, fields...)
+			fields := append([]string{"id", "name", "location"}, fields...)
 			beachJSON, err := marshalBeachToJSON(
 				allBeaches,
 				newBeachMapper(fields, locationMapper, waterqualityMapper),
