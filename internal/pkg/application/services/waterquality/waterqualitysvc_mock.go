@@ -16,37 +16,40 @@ var _ WaterQualityService = &WaterQualityServiceMock{}
 
 // WaterQualityServiceMock is a mock implementation of WaterQualityService.
 //
-// 	func TestSomethingThatUsesWaterQualityService(t *testing.T) {
+//	func TestSomethingThatUsesWaterQualityService(t *testing.T) {
 //
-// 		// make and configure a mocked WaterQualityService
-// 		mockedWaterQualityService := &WaterQualityServiceMock{
-// 			BrokerFunc: func() string {
-// 				panic("mock out the Broker method")
-// 			},
-// 			GetAllFunc: func(ctx context.Context) []domain.WaterQuality {
-// 				panic("mock out the GetAll method")
-// 			},
-// 			GetAllNearPointFunc: func(ctx context.Context, pt Point, distance int) ([]domain.WaterQuality, error) {
-// 				panic("mock out the GetAllNearPoint method")
-// 			},
-// 			GetByIDFunc: func(ctx context.Context, id string, from time.Time, to time.Time) (*domain.WaterQualityTemporal, error) {
-// 				panic("mock out the GetByID method")
-// 			},
-// 			ShutdownFunc: func(ctx context.Context)  {
-// 				panic("mock out the Shutdown method")
-// 			},
-// 			StartFunc: func(ctx context.Context)  {
-// 				panic("mock out the Start method")
-// 			},
-// 			TenantFunc: func() string {
-// 				panic("mock out the Tenant method")
-// 			},
-// 		}
+//		// make and configure a mocked WaterQualityService
+//		mockedWaterQualityService := &WaterQualityServiceMock{
+//			BrokerFunc: func() string {
+//				panic("mock out the Broker method")
+//			},
+//			GetAllFunc: func(ctx context.Context) []domain.WaterQuality {
+//				panic("mock out the GetAll method")
+//			},
+//			GetAllNearPointFunc: func(ctx context.Context, pt Point, distance int) ([]domain.WaterQuality, error) {
+//				panic("mock out the GetAllNearPoint method")
+//			},
+//			GetByIDFunc: func(ctx context.Context, id string, from time.Time, to time.Time) (*domain.WaterQualityTemporal, error) {
+//				panic("mock out the GetByID method")
+//			},
+//			RefreshFunc: func(ctx context.Context) (int, error) {
+//				panic("mock out the Refresh method")
+//			},
+//			ShutdownFunc: func(ctx context.Context)  {
+//				panic("mock out the Shutdown method")
+//			},
+//			StartFunc: func(ctx context.Context)  {
+//				panic("mock out the Start method")
+//			},
+//			TenantFunc: func() string {
+//				panic("mock out the Tenant method")
+//			},
+//		}
 //
-// 		// use mockedWaterQualityService in code that requires WaterQualityService
-// 		// and then make assertions.
+//		// use mockedWaterQualityService in code that requires WaterQualityService
+//		// and then make assertions.
 //
-// 	}
+//	}
 type WaterQualityServiceMock struct {
 	// BrokerFunc mocks the Broker method.
 	BrokerFunc func() string
@@ -59,6 +62,9 @@ type WaterQualityServiceMock struct {
 
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(ctx context.Context, id string, from time.Time, to time.Time) (*domain.WaterQualityTemporal, error)
+
+	// RefreshFunc mocks the Refresh method.
+	RefreshFunc func(ctx context.Context) (int, error)
 
 	// ShutdownFunc mocks the Shutdown method.
 	ShutdownFunc func(ctx context.Context)
@@ -99,6 +105,11 @@ type WaterQualityServiceMock struct {
 			// To is the to argument value.
 			To time.Time
 		}
+		// Refresh holds details about calls to the Refresh method.
+		Refresh []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// Shutdown holds details about calls to the Shutdown method.
 		Shutdown []struct {
 			// Ctx is the ctx argument value.
@@ -117,6 +128,7 @@ type WaterQualityServiceMock struct {
 	lockGetAll          sync.RWMutex
 	lockGetAllNearPoint sync.RWMutex
 	lockGetByID         sync.RWMutex
+	lockRefresh         sync.RWMutex
 	lockShutdown        sync.RWMutex
 	lockStart           sync.RWMutex
 	lockTenant          sync.RWMutex
@@ -137,7 +149,8 @@ func (mock *WaterQualityServiceMock) Broker() string {
 
 // BrokerCalls gets all the calls that were made to Broker.
 // Check the length with:
-//     len(mockedWaterQualityService.BrokerCalls())
+//
+//	len(mockedWaterQualityService.BrokerCalls())
 func (mock *WaterQualityServiceMock) BrokerCalls() []struct {
 } {
 	var calls []struct {
@@ -166,7 +179,8 @@ func (mock *WaterQualityServiceMock) GetAll(ctx context.Context) []domain.WaterQ
 
 // GetAllCalls gets all the calls that were made to GetAll.
 // Check the length with:
-//     len(mockedWaterQualityService.GetAllCalls())
+//
+//	len(mockedWaterQualityService.GetAllCalls())
 func (mock *WaterQualityServiceMock) GetAllCalls() []struct {
 	Ctx context.Context
 } {
@@ -201,7 +215,8 @@ func (mock *WaterQualityServiceMock) GetAllNearPoint(ctx context.Context, pt Poi
 
 // GetAllNearPointCalls gets all the calls that were made to GetAllNearPoint.
 // Check the length with:
-//     len(mockedWaterQualityService.GetAllNearPointCalls())
+//
+//	len(mockedWaterQualityService.GetAllNearPointCalls())
 func (mock *WaterQualityServiceMock) GetAllNearPointCalls() []struct {
 	Ctx      context.Context
 	Pt       Point
@@ -242,7 +257,8 @@ func (mock *WaterQualityServiceMock) GetByID(ctx context.Context, id string, fro
 
 // GetByIDCalls gets all the calls that were made to GetByID.
 // Check the length with:
-//     len(mockedWaterQualityService.GetByIDCalls())
+//
+//	len(mockedWaterQualityService.GetByIDCalls())
 func (mock *WaterQualityServiceMock) GetByIDCalls() []struct {
 	Ctx  context.Context
 	ID   string
@@ -258,6 +274,38 @@ func (mock *WaterQualityServiceMock) GetByIDCalls() []struct {
 	mock.lockGetByID.RLock()
 	calls = mock.calls.GetByID
 	mock.lockGetByID.RUnlock()
+	return calls
+}
+
+// Refresh calls RefreshFunc.
+func (mock *WaterQualityServiceMock) Refresh(ctx context.Context) (int, error) {
+	if mock.RefreshFunc == nil {
+		panic("WaterQualityServiceMock.RefreshFunc: method is nil but WaterQualityService.Refresh was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockRefresh.Lock()
+	mock.calls.Refresh = append(mock.calls.Refresh, callInfo)
+	mock.lockRefresh.Unlock()
+	return mock.RefreshFunc(ctx)
+}
+
+// RefreshCalls gets all the calls that were made to Refresh.
+// Check the length with:
+//
+//	len(mockedWaterQualityService.RefreshCalls())
+func (mock *WaterQualityServiceMock) RefreshCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockRefresh.RLock()
+	calls = mock.calls.Refresh
+	mock.lockRefresh.RUnlock()
 	return calls
 }
 
@@ -279,7 +327,8 @@ func (mock *WaterQualityServiceMock) Shutdown(ctx context.Context) {
 
 // ShutdownCalls gets all the calls that were made to Shutdown.
 // Check the length with:
-//     len(mockedWaterQualityService.ShutdownCalls())
+//
+//	len(mockedWaterQualityService.ShutdownCalls())
 func (mock *WaterQualityServiceMock) ShutdownCalls() []struct {
 	Ctx context.Context
 } {
@@ -310,7 +359,8 @@ func (mock *WaterQualityServiceMock) Start(ctx context.Context) {
 
 // StartCalls gets all the calls that were made to Start.
 // Check the length with:
-//     len(mockedWaterQualityService.StartCalls())
+//
+//	len(mockedWaterQualityService.StartCalls())
 func (mock *WaterQualityServiceMock) StartCalls() []struct {
 	Ctx context.Context
 } {
@@ -338,7 +388,8 @@ func (mock *WaterQualityServiceMock) Tenant() string {
 
 // TenantCalls gets all the calls that were made to Tenant.
 // Check the length with:
-//     len(mockedWaterQualityService.TenantCalls())
+//
+//	len(mockedWaterQualityService.TenantCalls())
 func (mock *WaterQualityServiceMock) TenantCalls() []struct {
 } {
 	var calls []struct {

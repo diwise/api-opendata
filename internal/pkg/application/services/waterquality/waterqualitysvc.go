@@ -3,12 +3,14 @@ package waterquality
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
 	"net/http"
 	"net/url"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
@@ -26,6 +28,7 @@ var tracer = otel.Tracer("api-opendata/svcs/waterquality")
 
 type WaterQualityService interface {
 	Start(ctx context.Context)
+	Refresh(ctx context.Context) (int, error)
 	Shutdown(ctx context.Context)
 
 	Tenant() string
@@ -43,31 +46,69 @@ func NewWaterQualityService(ctx context.Context, url, tenant string) WaterQualit
 
 		waterQualities:   []domain.WaterQuality{},
 		waterQualityByID: map[string]domain.WaterQuality{},
-		keepRunning:      true,
+
+		queue:       make(chan func()),
+		keepRunning: &atomic.Bool{},
 	}
 }
+
+var ErrWQNotFound error = errors.New("not found")
 
 type wqsvc struct {
 	contextBrokerURL string
 	tenant           string
 
-	wqoMutex         sync.Mutex
 	waterQualities   []domain.WaterQuality
 	waterQualityByID map[string]domain.WaterQuality
 
-	keepRunning bool
+	queue chan func()
+
+	keepRunning *atomic.Bool
+	wg          sync.WaitGroup
 }
 
 func (svc *wqsvc) Start(ctx context.Context) {
-	logger := logging.GetFromContext(ctx)
-	logger.Info().Msg("starting water quality service")
+	// use atomic swap to avoid startup races
+	alreadyStarted := svc.keepRunning.Swap(true)
+	if alreadyStarted {
+		logger := logging.GetFromContext(ctx)
+		logger.Error().Msg("attempt to start the water quality service multiple times")
+		return
+	}
+
 	go svc.run(ctx)
 }
 
+func (svc *wqsvc) Refresh(ctx context.Context) (int, error) {
+
+	refreshDone := make(chan int)
+	refreshFailed := make(chan error)
+
+	svc.queue <- func() {
+		count, err := svc.refresh(ctx)
+		if err != nil {
+			refreshFailed <- err
+		} else {
+			refreshDone <- count
+		}
+	}
+
+	select {
+	case c := <-refreshDone:
+		return c, nil
+	case e := <-refreshFailed:
+		return 0, e
+	}
+}
+
 func (svc *wqsvc) Shutdown(ctx context.Context) {
-	logger := logging.GetFromContext(ctx)
-	logger.Info().Msg("shutting down water quality service")
-	svc.keepRunning = false
+	if svc.keepRunning.Load() {
+		svc.queue <- func() {
+			svc.keepRunning.Store(false)
+		}
+
+		svc.wg.Wait()
+	}
 }
 
 func (svc *wqsvc) Broker() string {
@@ -79,57 +120,77 @@ func (svc *wqsvc) Tenant() string {
 }
 
 func (svc *wqsvc) GetAll(ctx context.Context) []domain.WaterQuality {
-	svc.wqoMutex.Lock()
-	defer svc.wqoMutex.Unlock()
+	result := make(chan []domain.WaterQuality)
 
-	return svc.waterQualities
+	svc.queue <- func() {
+		result <- svc.waterQualities
+	}
+
+	return <-result
 }
 
 func (svc *wqsvc) GetAllNearPoint(ctx context.Context, pt Point, maxDistance int) ([]domain.WaterQuality, error) {
-	svc.wqoMutex.Lock()
-	defer svc.wqoMutex.Unlock()
 
-	waterQualitiesWithinDistance := []domain.WaterQuality{}
+	result := make(chan []domain.WaterQuality)
 
-	for _, storedWQ := range svc.waterQualities {
-		wqPoint := NewPoint(storedWQ.Location.Coordinates[1], storedWQ.Location.Coordinates[0])
-		distanceBetweenPoints := Distance(wqPoint, pt)
+	svc.queue <- func() {
+		waterQualitiesWithinDistance := make([]domain.WaterQuality, 0, len(svc.waterQualities))
 
-		if distanceBetweenPoints < maxDistance {
-			waterQualitiesWithinDistance = append(waterQualitiesWithinDistance, storedWQ)
+		for _, storedWQ := range svc.waterQualities {
+			wqPoint := NewPoint(storedWQ.Location.Coordinates[1], storedWQ.Location.Coordinates[0])
+			distanceBetweenPoints := distance(wqPoint, pt)
+
+			if distanceBetweenPoints < maxDistance {
+				waterQualitiesWithinDistance = append(waterQualitiesWithinDistance, storedWQ)
+			}
 		}
+
+		result <- waterQualitiesWithinDistance
 	}
 
-	return waterQualitiesWithinDistance, nil
+	return <-result, nil
 }
 
 func (svc *wqsvc) GetByID(ctx context.Context, id string, from, to time.Time) (*domain.WaterQualityTemporal, error) {
-	svc.wqoMutex.Lock()
-	defer svc.wqoMutex.Unlock()
 
-	_, ok := svc.waterQualityByID[id]
-	if !ok {
-		return nil, fmt.Errorf("no stored water quality found with id %s", id)
+	result := make(chan *domain.WaterQualityTemporal)
+	failure := make(chan error)
+
+	svc.queue <- func() {
+		_, ok := svc.waterQualityByID[id]
+		if !ok {
+			failure <- ErrWQNotFound
+			return
+		}
+
+		if from.IsZero() && to.IsZero() {
+			to = time.Now().UTC()
+			from = to.Add(-24 * time.Hour)
+		}
+
+		wqoBytes, err := svc.requestTemporalDataForSingleEntity(ctx, svc.contextBrokerURL, id, from, to)
+		if err != nil {
+			failure <- fmt.Errorf("no temporal data found for water quality with id %s", id)
+			return
+		}
+
+		wqo := domain.WaterQualityTemporal{}
+
+		err = json.Unmarshal(wqoBytes, &wqo)
+		if err != nil {
+			failure <- fmt.Errorf("failed to unmarshal temporal water quality with id %s", id)
+			return
+		}
+
+		result <- &wqo
 	}
 
-	wqo := domain.WaterQualityTemporal{}
-
-	if from.IsZero() && to.IsZero() {
-		to = time.Now().UTC()
-		from = to.Add(-24 * time.Hour)
+	select {
+	case err := <-failure:
+		return nil, err
+	case r := <-result:
+		return r, nil
 	}
-
-	wqoBytes, err := svc.requestTemporalDataForSingleEntity(ctx, svc.contextBrokerURL, id, from, to)
-	if err != nil {
-		return nil, fmt.Errorf("no temporal data found for water quality with id %s", id)
-	}
-
-	err = json.Unmarshal(wqoBytes, &wqo)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal temporal water quality with id %s", id)
-	}
-
-	return &wqo, nil
 }
 
 type Point struct {
@@ -148,7 +209,7 @@ func degreesToRadians(d float64) float64 {
 	return d * math.Pi / 180
 }
 
-func Distance(point1, point2 Point) int {
+func distance(point1, point2 Point) int {
 	earthRadiusKm := 6371
 
 	lat1 := degreesToRadians(point1.Latitude)
@@ -171,39 +232,54 @@ func Distance(point1, point2 Point) int {
 }
 
 func (svc *wqsvc) run(ctx context.Context) {
-	nextRefreshTime := time.Now()
+	svc.wg.Add(1)
+	defer svc.wg.Done()
 
 	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("starting water quality service")
 
-	for svc.keepRunning {
-		if time.Now().After(nextRefreshTime) {
-			logger.Info().Msg("refreshing water quality info")
+	const RefreshIntervalOnFail time.Duration = 5 * time.Second
+	const RefreshIntervalOnSuccess time.Duration = 30 * time.Second
 
-			err := svc.refresh(context.Background())
+	var refreshTimer *time.Timer
+	count, err := svc.refresh(ctx)
+
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to refresh water qualities")
+		refreshTimer = time.NewTimer(RefreshIntervalOnFail)
+	} else {
+		logger.Info().Msgf("refreshed %d water quality instances", count)
+		refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
+	}
+
+	for svc.keepRunning.Load() {
+		select {
+		case fn := <-svc.queue:
+			fn()
+		case <-refreshTimer.C:
+			count, err := svc.refresh(ctx)
 			if err != nil {
 				logger.Error().Err(err).Msg("failed to refresh water quality info")
-				// Retry every 10 seconds on error
-				nextRefreshTime = time.Now().Add(10 * time.Second)
+				refreshTimer = time.NewTimer(RefreshIntervalOnFail)
 			} else {
-				logger.Info().Msgf("refreshed water qualities")
-				// Refresh every 5 minutes of success
-				nextRefreshTime = time.Now().Add(30 * time.Second)
+				logger.Info().Msgf("refreshed %d water quality entities", count)
+				refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
 			}
 		}
-
-		time.Sleep(1 * time.Second)
 	}
 
 	logger.Info().Msg("water quality service exiting")
 }
 
-func (svc *wqsvc) refresh(ctx context.Context) (err error) {
+func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 
 	ctx, span := tracer.Start(ctx, "refresh-water-quality")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 	logger := logging.GetFromContext(ctx)
-	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+	_, ctx, logger = o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+
+	logger.Info().Msg("refreshing water quality info")
 
 	waterqualities := []domain.WaterQuality{}
 
@@ -223,32 +299,19 @@ func (svc *wqsvc) refresh(ctx context.Context) (err error) {
 			waterquality.Source = w.Source
 		}
 
-		svc.storeWaterQuality(w.ID, waterquality)
+		svc.waterQualityByID[w.ID] = waterquality
 
 		waterqualities = append(waterqualities, waterquality)
 	})
+
 	if err != nil {
 		err = fmt.Errorf("failed to retrieve water qualities from context broker: %w", err)
 		return
 	}
 
-	svc.storeWaterQualityList(waterqualities)
+	svc.waterQualities = waterqualities
 
-	return nil
-}
-
-func (svc *wqsvc) storeWaterQuality(id string, body domain.WaterQuality) {
-	svc.wqoMutex.Lock()
-	defer svc.wqoMutex.Unlock()
-
-	svc.waterQualityByID[id] = body
-}
-
-func (svc *wqsvc) storeWaterQualityList(wqs []domain.WaterQuality) {
-	svc.wqoMutex.Lock()
-	defer svc.wqoMutex.Unlock()
-
-	svc.waterQualities = wqs
+	return len(svc.waterQualities), nil
 }
 
 func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBrokerURL, id string, from, to time.Time) ([]byte, error) {
