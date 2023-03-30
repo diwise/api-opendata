@@ -3,7 +3,6 @@ package beaches
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
 	"sync"
@@ -27,20 +26,18 @@ type BeachService interface {
 	Tenant() string
 
 	GetAll(ctx context.Context) []Beach
-	GetByID(ctx context.Context, id string) (*BeachDetails, error)
+	GetByID(ctx context.Context, id string) (*Beach, error)
 
 	Start(context.Context)
 	Refresh(context.Context) (int, error)
 	Shutdown(context.Context)
 }
 
-var ErrNoSuchBeach error = errors.New("no such beach")
-
 func NewBeachService(ctx context.Context, contextBrokerURL, tenant string, maxWQODistance int, wqsvc waterquality.WaterQualityService) BeachService {
 	svc := &beachSvc{
 		wqsvc:               wqsvc,
 		beaches:             []Beach{},
-		beachDetails:        map[string]BeachDetails{},
+		beachByID:           map[string]Beach{},
 		beachMaxWQODistance: maxWQODistance,
 		contextBrokerURL:    contextBrokerURL,
 		tenant:              tenant,
@@ -58,7 +55,7 @@ type beachSvc struct {
 	tenant           string
 
 	beaches             []Beach
-	beachDetails        map[string]BeachDetails
+	beachByID           map[string]Beach
 	beachMaxWQODistance int
 
 	queue chan func()
@@ -85,14 +82,14 @@ func (svc *beachSvc) GetAll(ctx context.Context) []Beach {
 	return <-result
 }
 
-func (svc *beachSvc) GetByID(ctx context.Context, beachID string) (*BeachDetails, error) {
-	result := make(chan BeachDetails)
+func (svc *beachSvc) GetByID(ctx context.Context, beachID string) (*Beach, error) {
+	result := make(chan Beach)
 	err := make(chan error)
 
 	svc.queue <- func() {
-		body, ok := svc.beachDetails[beachID]
+		body, ok := svc.beachByID[beachID]
 		if !ok {
-			err <- ErrNoSuchBeach
+			err <- fmt.Errorf("no such beach")
 		} else {
 			result <- body
 		}
@@ -200,20 +197,20 @@ func (svc *beachSvc) refresh(ctx context.Context, log zerolog.Logger) (count int
 	beaches := []Beach{}
 
 	_, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "Beach", nil, func(b beachDTO) {
-		latitude, longitude := b.LatLon()
 
-		details := BeachDetails{
+		beach := Beach{
 			ID:          b.ID,
 			Name:        b.Name,
 			Description: &b.Description,
-			Location:    *domain.NewPoint(latitude, longitude),
+			Location:    b.Location,
 		}
 
 		seeAlso := b.SeeAlso()
 		if len(seeAlso) > 0 {
-			details.SeeAlso = &seeAlso
+			beach.SeeAlso = &seeAlso
 		}
 
+		latitude, longitude := b.LatLon()
 		pt := waterquality.NewPoint(latitude, longitude)
 		wqots, err_ := svc.wqsvc.GetAllNearPoint(ctx, pt, svc.beachMaxWQODistance)
 		if err_ != nil {
@@ -239,27 +236,10 @@ func (svc *beachSvc) refresh(ctx context.Context, log zerolog.Logger) (count int
 				wq = append(wq, newWQ)
 			}
 
-			details.WaterQuality = &wq
+			beach.WaterQuality = &wq
 		}
 
-		svc.beachDetails[b.ID] = details
-
-		beach := Beach{
-			ID:       b.ID,
-			Name:     b.Name,
-			Location: details.Location,
-		}
-
-		if details.WaterQuality != nil && len(*details.WaterQuality) > 0 {
-			mostRecentWQ := (*details.WaterQuality)[0]
-			if mostRecentWQ.Age() < 24*time.Hour {
-				beach.WaterQuality = &WaterQuality{
-					Temperature:  mostRecentWQ.Temperature,
-					DateObserved: mostRecentWQ.DateObserved,
-					Source:       mostRecentWQ.Source,
-				}
-			}
-		}
+		svc.beachByID[b.ID] = beach
 
 		beaches = append(beaches, beach)
 	})
@@ -339,17 +319,10 @@ func (w WaterQuality) Age() time.Duration {
 }
 
 type Beach struct {
-	ID           string        `json:"id"`
-	Name         string        `json:"name"`
-	Location     domain.Point  `json:"location"`
-	WaterQuality *WaterQuality `json:"waterquality,omitempty"`
-}
-
-type BeachDetails struct {
-	ID           string          `json:"id"`
-	Name         string          `json:"name"`
-	Description  *string         `json:"description,omitempty"`
-	Location     domain.Point    `json:"location"`
-	WaterQuality *[]WaterQuality `json:"waterquality"`
-	SeeAlso      *[]string       `json:"seeAlso,omitempty"`
+	ID           string              `json:"id"`
+	Name         string              `json:"name"`
+	Location     domain.MultiPolygon `json:"location"`
+	WaterQuality *[]WaterQuality     `json:"waterquality,omitempty"`
+	Description  *string             `json:"description,omitempty"`
+	SeeAlso      *[]string           `json:"seeAlso,omitempty"`
 }
