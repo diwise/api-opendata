@@ -3,7 +3,6 @@ package beaches
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -92,7 +91,6 @@ func TestBeachServiceGetsByIDContainsWaterQuality(t *testing.T) {
 
 	expectation := `"waterquality":[{"temperature":10.8,"dateObserved":"2021-05-18T19:23:09Z"}]`
 
-	fmt.Print(string(bJson))
 	is.True(strings.Contains(string(bJson), expectation))
 }
 

@@ -3,6 +3,7 @@ package beaches
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"sync"
@@ -32,6 +33,8 @@ type BeachService interface {
 	Refresh(context.Context) (int, error)
 	Shutdown(context.Context)
 }
+
+var ErrNoSuchBeach error = errors.New("no such beach")
 
 func NewBeachService(ctx context.Context, contextBrokerURL, tenant string, maxWQODistance int, wqsvc waterquality.WaterQualityService) BeachService {
 	svc := &beachSvc{
@@ -89,7 +92,7 @@ func (svc *beachSvc) GetByID(ctx context.Context, beachID string) (*Beach, error
 	svc.queue <- func() {
 		body, ok := svc.beachByID[beachID]
 		if !ok {
-			err <- fmt.Errorf("no such beach")
+			err <- ErrNoSuchBeach
 		} else {
 			result <- body
 		}
