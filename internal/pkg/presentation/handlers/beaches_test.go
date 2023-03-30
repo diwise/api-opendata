@@ -23,8 +23,8 @@ func mockBeachSvc(is *is.I) *beaches.BeachServiceMock {
 
 			return beaches
 		},
-		GetByIDFunc: func(ctx context.Context, id string) (*beaches.BeachDetails, error) {
-			beach := &beaches.BeachDetails{}
+		GetByIDFunc: func(ctx context.Context, id string) (*beaches.Beach, error) {
+			beach := &beaches.Beach{}
 
 			err := json.Unmarshal([]byte(beachByIdJson), beach)
 			is.NoErr(err)
@@ -32,6 +32,20 @@ func mockBeachSvc(is *is.I) *beaches.BeachServiceMock {
 			return beach, nil
 		},
 	}
+}
+
+func TestGetBeachesAsGeoJSON(t *testing.T) {
+	is, r, ts := setupTest(t)
+
+	svc := mockBeachSvc(is)
+
+	r.Get("/beaches", NewRetrieveBeachesHandler(zerolog.Logger{}, svc))
+	resp, body := newGetRequest(is, ts, "application/geo+json", "/beaches?fields=waterquality,seealso", nil)
+
+	expectation := `"geometry":{"type":"MultiPolygon","coordinates":[[[[17.47263962458644,62.435152221329254],`
+
+	is.Equal(resp.StatusCode, http.StatusOK)
+	is.True(strings.Contains(body, expectation))
 }
 
 func TestGetBeachesByID(t *testing.T) {
@@ -64,12 +78,61 @@ const beachesJson string = `[
 		"id": "urn:ngsi-ld:Beach:se:sundsvall:anlaggning:283",
 		"location": {
 			"coordinates": [
-				17.47263962458644,
-				62.435152221329254
+				[
+					[
+					[
+						17.47263962458644,
+						62.435152221329254
+					],
+					[
+						17.473786216873332,
+						62.43536925656754
+					],
+					[
+						17.474885857246488,
+						62.43543825037522
+					],
+					[
+						17.475474288895757,
+						62.43457483986073
+					],
+					[
+						17.474334094644085,
+						62.43422493307671
+					],
+					[
+						17.47407369318257,
+						62.434225532314045
+					],
+					[
+						17.473565135911233,
+						62.43447998588642
+					],
+					[
+						17.472995143072257,
+						62.434936697524215
+					],
+					[
+						17.47263962458644,
+						62.435152221329254
+					]
+					]
+				]
 			],
 			"type": "MultiPolygon"
 		},
 		"name": "Slädaviken",
+		"waterquality": [
+			{
+				"temperature": 21.8,
+				"dateObserved": "2023-03-17T08:23:09Z"
+			},
+			{
+				"temperature": 22.9,
+				"dateObserved": "2023-03-20T08:23:09Z",
+				"source": "acoolweatherinstituteorsomething"
+			}
+		],
 		"seeAlso": [
 			"https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/SE0712281000003473",
 			"https://www.wikidata.org/wiki/Q10671745"
@@ -80,12 +143,50 @@ const beachByIdJson string = `
 	{
 		"description": "Slädavikens havsbad är en badstrand belägen på den östra sidan av Alnön, öppen maj-augusti. Sandstranden är långgrund och badet passar därför barnfamiljer. Det finns grillplats, omklädningshytt, WC och parkering för cirka 20 bilar. Vattenprover tas.",
 	  	"id": "urn:ngsi-ld:Beach:se:sundsvall:anlaggning:283",
-	  	"location": {
+		  "location": {
 			"coordinates": [
-				17.47263962458644,
-				62.435152221329254
+				[
+					[
+					[
+						17.47263962458644,
+						62.435152221329254
+					],
+					[
+						17.473786216873332,
+						62.43536925656754
+					],
+					[
+						17.474885857246488,
+						62.43543825037522
+					],
+					[
+						17.475474288895757,
+						62.43457483986073
+					],
+					[
+						17.474334094644085,
+						62.43422493307671
+					],
+					[
+						17.47407369318257,
+						62.434225532314045
+					],
+					[
+						17.473565135911233,
+						62.43447998588642
+					],
+					[
+						17.472995143072257,
+						62.434936697524215
+					],
+					[
+						17.47263962458644,
+						62.435152221329254
+					]
+					]
+				]
 			],
-			"type": "Point"
+			"type": "MultiPolygon"
 		},
 		"waterquality": [
 			{
