@@ -24,7 +24,7 @@ var _ BeachService = &BeachServiceMock{}
 // 			GetAllFunc: func(ctx context.Context) []Beach {
 // 				panic("mock out the GetAll method")
 // 			},
-// 			GetByIDFunc: func(ctx context.Context, id string) (*BeachDetails, error) {
+// 			GetByIDFunc: func(ctx context.Context, id string) (*Beach, error) {
 // 				panic("mock out the GetByID method")
 // 			},
 // 			RefreshFunc: func(contextMoqParam context.Context) (int, error) {
@@ -53,7 +53,7 @@ type BeachServiceMock struct {
 	GetAllFunc func(ctx context.Context) []Beach
 
 	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(ctx context.Context, id string) (*BeachDetails, error)
+	GetByIDFunc func(ctx context.Context, id string) (*Beach, error)
 
 	// RefreshFunc mocks the Refresh method.
 	RefreshFunc func(contextMoqParam context.Context) (int, error)
@@ -170,7 +170,7 @@ func (mock *BeachServiceMock) GetAllCalls() []struct {
 }
 
 // GetByID calls GetByIDFunc.
-func (mock *BeachServiceMock) GetByID(ctx context.Context, id string) (*BeachDetails, error) {
+func (mock *BeachServiceMock) GetByID(ctx context.Context, id string) (*Beach, error) {
 	if mock.GetByIDFunc == nil {
 		panic("BeachServiceMock.GetByIDFunc: method is nil but BeachService.GetByID was just called")
 	}
