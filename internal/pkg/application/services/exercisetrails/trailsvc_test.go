@@ -20,6 +20,7 @@ var anyInput = expects.AnyInput
 
 func TestSomething(t *testing.T) {
 	is := is.New(t)
+	ctx := context.Background()
 
 	ms := testutils.NewMockServiceThat(
 		Expects(is, anyInput()),
@@ -27,11 +28,11 @@ func TestSomething(t *testing.T) {
 	)
 	defer ms.Close()
 
-	svci := NewExerciseTrailService(context.Background(), zerolog.Logger{}, ms.URL(), "ignored", nil)
+	svci := NewExerciseTrailService(ctx, ms.URL(), "ignored", nil)
 	svc, ok := svci.(*exerciseTrailSvc)
 	is.True(ok)
 
-	count, err := svc.refresh()
+	count, err := svc.refresh(ctx, zerolog.Logger{})
 	is.NoErr(err)
 	is.Equal(count, 2)
 
@@ -52,11 +53,11 @@ func TestGetByCategory(t *testing.T) {
 	)
 	defer ms.Close()
 
-	svci := NewExerciseTrailService(context.Background(), zerolog.Logger{}, ms.URL(), "ignored", nil)
+	svci := NewExerciseTrailService(context.Background(), ms.URL(), "ignored", nil)
 	svc, ok := svci.(*exerciseTrailSvc)
 	is.True(ok)
 
-	count, err := svc.refresh()
+	count, err := svc.refresh(context.Background(), zerolog.Logger{})
 	is.NoErr(err)
 	is.Equal(count, 2)
 

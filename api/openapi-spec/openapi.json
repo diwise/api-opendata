@@ -45,6 +45,20 @@
       "get": {
         "operationId": "getBeaches",
         "description": "Get information about public beaches.",
+        "parameters": [{
+          "in": "query",
+          "name": "fields",
+          "explode": false,
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["description", "waterquality", "seealso", "source"]
+            }
+          },
+          "required": false,
+          "description": "Filter the returned properties per entry"
+        }],
         "responses": {
           "200": {
             "description": "OK",
@@ -103,6 +117,120 @@
                               "dateObserved": {
                                 "type": "string",
                                 "format": "date-time"
+                              }
+                            }
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "The description of this beach",
+                            "example": "Slädavikens havsbad är en badstrand belägen på den östra sidan av Alnön, öppen maj-augusti."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "application/geo+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["FeatureCollection"]
+                    },
+                    "features": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "urn:ngsi-ld:Beach:se:sundsvall:facilities:553"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": ["Feature"]
+                          },
+                          "geometry": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["MultiPolygon"]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "items": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "array",
+                                    "minItems": 3,
+                                    "items": {
+                                      "type": "array",
+                                      "minItems": 2,
+                                      "maxItems": 3,
+                                      "items": {
+                                        "type": "number",
+                                        "description": "WGS84 longitude and latitude"
+                                      }
+                                    }
+                                  }
+                                },
+                                "example": [[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]
+                              }
+                            }
+                          },
+                          "properties": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["Beach"]
+                              },
+                              "name": {
+                                "type": "string",
+                                "example": "Skolans grusplan och isbana"
+                              },
+                              "source": {
+                                "type": "string",
+                                "description": "The source of the data for this beach",
+                                "example": "https://api.sundsvall.se/facilities/2.1/get/123"
+                              },
+                              "waterquality": {
+                                "type": "object",
+                                "description": "The most recent water quality value",
+                                "properties": {
+                                  "temperature": {
+                                    "type": "number",
+                                    "example": 11.7
+                                  },
+                                  "source": {
+                                    "type": "string",
+                                    "format": "uri",
+                                    "example": "https://badplatsen.havochvatten.se/"
+                                  },
+                                  "dateObserved": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  }
+                                }
+                              },
+                              "seeAlso": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "format": "uri"
+                                },
+                                "example": [
+                                  "https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/SE0712281000003475",
+                                  "https://www.wikidata.org/wiki/Q16498519"
+                                ]
+                              },
+                              "description": {
+                                "type": "string",
+                                "description": "The description of this beach",
+                                "example": "Slädavikens havsbad är en badstrand belägen på den östra sidan av Alnön, öppen maj-augusti."
                               }
                             }
                           }
@@ -1854,17 +1982,6 @@
         }
       }
     },
-    "/temperature/water": {
-      "get": {
-        "operationId": "getWaterTemperatures",
-        "description": "Get water temperature information.",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/trafficflow": {
       "get": {
         "operationId": "getTrafficFlow",
@@ -1872,6 +1989,189 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/waterqualities": {
+      "get": {
+        "operationId": "getWaterQuality",
+        "description": "Get information about water quality.",
+        "parameters": [{
+          "in": "query",
+          "name": "maxDistance",
+          "explode": false,
+          "schema": {
+            "type": "string"
+          },
+          "required": false,
+          "description": "Filter the returned properties per entry"
+        },
+        { 
+          "in": "query",
+          "name": "coordinates",
+          "explode": false,
+          "schema": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "required": false,
+          "description": "Filter the returned properties per entry"
+        }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "The ID of this water quality",
+                            "example": "urn:ngsi-ld:WaterQuality:temperature:se:test"
+                          },
+                          "location": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["Point"]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "description": "WGS84 longitude and latitude",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number"
+                                },
+                                "example": [17.454723, 62.266598]
+                              }
+                            }
+                          },
+                          "temperature": {
+                            "type": "number",
+                            "example": 11.7
+                          },
+                          "source": {
+                            "type": "string",
+                            "format": "uri",
+                            "example": "https://badplatsen.havochvatten.se/"
+                          },
+                          "dateObserved": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/waterqualities/{id}": {
+      "get": {
+        "operationId": "getWaterQualityByID",
+        "description": "Get information about water quality readings",
+        "parameters": [{
+          "name": "timeAt",
+          "in": "query",
+          "description": "Select water qualities from time",
+          "example": "2021-06-01T00:00:00Z",
+          "schema": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        {
+          "name": "endTimeAt",
+          "in": "query",
+          "description": "Select water qualities up to time",
+          "example": "2021-07-01T00:00:00Z",
+          "schema": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "The ID of this water quality",
+                            "example": "urn:ngsi-ld:WaterQuality:temperature:se:test"
+                          },
+                          "location": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": ["Point"]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "description": "WGS84 longitude and latitude",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number"
+                                },
+                                "example": [17.454723, 62.266598]
+                              }
+                            }
+                          },
+                          "temperature": {
+                            "type": "array",
+                            "description": "list of historical readings of temperatures",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": "number",
+                                  "format": "float",
+                                  "example": 11.7
+                                },
+                                "observedAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              }
+                            }
+                          },
+                          "source": {
+                            "type": "string",
+                            "format": "uri",
+                            "example": "https://badplatsen.havochvatten.se/"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

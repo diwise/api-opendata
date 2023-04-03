@@ -15,24 +15,24 @@ import (
 func TestThatRefreshReturnsErrorOnNoValidHostNotFound(t *testing.T) {
 	is, log, _ := testSetup(t, http.StatusOK, "")
 
-	raSvc := NewRoadAccidentService(context.Background(), log, "http://lolcat:1234", "default")
+	raSvc := NewRoadAccidentService(context.Background(), "http://lolcat:1234", "default")
 
 	svc, ok := raSvc.(*roadAccidentSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.True(err != nil) // should return err due to invalid host
 }
 
 func TestThatRefreshFailsOnEmptyResponseBody(t *testing.T) {
 	is, log, server := testSetup(t, http.StatusOK, "")
 
-	raSvc := NewRoadAccidentService(context.Background(), log, server.URL(), "default")
+	raSvc := NewRoadAccidentService(context.Background(), server.URL(), "default")
 
 	svc, ok := raSvc.(*roadAccidentSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.True(err != nil)
 	is.Equal("failed to retrieve road accidents from context broker: failed to unmarshal response: unexpected end of JSON input", err.Error()) // should fail to unmarshal due to empty response
 }
@@ -40,12 +40,12 @@ func TestThatRefreshFailsOnEmptyResponseBody(t *testing.T) {
 func TestThatRefreshFailsOnStatusCode400(t *testing.T) {
 	is, log, server := testSetup(t, http.StatusBadRequest, "")
 
-	raSvc := NewRoadAccidentService(context.Background(), log, server.URL(), "default")
+	raSvc := NewRoadAccidentService(context.Background(), server.URL(), "default")
 
 	svc, ok := raSvc.(*roadAccidentSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.True(err != nil)
 	is.Equal("failed to retrieve road accidents from context broker: request failed", err.Error()) // should fail on failed get request to context broker
 }
@@ -53,12 +53,12 @@ func TestThatRefreshFailsOnStatusCode400(t *testing.T) {
 func TestThatItWorks(t *testing.T) {
 	is, log, server := testSetup(t, http.StatusOK, testData)
 
-	raSvc := NewRoadAccidentService(context.Background(), log, server.URL(), "default")
+	raSvc := NewRoadAccidentService(context.Background(), server.URL(), "default")
 
 	svc, ok := raSvc.(*roadAccidentSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.NoErr(err)
 	is.Equal(len(svc.roadAccidentDetails), 2) // should be equal to 2
 }
