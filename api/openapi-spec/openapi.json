@@ -2155,8 +2155,7 @@
                                 },
                                 "observedAt": {
                                   "type": "string",
-                                  "description": "time of observation",
-                                  "example": "2022-10-02T03:27:18Z"
+                                  "format": "date-time"
                                 }
                               }
                             }
