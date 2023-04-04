@@ -127,14 +127,6 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 	stratsysDefaultUrl := os.Getenv("STRATSYS_DEFAULT_URL")
 
 	r.Get(
-		"/api/waterqualities",
-		handlers.NewRetrieveWaterQualityHandler(logger, waterqualitySvc),
-	)
-	r.Get(
-		"/api/waterqualities/{id}",
-		handlers.NewRetrieveWaterQualityByIDHandler(logger, waterqualitySvc),
-	)
-	r.Get(
 		"/api/beaches",
 		handlers.NewRetrieveBeachesHandler(logger, beachService),
 	)
@@ -143,32 +135,20 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 		handlers.NewRetrieveBeachByIDHandler(logger, beachService),
 	)
 	r.Get(
-		"/api/exercisetrails",
-		handlers.NewRetrieveExerciseTrailsHandler(logger, trailService),
-	)
-	r.Get(
-		"/api/exercisetrails/{id}",
-		handlers.NewRetrieveExerciseTrailByIDHandler(logger, trailService),
-	)
-	r.Get(
-		"/api/temperature/air",
-		handlers.NewRetrieveTemperaturesHandler(logger, temperature.NewTempService(contextBrokerURL)),
-	)
-	r.Get(
-		"/api/temperature/air/sensors",
-		handlers.NewRetrieveTemperatureSensorsHandler(logger, contextBrokerURL),
-	)
-	r.Get(
-		"/api/trafficflow",
-		handlers.NewRetrieveTrafficFlowsHandler(logger, contextBrokerURL),
-	)
-	r.Get(
 		"/api/cityworks",
 		handlers.NewRetrieveCityworksHandler(logger, cityworkService),
 	)
 	r.Get(
 		"/api/cityworks/{id}",
 		handlers.NewRetrieveCityworksByIDHandler(logger, cityworkService),
+	)
+	r.Get(
+		"/api/exercisetrails",
+		handlers.NewRetrieveExerciseTrailsHandler(logger, trailService),
+	)
+	r.Get(
+		"/api/exercisetrails/{id}",
+		handlers.NewRetrieveExerciseTrailByIDHandler(logger, trailService),
 	)
 	r.Get(
 		"/api/roadaccidents",
@@ -205,6 +185,27 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 			stratsys.NewRetrieveStratsysReportsHandler(logger, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
 		)
 	}
+
+	r.Get(
+		"/api/temperature/air",
+		handlers.NewRetrieveTemperaturesHandler(logger, temperature.NewTempService(contextBrokerURL)),
+	)
+	r.Get(
+		"/api/temperature/air/sensors",
+		handlers.NewRetrieveTemperatureSensorsHandler(logger, contextBrokerURL),
+	)
+	r.Get(
+		"/api/trafficflow",
+		handlers.NewRetrieveTrafficFlowsHandler(logger, contextBrokerURL),
+	)
+	r.Get(
+		"/api/waterqualities",
+		handlers.NewRetrieveWaterQualityHandler(logger, waterqualitySvc),
+	)
+	r.Get(
+		"/api/waterqualities/{id}",
+		handlers.NewRetrieveWaterQualityByIDHandler(logger, waterqualitySvc),
+	)
 }
 
 func (o *opendataAPI) addProbeHandlers(r chi.Router) {

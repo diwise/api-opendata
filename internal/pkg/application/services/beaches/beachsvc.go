@@ -253,7 +253,7 @@ func (svc *beachSvc) refresh(ctx context.Context, log zerolog.Logger) (count int
 
 	svc.beaches = beaches
 
-	return
+	return len(svc.beaches), nil
 }
 
 type beachDTO struct {
