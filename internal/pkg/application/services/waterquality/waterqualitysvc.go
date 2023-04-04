@@ -9,6 +9,8 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -181,6 +183,12 @@ func (svc *wqsvc) GetByID(ctx context.Context, id string, from, to time.Time) (*
 			failure <- fmt.Errorf("failed to unmarshal temporal water quality with id %s", id)
 			return
 		}
+
+		temps := wqo.Temperature
+
+		sort.Slice(temps, func(i, j int) bool {
+			return strings.Compare(temps[i].ObservedAt, temps[j].ObservedAt) > 0
+		})
 
 		result <- &wqo
 	}

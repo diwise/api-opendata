@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -111,6 +112,39 @@ func TestGetByID(t *testing.T) {
 	is.Equal(string(wqoJson), expectation)
 }
 
+func TestGetByIDSortsTemporalData(t *testing.T) {
+	is, ms := testSetup(t, http.StatusOK, waterQualityJSON)
+	ctx := context.Background()
+	defer ms.Close()
+
+	wq := NewWaterQualityService(ctx, ms.URL(), "default")
+	wq.Start(ctx)
+	defer wq.Shutdown(ctx)
+
+	_, err := wq.Refresh(ctx)
+	is.NoErr(err)
+
+	ms2 := testutils.NewMockServiceThat(
+		Expects(is, anyInput()),
+		Returns(
+			response.Code(http.StatusOK),
+			response.ContentType("application/ld+json"),
+			response.Body([]byte(multipleTemporalJSON)),
+		),
+	)
+	defer ms2.Close()
+
+	svc := wq.(*wqsvc)
+	svc.contextBrokerURL = ms2.URL() // doing this to ensure the request in svcMock.GetByID reaches the correct response body
+
+	wqo, err := wq.GetByID(ctx, "urn:ngsi-ld:WaterQualityObserved:testID", time.Time{}, time.Time{})
+	is.NoErr(err)
+
+	wqoJson, _ := json.Marshal(wqo)
+	expectation := `"temperature":[{"value":10.8,"observedAt":"2021-05-22T15:23:09Z"},{"value":10.8,"observedAt":"2021-05-21T14:23:09Z"},{"value":10.8,"observedAt":"2021-05-20T13:23:09Z"},{"value":10.8,"observedAt":"2021-05-18T12:23:09Z"}]`
+	is.True(strings.Contains(string(wqoJson), expectation))
+}
+
 func TestGetByIDWithTimespan(t *testing.T) {
 	is, ms := testSetup(t, http.StatusOK, waterQualityJSON)
 	ctx := context.Background()
@@ -184,6 +218,42 @@ const singleTemporalJSON string = `{
 	  "type": "Property",
 	  "value": 10.8,
 	  "observedAt": "2021-05-18T19:23:09Z"
+	}],
+	"type": "WaterQualityObserved"
+  }`
+
+const multipleTemporalJSON string = `{
+	"@context": [
+	  "https://schema.lab.fiware.org/ld/context",
+	  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
+	],
+	"dateObserved": {
+	  "type": "Property",
+	  "value": {
+		"@type": "DateTime",
+		"@value": "2021-05-18T19:23:09Z"
+	  }
+	},
+	"id": "urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z",
+	"temperature": [{
+		"type": "Property",
+		"value": 10.8,
+		"observedAt": "2021-05-22T15:23:09Z"
+	},
+	{
+		"type": "Property",
+		"value": 10.8,
+		"observedAt": "2021-05-20T13:23:09Z"
+	},
+	{
+		"type": "Property",
+		"value": 10.8,
+		"observedAt": "2021-05-18T12:23:09Z"
+	},
+	{
+		"type": "Property",
+		"value": 10.8,
+		"observedAt": "2021-05-21T14:23:09Z"
 	}],
 	"type": "WaterQualityObserved"
   }`
