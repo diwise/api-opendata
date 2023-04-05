@@ -21,7 +21,7 @@ func TestGetBeachesAsGeoJSON(t *testing.T) {
 
 	is.Equal(resp.StatusCode, http.StatusOK)
 
-	expectation := `{"type":"FeatureCollection", "features": [{"type":"Feature","id":"urn:ngsi-ld:Beach:se:sundsvall:anlaggning:283","geometry":{"type":"MultiPolygon","coordinates":[[[[17.47263962458644,62.435152221329254],[17.473786216873332,62.43536925656754],[17.474885857246488,62.43543825037522],[17.475474288895757,62.43457483986073],[17.474334094644085,62.43422493307671],[17.47407369318257,62.434225532314045],[17.473565135911233,62.43447998588642],[17.472995143072257,62.434936697524215],[17.47263962458644,62.435152221329254]]]]},"properties":{"location":{"coordinates":[[[[17.47263962458644,62.435152221329254],[17.473786216873332,62.43536925656754],[17.474885857246488,62.43543825037522],[17.475474288895757,62.43457483986073],[17.474334094644085,62.43422493307671],[17.47407369318257,62.434225532314045],[17.473565135911233,62.43447998588642],[17.472995143072257,62.434936697524215],[17.47263962458644,62.435152221329254]]]],"type":"MultiPolygon"},"name":"Slädaviken","seeAlso":["https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/SE0712281000003473","https://www.wikidata.org/wiki/Q10671745"],"type":"Beach","waterQuality":{"dateObserved":"2023-03-20T08:23:09Z","source":"acoolweatherinstituteorsomething","temperature":22.9}}}]}`
+	expectation := `{"type":"FeatureCollection", "features": [{"type":"Feature","id":"urn:ngsi-ld:Beach:se:sundsvall:anlaggning:283","geometry":{"type":"MultiPolygon","coordinates":[[[[17.47263962458644,62.435152221329254],[17.473786216873332,62.43536925656754],[17.474885857246488,62.43543825037522],[17.475474288895757,62.43457483986073],[17.474334094644085,62.43422493307671],[17.47407369318257,62.434225532314045],[17.473565135911233,62.43447998588642],[17.472995143072257,62.434936697524215],[17.47263962458644,62.435152221329254]]]]},"properties":{"location":{"coordinates":[[[[17.47263962458644,62.435152221329254],[17.473786216873332,62.43536925656754],[17.474885857246488,62.43543825037522],[17.475474288895757,62.43457483986073],[17.474334094644085,62.43422493307671],[17.47407369318257,62.434225532314045],[17.473565135911233,62.43447998588642],[17.472995143072257,62.434936697524215],[17.47263962458644,62.435152221329254]]]],"type":"MultiPolygon"},"name":"Slädaviken","seeAlso":["https://badplatsen.havochvatten.se/badplatsen/karta/#/bath/SE0712281000003473","https://www.wikidata.org/wiki/Q10671745"],"type":"Beach","waterQuality":{"dateObserved":"2023-03-17T08:23:09Z","temperature":21.8}}}]}`
 	is.Equal(body, expectation)
 }
 
@@ -48,7 +48,7 @@ func TestGetBeaches(t *testing.T) {
 
 	is.Equal(resp.StatusCode, http.StatusOK) // Request failed, status code not OK
 
-	const expectation string = `{"data":[{"id":"urn:ngsi-ld:Beach:se:sundsvall:anlaggning:283","location":{"type":"Point","coordinates":[17.47263962458644,62.435152221329254]},"name":"Slädaviken","waterQuality":{"temperature":22.9,"dateObserved":"2023-03-20T08:23:09Z","source":"acoolweatherinstituteorsomething"}}]}`
+	const expectation string = `{"data":[{"id":"urn:ngsi-ld:Beach:se:sundsvall:anlaggning:283","location":{"type":"Point","coordinates":[17.47263962458644,62.435152221329254]},"name":"Slädaviken","waterQuality":{"temperature":21.8,"dateObserved":"2023-03-17T08:23:09Z"}}]}`
 	is.Equal(body, expectation)
 }
 
