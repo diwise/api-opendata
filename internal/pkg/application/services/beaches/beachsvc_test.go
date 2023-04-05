@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
@@ -16,7 +17,7 @@ import (
 
 func mockWaterService(is *is.I) *waterquality.WaterQualityServiceMock {
 	return &waterquality.WaterQualityServiceMock{
-		GetAllNearPointFunc: func(ctx context.Context, pt waterquality.Point, distance int) ([]domain.WaterQuality, error) {
+		GetAllNearPointWithinTimespanFunc: func(ctx context.Context, pt waterquality.Point, distance int, from, to time.Time) ([]domain.WaterQuality, error) {
 			dto := []waterquality.WaterQualityDTO{}
 			err := json.Unmarshal([]byte(waterqualityJson), &dto)
 			is.NoErr(err)
@@ -67,7 +68,7 @@ func TestBeachServiceRetrievesWaterQuality(t *testing.T) {
 	_, err := bs.Refresh(ctx)
 	is.NoErr(err)
 
-	is.Equal(len(wq.GetAllNearPointCalls()), 2)
+	is.Equal(len(wq.GetAllNearPointWithinTimespanCalls()), 2)
 }
 
 func TestBeachServiceGetsByIDContainsWaterQuality(t *testing.T) {
