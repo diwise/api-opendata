@@ -213,9 +213,12 @@ func (svc *beachSvc) refresh(ctx context.Context, log zerolog.Logger) (count int
 			beach.SeeAlso = &seeAlso
 		}
 
+		from := time.Now().UTC().Add(-24 * time.Hour)
+		to := time.Now().UTC()
+
 		latitude, longitude := b.LatLon()
 		pt := waterquality.NewPoint(latitude, longitude)
-		wqots, err_ := svc.wqsvc.GetAllNearPoint(ctx, pt, svc.beachMaxWQODistance)
+		wqots, err_ := svc.wqsvc.GetAllNearPointWithinTimespan(ctx, pt, svc.beachMaxWQODistance, from, to)
 		if err_ != nil {
 			logger.Error().Err(err_).Msgf("failed to get water qualities near %s (%s)", b.Name, b.ID)
 		} else {

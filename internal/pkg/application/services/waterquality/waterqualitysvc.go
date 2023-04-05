@@ -37,7 +37,7 @@ type WaterQualityService interface {
 	Broker() string
 
 	GetAll(ctx context.Context) []domain.WaterQuality
-	GetAllNearPoint(ctx context.Context, pt Point, distance int) ([]domain.WaterQuality, error)
+	GetAllNearPointWithinTimespan(ctx context.Context, pt Point, distance int, from, to time.Time) ([]domain.WaterQuality, error)
 	GetByID(ctx context.Context, id string, from, to time.Time) (*domain.WaterQualityTemporal, error)
 }
 
@@ -131,9 +131,14 @@ func (svc *wqsvc) GetAll(ctx context.Context) []domain.WaterQuality {
 	return <-result
 }
 
-func (svc *wqsvc) GetAllNearPoint(ctx context.Context, pt Point, maxDistance int) ([]domain.WaterQuality, error) {
-
+func (svc *wqsvc) GetAllNearPointWithinTimespan(ctx context.Context, pt Point, maxDistance int, from, to time.Time) ([]domain.WaterQuality, error) {
 	result := make(chan []domain.WaterQuality)
+	failure := make(chan error)
+
+	if from.IsZero() && to.IsZero() {
+		from = time.Now().UTC().Add(-24 * time.Hour)
+		to = time.Now().UTC()
+	}
 
 	svc.queue <- func() {
 		waterQualitiesWithinDistance := make([]domain.WaterQuality, 0, len(svc.waterQualities))
@@ -142,9 +147,16 @@ func (svc *wqsvc) GetAllNearPoint(ctx context.Context, pt Point, maxDistance int
 			wqPoint := NewPoint(storedWQ.Location.Coordinates[1], storedWQ.Location.Coordinates[0])
 			distanceBetweenPoints := distance(wqPoint, pt)
 
-			if distanceBetweenPoints < maxDistance {
+			storedDate, err := time.Parse(time.RFC3339, storedWQ.DateObserved)
+			if err != nil {
+				failure <- fmt.Errorf("failed to parse time from stored water quality observed: %s", err.Error())
+				return
+			}
+
+			if distanceBetweenPoints < maxDistance && !storedDate.Before(from) && !storedDate.After(to) {
 				waterQualitiesWithinDistance = append(waterQualitiesWithinDistance, storedWQ)
 			}
+
 		}
 
 		result <- waterQualitiesWithinDistance
@@ -292,7 +304,6 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 	waterqualities := []domain.WaterQuality{}
 
 	_, err = contextbroker.QueryEntities(ctx, svc.Broker(), svc.Tenant(), "WaterQualityObserved", nil, func(w WaterQualityDTO) {
-
 		waterquality := domain.WaterQuality{
 			ID:           w.ID,
 			Temperature:  w.Temperature,

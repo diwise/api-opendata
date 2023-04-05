@@ -65,7 +65,7 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 		var wqos []domain.WaterQuality
 
 		if distance != 0 {
-			wqos, err = svc.GetAllNearPoint(ctx, waterquality.NewPoint(latitude, longitude), int(distance))
+			wqos, err = svc.GetAllNearPointWithinTimespan(ctx, waterquality.NewPoint(latitude, longitude), int(distance), time.Time{}, time.Time{})
 		} else {
 			wqos = svc.GetAll(ctx)
 		}

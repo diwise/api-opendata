@@ -47,7 +47,7 @@ func TestGetAll(t *testing.T) {
 	is.Equal(string(wqoJson), expectation)
 }
 
-func TestGetAllNearPoint(t *testing.T) {
+func TestGetAllNearPointWithinTimespan(t *testing.T) {
 	is, ms := testSetup(t, http.StatusOK, waterQualityJSON)
 	ctx := context.Background()
 
@@ -55,8 +55,11 @@ func TestGetAllNearPoint(t *testing.T) {
 	wq.Start(ctx)
 	defer wq.Shutdown(ctx)
 
+	from, _ := time.Parse(time.RFC3339, "2021-05-17T19:23:09Z")
+	to, _ := time.Parse(time.RFC3339, "2021-05-20T19:23:09Z")
+
 	pt := NewPoint(62.43515222, 17.47263962)
-	wqos, err := wq.GetAllNearPoint(ctx, pt, 500)
+	wqos, err := wq.GetAllNearPointWithinTimespan(ctx, pt, 500, from, to)
 	is.NoErr(err)
 	is.Equal(len(wqos), 1)
 
@@ -72,8 +75,11 @@ func TestGetAllNearPointReturnsEmptyListIfNoPointsAreWithinRange(t *testing.T) {
 	wq := NewWaterQualityService(ctx, ms.URL(), "default")
 	wq.Start(ctx)
 
+	from := time.Now().UTC().Add(-24 * time.Hour)
+	to := time.Now().UTC()
+
 	pt := NewPoint(0.0, 0.0)
-	wqos, err := wq.GetAllNearPoint(ctx, pt, 500)
+	wqos, err := wq.GetAllNearPointWithinTimespan(ctx, pt, 500, from, to)
 
 	is.NoErr(err)
 	is.Equal(len(wqos), 0)
