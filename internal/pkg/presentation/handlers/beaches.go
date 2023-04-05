@@ -51,7 +51,7 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, beachService beaches.Bea
 
 		beachJSON, err := json.Marshal(beach)
 
-		body := []byte("{\n  \"data\": " + string(beachJSON) + "\n}")
+		body := []byte("{\"data\":" + string(beachJSON) + "}")
 
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=600")
@@ -62,6 +62,7 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, beachService beaches.Bea
 func NewRetrieveBeachesHandler(logger zerolog.Logger, beachService beaches.BeachService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
+
 		_, span := tracer.Start(r.Context(), "retrieve-beaches")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
@@ -112,9 +113,9 @@ func NewRetrieveBeachesHandler(logger zerolog.Logger, beachService beaches.Beach
 				return
 			}
 
-			body := "{\n  \"data\": " + string(beachGeoJSON) + "\n}"
+			body := "{\"type\":\"FeatureCollection\", \"features\": " + string(beachGeoJSON) + "}"
 
-			w.Header().Add("Content-Type", "application/json")
+			w.Header().Add("Content-Type", acceptedContentType)
 			w.Header().Add("Cache-Control", "max-age=3600")
 			w.Write([]byte(body))
 
@@ -134,7 +135,7 @@ func NewRetrieveBeachesHandler(logger zerolog.Logger, beachService beaches.Beach
 				return
 			}
 
-			body := "{\n  \"data\": " + string(beachJSON) + "\n}"
+			body := "{\"data\":" + string(beachJSON) + "}"
 
 			w.Header().Add("Content-Type", "application/json")
 			w.Header().Add("Cache-Control", "max-age=3600")
