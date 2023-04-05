@@ -35,7 +35,7 @@ func NewRetrieveRoadAccidentByIDHandler(logger zerolog.Logger, roadAccidentSvc r
 			return
 		}
 
-		body = []byte("{\n  \"data\": " + string(body) + "\n}")
+		body = []byte("{\"data\": " + string(body) + "}")
 
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=600")
@@ -51,7 +51,7 @@ func NewRetrieveRoadAccidentsHandler(logger zerolog.Logger, roadAccidentSvc road
 
 		body := roadAccidentSvc.GetAll()
 
-		roadAccidentJSON := "{\n  \"data\": " + string(body) + "\n}"
+		roadAccidentJSON := "{\"data\": " + string(body) + "}"
 
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=3600")
