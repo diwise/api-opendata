@@ -83,16 +83,8 @@ func NewRetrieveBeachesHandler(logger zerolog.Logger, beachService beaches.Beach
 		}
 
 		waterqualityMapper := func(b *beaches.Beach) any {
-			mostRecentWQ := &beaches.WaterQuality{}
-
-			if b.WaterQuality != nil {
-				for _, wq := range *b.WaterQuality {
-					if wq.Age() < mostRecentWQ.Age() {
-						mostRecentWQ = &wq
-					}
-				}
-
-				return mostRecentWQ
+			if b.WaterQuality != nil && len(*b.WaterQuality) > 0 {
+				return &(*b.WaterQuality)[0]
 			}
 
 			return nil
@@ -212,10 +204,6 @@ func newBeachMapper(fields []string, location, wq func(*beaches.Beach) any) Beac
 			if len(value) == 0 {
 				return nil
 			}
-		case *[]beaches.WaterQuality:
-			if len(*value) == 0 {
-				return nil
-			}
 		}
 
 		return v
@@ -227,7 +215,7 @@ func newBeachMapper(fields []string, location, wq func(*beaches.Beach) any) Beac
 		"name":         func(b *beaches.Beach) (string, any) { return "name", b.Name },
 		"description":  func(b *beaches.Beach) (string, any) { return "description", b.Description },
 		"location":     func(b *beaches.Beach) (string, any) { return "location", location(b) },
-		"waterquality": func(b *beaches.Beach) (string, any) { return "waterQuality", omitempty(wq(b)) },
+		"waterquality": func(b *beaches.Beach) (string, any) { return "waterQuality", wq(b) },
 		"seealso":      func(b *beaches.Beach) (string, any) { return "seeAlso", omitempty(b.SeeAlso) },
 	}
 
