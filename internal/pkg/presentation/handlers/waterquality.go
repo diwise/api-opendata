@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -29,6 +30,8 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 
 		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
+		fields := urlValueAsSlice(r.URL.Query(), "fields")
+
 		maxDistance := r.URL.Query().Get("maxDistance")
 		var distance int64
 		if maxDistance != "" {
@@ -49,6 +52,16 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 			latitude, _ = strconv.ParseFloat(coords[1], 64)
 		}
 
+		const geoJSONContentType string = "application/geo+json"
+
+		acceptedContentType := "application/json"
+		if len(r.Header["Accept"]) > 0 {
+			acceptHeader := r.Header["Accept"][0]
+			if acceptHeader != "" && strings.HasPrefix(acceptHeader, geoJSONContentType) {
+				acceptedContentType = geoJSONContentType
+			}
+		}
+
 		var wqos []domain.WaterQuality
 
 		if distance != 0 {
@@ -57,19 +70,42 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 			wqos = svc.GetAll(ctx)
 		}
 
-		wqosBytes, err := json.Marshal(wqos)
-		if err != nil {
-			log.Error().Err(err).Msg("failed to marshal water quality into json")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		if acceptedContentType == geoJSONContentType {
+			locationMapper := func(wqo *domain.WaterQuality) any { return wqo.Location }
+
+			fields := append([]string{"type", "location", "temperature", "dateobserved"}, fields...)
+			wqoGeoJSON, err := marshalWQOToJSON(
+				wqos,
+				newWQOGeoJSONMapper(
+					newWQOMapper(fields, locationMapper),
+				))
+			if err != nil {
+				log.Error().Err(err).Msgf("failed to marshal beach list to geo json: %s", err.Error())
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			body := "{\"type\":\"FeatureCollection\", \"features\": " + string(wqoGeoJSON) + "}"
+
+			w.Header().Add("Content-Type", acceptedContentType)
+			w.Header().Add("Cache-Control", "max-age=3600")
+			w.Write([]byte(body))
+
+		} else {
+
+			wqosBytes, err := json.Marshal(wqos)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to marshal water quality into json")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			waterQualityJSON := "{\"data\":" + string(wqosBytes) + "}"
+
+			w.Header().Add("Content-Type", "application/json")
+			w.Header().Add("Cache-Control", "max-age=3600")
+			w.Write([]byte(waterQualityJSON))
 		}
-
-		waterQualityJSON := "{\n  \"data\": " + string(wqosBytes) + "\n}"
-
-		w.Header().Add("Content-Type", "application/json")
-		w.Header().Add("Cache-Control", "max-age=3600")
-		w.Write([]byte(waterQualityJSON))
-
 	})
 }
 
@@ -133,11 +169,97 @@ func NewRetrieveWaterQualityByIDHandler(logger zerolog.Logger, svc waterquality.
 			return
 		}
 
-		waterQualityJSON := "{\n  \"data\": " + string(body) + "\n}"
+		waterQualityJSON := "{\"data\":" + string(body) + "}"
 
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=3600")
 		w.Write([]byte(waterQualityJSON))
 
 	})
+}
+
+type WaterQualityMapperFunc func(*domain.WaterQuality) ([]byte, error)
+
+func newWQOGeoJSONMapper(baseMapper WaterQualityMapperFunc) WaterQualityMapperFunc {
+
+	return func(sf *domain.WaterQuality) ([]byte, error) {
+		body, err := baseMapper(sf)
+		if err != nil {
+			return nil, err
+		}
+
+		var props any
+		json.Unmarshal(body, &props)
+
+		feature := struct {
+			Type       string `json:"type"`
+			ID         string `json:"id"`
+			Geometry   any    `json:"geometry"`
+			Properties any    `json:"properties"`
+		}{"Feature", sf.ID, sf.Location, props}
+
+		return json.Marshal(&feature)
+	}
+
+}
+
+func marshalWQOToJSON(wqos []domain.WaterQuality, mapper WaterQualityMapperFunc) ([]byte, error) {
+	wqoCount := len(wqos)
+
+	if wqoCount == 0 {
+		return []byte("[]"), nil
+	}
+
+	backingBuffer := make([]byte, 0, 1024*1024)
+	buffer := bytes.NewBuffer(backingBuffer)
+
+	wqoBytes, err := mapper(&wqos[0])
+	if err != nil {
+		return nil, err
+	}
+
+	buffer.Write([]byte("["))
+	buffer.Write(wqoBytes)
+
+	for index := 1; index < wqoCount; index++ {
+		wqoBytes, err := mapper(&wqos[index])
+		if err != nil {
+			return nil, err
+		}
+
+		buffer.Write([]byte(","))
+		buffer.Write(wqoBytes)
+	}
+
+	buffer.Write([]byte("]"))
+
+	return buffer.Bytes(), nil
+}
+
+func newWQOMapper(fields []string, location func(*domain.WaterQuality) any) WaterQualityMapperFunc {
+
+	mappers := map[string]func(*domain.WaterQuality) (string, any){
+		"id":           func(sf *domain.WaterQuality) (string, any) { return "id", sf.ID },
+		"type":         func(sf *domain.WaterQuality) (string, any) { return "type", "WaterQualityObserved" },
+		"location":     func(sf *domain.WaterQuality) (string, any) { return "location", location(sf) },
+		"source":       func(t *domain.WaterQuality) (string, any) { return "source", t.Source },
+		"temperature":  func(t *domain.WaterQuality) (string, any) { return "temperature", t.Temperature },
+		"dateobserved": func(t *domain.WaterQuality) (string, any) { return "dateObserved", t.DateObserved },
+	}
+
+	return func(t *domain.WaterQuality) ([]byte, error) {
+		result := map[string]any{}
+		for _, f := range fields {
+			mapper, ok := mappers[f]
+			if !ok {
+				return nil, fmt.Errorf("unknown field: %s", f)
+			}
+			key, value := mapper(t)
+			if propertyIsNotNil(value) {
+				result[key] = value
+			}
+		}
+
+		return json.Marshal(&result)
+	}
 }

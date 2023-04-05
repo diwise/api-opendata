@@ -15,20 +15,32 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func TestGetWaterQuality(t *testing.T) {
-	is := is.New(t)
+func TestGetWaterQualities(t *testing.T) {
+	is, router, testServer := testSetup(t)
 	wqSvc := mockWaterQualitySvc(is)
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/api/waterqualities", nil)
-	NewRetrieveWaterQualityHandler(zerolog.Logger{}, wqSvc).ServeHTTP(w, req)
+	router.Get("/api/waterqualities", NewRetrieveWaterQualityHandler(zerolog.Logger{}, wqSvc))
+	resp, responseBody := newGetRequest(is, testServer, "application/json", "/api/waterqualities", nil)
 
-	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
+	const expectation string = `{"data":[{"id":"urn:ngsi-ld:WaterQualityObserved:testID","temperature":10.8,"dateObserved":"2021-05-18T19:23:09Z","location":{"type":"Point","coordinates":[17.39364,62.297684]}}]}`
+	is.Equal(resp.StatusCode, http.StatusOK) // Request failed, status code not OK
+	is.Equal(responseBody, expectation)
+}
+
+func TestGetWaterQualitiesAsGeoJSON(t *testing.T) {
+	is, router, testServer := testSetup(t)
+	wqSvc := mockWaterQualitySvc(is)
+
+	router.Get("/waterqualities", NewRetrieveWaterQualityHandler(zerolog.Logger{}, wqSvc))
+	resp, responseBody := newGetRequest(is, testServer, "application/geo+json", "/waterqualities", nil)
+
+	const expectation string = `{"type":"FeatureCollection", "features": [{"type":"Feature","id":"urn:ngsi-ld:WaterQualityObserved:testID","geometry":{"type":"Point","coordinates":[17.39364,62.297684]},"properties":{"dateObserved":"2021-05-18T19:23:09Z","location":{"coordinates":[17.39364,62.297684],"type":"Point"},"temperature":10.8,"type":"WaterQualityObserved"}}]}`
+	is.Equal(resp.StatusCode, http.StatusOK) // Request failed, status code not OK
+	is.Equal(responseBody, expectation)
 }
 
 func TestGetWaterQualityByID(t *testing.T) {
 	is, router, testServer := testSetup(t)
-
 	wqSvc := mockWaterQualitySvc(is)
 
 	router.Get("/{id}", NewRetrieveWaterQualityByIDHandler(zerolog.Logger{}, wqSvc))
@@ -121,22 +133,16 @@ const waterqualityJson string = `{
 	  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
 	],
 	"dateObserved": {
-	  "type": "Property",
-	  "value": {
 		"@type": "DateTime",
 		"@value": "2021-05-18T19:23:09Z"
-	  }
 	},
 	"id": "urn:ngsi-ld:WaterQualityObserved:testID",
 	"location": {
-	  "type": "GeoProperty",
-	  "value": {
 		"coordinates": [
-		  17.39364,
-		  62.297684
+			17.39364,
+			62.297684
 		],
 		"type": "Point"
-	  }
 	},
 	"temperature": 10.8,
 	"type": "WaterQualityObserved"
