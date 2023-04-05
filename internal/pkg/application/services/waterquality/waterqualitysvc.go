@@ -135,11 +135,6 @@ func (svc *wqsvc) GetAllNearPointWithinTimespan(ctx context.Context, pt Point, m
 	result := make(chan []domain.WaterQuality)
 	failure := make(chan error)
 
-	if from.IsZero() && to.IsZero() {
-		from = time.Now().UTC().Add(-24 * time.Hour)
-		to = time.Now().UTC()
-	}
-
 	svc.queue <- func() {
 		waterQualitiesWithinDistance := make([]domain.WaterQuality, 0, len(svc.waterQualities))
 
