@@ -6,12 +6,11 @@ require (
 	github.com/diwise/context-broker v0.0.0-20230210114057-055408ac89da
 	github.com/diwise/ngsi-ld-golang v0.0.0-20220518083256-2e7d28ad5f2e
 	github.com/go-chi/chi/v5 v5.0.8
-	github.com/matryer/is v1.4.0
+	github.com/matryer/is v1.4.1
 	github.com/riandyrn/otelchi v0.5.0
 	github.com/rs/cors v1.8.3
 	github.com/rs/zerolog v1.29.0
-	go.opentelemetry.io/otel v1.13.0
-	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
+	go.opentelemetry.io/otel v1.14.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -35,15 +34,15 @@ require (
 	github.com/prometheus/common v0.40.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
 	go.opentelemetry.io/contrib v1.9.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.13.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.36.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v0.36.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.13.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.13.0 // indirect
-	go.opentelemetry.io/otel/metric v0.36.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.13.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v0.36.0 // indirect
-	go.opentelemetry.io/otel/trace v1.13.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.14.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.37.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v0.37.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.14.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.14.0 // indirect
+	go.opentelemetry.io/otel/metric v0.37.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.14.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v0.37.0 // indirect
+	go.opentelemetry.io/otel/trace v1.14.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	google.golang.org/genproto v0.0.0-20230216225411-c8e22ba71e44 // indirect
@@ -52,8 +51,8 @@ require (
 )
 
 require (
-	github.com/diwise/service-chassis v0.0.0-20230328091322-2d5d6ed7c9d3
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.38.0
+	github.com/diwise/service-chassis v0.0.0-20230406073302-b38078c72e94
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.39.0
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 )
