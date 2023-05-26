@@ -213,6 +213,11 @@ func (svc *beachSvc) refresh(ctx context.Context, log zerolog.Logger) (count int
 			beach.SeeAlso = &seeAlso
 		}
 
+		if len(b.Source) > 0 {
+			src := b.Source
+			beach.Source = &src
+		}
+
 		from := time.Now().UTC().Add(-24 * time.Hour)
 		to := time.Now().UTC()
 
@@ -268,6 +273,7 @@ type beachDTO struct {
 		Coordinates [][][][]float64 `json:"coordinates"`
 	} `json:"location"`
 	See          json.RawMessage `json:"seeAlso"`
+	Source       string          `json:"source"`
 	DateModified json.RawMessage `json:"dateModified"`
 }
 
@@ -331,4 +337,5 @@ type Beach struct {
 	WaterQuality *[]WaterQuality     `json:"waterquality,omitempty"`
 	Description  *string             `json:"description,omitempty"`
 	SeeAlso      *[]string           `json:"seeAlso,omitempty"`
+	Source       *string             `json:"source,omitempty"`
 }
