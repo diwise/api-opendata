@@ -220,6 +220,7 @@ func newBeachMapper(fields []string, location, wq func(*beaches.Beach) any) Beac
 		"location":     func(b *beaches.Beach) (string, any) { return "location", location(b) },
 		"waterquality": func(b *beaches.Beach) (string, any) { return "waterQuality", wq(b) },
 		"seealso":      func(b *beaches.Beach) (string, any) { return "seeAlso", omitempty(b.SeeAlso) },
+		"source":       func(b *beaches.Beach) (string, any) { return "source", omitempty(b.Source) },
 	}
 
 	return func(b *beaches.Beach) ([]byte, error) {
