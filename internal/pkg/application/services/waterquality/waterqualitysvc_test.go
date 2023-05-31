@@ -102,7 +102,7 @@ func TestGetByID(t *testing.T) {
 		Returns(
 			response.Code(http.StatusOK),
 			response.ContentType("application/ld+json"),
-			response.Body([]byte(singleTemporalJSON)),
+			response.Body([]byte(multipleTemporalJSON)),
 		),
 	)
 	defer ms2.Close()
@@ -114,7 +114,7 @@ func TestGetByID(t *testing.T) {
 	is.NoErr(err)
 
 	wqoJson, _ := json.Marshal(wqo)
-	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}]}`
+	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:testID","temperature":[{"value":10.8,"observedAt":"2021-05-22T15:23:09Z"},{"value":10.8,"observedAt":"2021-05-21T14:23:09Z"},{"value":10.8,"observedAt":"2021-05-20T13:23:09Z"},{"value":10.8,"observedAt":"2021-05-18T12:23:09Z"}]}`
 	is.Equal(string(wqoJson), expectation)
 }
 
@@ -184,7 +184,7 @@ func TestGetByIDWithTimespan(t *testing.T) {
 	is.NoErr(err)
 
 	wqoJson, _ := json.Marshal(wqo)
-	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}]}`
+	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:testID","temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}]}`
 	is.Equal(string(wqoJson), expectation)
 }
 
@@ -219,7 +219,7 @@ const singleTemporalJSON string = `{
 		"@value": "2021-05-18T19:23:09Z"
 	  }
 	},
-	"id": "urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z",
+	"id": "urn:ngsi-ld:WaterQualityObserved:testID",
 	"temperature": [{
 	  "type": "Property",
 	  "value": 10.8,
@@ -240,7 +240,7 @@ const multipleTemporalJSON string = `{
 		"@value": "2021-05-18T19:23:09Z"
 	  }
 	},
-	"id": "urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z",
+	"id": "urn:ngsi-ld:WaterQualityObserved:testID",
 	"temperature": [{
 		"type": "Property",
 		"value": 10.8,
