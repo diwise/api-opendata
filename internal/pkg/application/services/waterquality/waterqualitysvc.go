@@ -21,7 +21,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 )
@@ -46,8 +45,7 @@ func NewWaterQualityService(ctx context.Context, url, tenant string) WaterQualit
 		contextBrokerURL: url,
 		tenant:           tenant,
 
-		waterQualities:   []domain.WaterQuality{},
-		waterQualityByID: map[string]domain.WaterQuality{},
+		waterQualityByID: map[string]WaterQuality{},
 
 		queue:       make(chan func()),
 		keepRunning: &atomic.Bool{},
@@ -60,8 +58,7 @@ type wqsvc struct {
 	contextBrokerURL string
 	tenant           string
 
-	waterQualities   []domain.WaterQuality
-	waterQualityByID map[string]domain.WaterQuality
+	waterQualityByID map[string]WaterQuality
 
 	queue chan func()
 
@@ -125,7 +122,13 @@ func (svc *wqsvc) GetAll(ctx context.Context) []domain.WaterQuality {
 	result := make(chan []domain.WaterQuality)
 
 	svc.queue <- func() {
-		result <- svc.waterQualities
+		l := []domain.WaterQuality{}
+
+		for _, i := range svc.waterQualityByID {
+			l = append(l, i.Latest)
+		}
+
+		result <- l
 	}
 
 	return <-result
@@ -136,20 +139,20 @@ func (svc *wqsvc) GetAllNearPointWithinTimespan(ctx context.Context, pt Point, m
 	failure := make(chan error)
 
 	svc.queue <- func() {
-		waterQualitiesWithinDistance := make([]domain.WaterQuality, 0, len(svc.waterQualities))
+		waterQualitiesWithinDistance := make([]domain.WaterQuality, 0, len(svc.waterQualityByID))
 
-		for _, storedWQ := range svc.waterQualities {
+		for _, storedWQ := range svc.waterQualityByID {
 			wqPoint := NewPoint(storedWQ.Location.Coordinates[1], storedWQ.Location.Coordinates[0])
 			distanceBetweenPoints := distance(wqPoint, pt)
 
-			storedDate, err := time.Parse(time.RFC3339, storedWQ.DateObserved)
+			storedDate, err := time.Parse(time.RFC3339, storedWQ.Latest.DateObserved)
 			if err != nil {
 				failure <- fmt.Errorf("failed to parse time from stored water quality observed: %s", err.Error())
 				return
 			}
 
 			if distanceBetweenPoints < maxDistance && !storedDate.Before(from) && !storedDate.After(to) {
-				waterQualitiesWithinDistance = append(waterQualitiesWithinDistance, storedWQ)
+				waterQualitiesWithinDistance = append(waterQualitiesWithinDistance, storedWQ.Latest)
 			}
 
 		}
@@ -177,27 +180,33 @@ func (svc *wqsvc) GetByID(ctx context.Context, id string, from, to time.Time) (*
 			from = to.Add(-24 * time.Hour)
 		}
 
-		wqoBytes, err := svc.requestTemporalDataForSingleEntity(ctx, svc.contextBrokerURL, id, from, to)
-		if err != nil {
-			failure <- fmt.Errorf("no temporal data found for water quality with id %s", id)
-			return
+		wqo := svc.waterQualityByID[id]
+
+		wqoTemp := domain.WaterQualityTemporal{
+			ID: wqo.ID,
 		}
 
-		wqo := domain.WaterQualityTemporal{}
-
-		err = json.Unmarshal(wqoBytes, &wqo)
-		if err != nil {
-			failure <- fmt.Errorf("failed to unmarshal temporal water quality with id %s", id)
-			return
+		if wqo.Latest.Source != nil {
+			wqoTemp.Source = *wqo.Latest.Source
 		}
 
-		temps := wqo.Temperature
+		if wqo.Location != nil {
+			wqoTemp.Location = wqo.Location
+		}
 
-		sort.Slice(temps, func(i, j int) bool {
-			return strings.Compare(temps[i].ObservedAt, temps[j].ObservedAt) > 0
-		})
+		if wqo.History != nil {
+			temps := *wqo.History
 
-		result <- &wqo
+			if len(temps) != 0 {
+				sort.Slice(temps, func(i, j int) bool {
+					return strings.Compare(temps[i].ObservedAt, temps[j].ObservedAt) > 0
+				})
+
+				wqoTemp.Temperature = temps
+			}
+		}
+
+		result <- &wqoTemp
 	}
 
 	select {
@@ -296,26 +305,46 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 
 	logger.Info().Msg("refreshing water quality info")
 
-	waterqualities := []domain.WaterQuality{}
-
 	_, err = contextbroker.QueryEntities(ctx, svc.Broker(), svc.Tenant(), "WaterQualityObserved", nil, func(w WaterQualityDTO) {
-		waterquality := domain.WaterQuality{
-			ID:           w.ID,
+		wq := WaterQuality{
+			ID: w.ID,
+		}
+
+		latest := domain.WaterQuality{
+			ID:           wq.ID,
 			Temperature:  w.Temperature,
 			DateObserved: w.DateObserved.Value,
 		}
 
-		if w.Location != nil {
-			waterquality.Location = domain.NewPoint(w.Location.Coordinates[1], w.Location.Coordinates[0])
-		}
-
 		if w.Source != nil {
-			waterquality.Source = w.Source
+			latest.Source = w.Source
 		}
 
-		svc.waterQualityByID[w.ID] = waterquality
+		if w.Location != nil {
+			wq.Location = domain.NewPoint(w.Location.Coordinates[1], w.Location.Coordinates[0])
+			latest.Location = wq.Location
+		}
 
-		waterqualities = append(waterqualities, waterquality)
+		wq.Latest = latest
+
+		dto := WaterQualityTemporalDTO{}
+
+		b, _ := svc.requestTemporalDataForSingleEntity(ctx, svc.contextBrokerURL, w.ID, time.Time{}, time.Time{})
+
+		err = json.Unmarshal(b, &dto)
+
+		temps := []domain.Value{}
+
+		if len(dto.Temperature) != 0 {
+			temps = append(temps, dto.Temperature...)
+		} else {
+			logger.Info().Msgf("no temporal data found for water quality %s", wq.ID)
+		}
+
+		wq.History = &temps
+
+		svc.waterQualityByID[w.ID] = wq
+
 	})
 
 	if err != nil {
@@ -323,9 +352,7 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 		return
 	}
 
-	svc.waterQualities = waterqualities
-
-	return len(svc.waterQualities), nil
+	return len(svc.waterQualityByID), nil
 }
 
 func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBrokerURL, id string, from, to time.Time) ([]byte, error) {
@@ -350,8 +377,6 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 		"%s/ngsi-ld/v1/temporal/entities/%s?%s",
 		ctxBrokerURL, id, params.Encode(),
 	)
-
-	log.Debug().Msgf("request url for retrieving single entity: %s", requestURL)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 	if err != nil {
@@ -400,4 +425,11 @@ type WaterQualityDTO struct {
 	Temperature  float64         `json:"temperature"`
 	Source       *string         `json:"source,omitempty"`
 	DateObserved domain.DateTime `json:"dateObserved,omitempty"`
+}
+
+type WaterQuality struct {
+	ID       string              `json:"id"`
+	Location *domain.Point       `json:"location"`
+	Latest   domain.WaterQuality `json:"latest"`
+	History  *[]domain.Value     `json:"history"`
 }
