@@ -119,13 +119,6 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 	sportsvenuesSvc := sportsvenues.NewSportsVenueService(ctx, contextBrokerURL, contextBrokerTenant, organisationsRegistry)
 	sportsvenuesSvc.Start(ctx)
 
-	stratsysEnabled := (env.GetVariableOrDefault(logger, "STRATSYS_ENABLED", "true") != "false")
-	stratsysCompanyCode := os.Getenv("STRATSYS_COMPANY_CODE")
-	stratsysClientId := os.Getenv("STRATSYS_CLIENT_ID")
-	stratsysScope := os.Getenv("STRATSYS_SCOPE")
-	stratsysLoginUrl := os.Getenv("STRATSYS_LOGIN_URL")
-	stratsysDefaultUrl := os.Getenv("STRATSYS_DEFAULT_URL")
-
 	r.Get(
 		"/api/beaches",
 		handlers.NewRetrieveBeachesHandler(logger, beachService),
@@ -175,7 +168,15 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 		handlers.NewRetrieveSportsVenueByIDHandler(logger, sportsvenuesSvc),
 	)
 
+	stratsysEnabled := (env.GetVariableOrDefault(logger, "STRATSYS_ENABLED", "true") != "false")
+
 	if stratsysEnabled {
+		stratsysCompanyCode := os.Getenv("STRATSYS_COMPANY_CODE")
+		stratsysClientId := os.Getenv("STRATSYS_CLIENT_ID")
+		stratsysScope := os.Getenv("STRATSYS_SCOPE")
+		stratsysLoginUrl := os.Getenv("STRATSYS_LOGIN_URL")
+		stratsysDefaultUrl := os.Getenv("STRATSYS_DEFAULT_URL")
+
 		r.Get(
 			"/api/stratsys/publishedreports",
 			stratsys.NewRetrieveStratsysReportsHandler(logger, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),

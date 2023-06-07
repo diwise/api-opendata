@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
-	testutils "github.com/diwise/service-chassis/pkg/test/http"
-	"github.com/diwise/service-chassis/pkg/test/http/expects"
-	"github.com/diwise/service-chassis/pkg/test/http/response"
 	"github.com/matryer/is"
 )
 
@@ -18,7 +16,7 @@ func TestWaterQualityRuns(t *testing.T) {
 	is, ms := testSetup(t, http.StatusOK, "[]")
 	ctx := context.Background()
 
-	wq := NewWaterQualityService(context.Background(), ms.URL(), "default")
+	wq := NewWaterQualityService(context.Background(), ms.URL, "default")
 	wq.Start(ctx)
 	defer wq.Shutdown(ctx)
 
@@ -31,7 +29,7 @@ func TestGetAll(t *testing.T) {
 	is, ms := testSetup(t, http.StatusOK, waterQualityJSON)
 	ctx := context.Background()
 
-	wq := NewWaterQualityService(ctx, ms.URL(), "default")
+	wq := NewWaterQualityService(ctx, ms.URL, "default")
 	wq.Start(ctx)
 	defer wq.Shutdown(ctx)
 
@@ -51,7 +49,7 @@ func TestGetAllNearPointWithinTimespan(t *testing.T) {
 	is, ms := testSetup(t, http.StatusOK, waterQualityJSON)
 	ctx := context.Background()
 
-	wq := NewWaterQualityService(ctx, ms.URL(), "default")
+	wq := NewWaterQualityService(ctx, ms.URL, "default")
 	wq.Start(ctx)
 	defer wq.Shutdown(ctx)
 
@@ -72,7 +70,7 @@ func TestGetAllNearPointReturnsEmptyListIfNoPointsAreWithinRange(t *testing.T) {
 	is, ms := testSetup(t, http.StatusOK, waterQualityJSON)
 	ctx := context.Background()
 
-	wq := NewWaterQualityService(ctx, ms.URL(), "default")
+	wq := NewWaterQualityService(ctx, ms.URL, "default")
 	wq.Start(ctx)
 
 	from := time.Now().UTC().Add(-24 * time.Hour)
@@ -86,62 +84,35 @@ func TestGetAllNearPointReturnsEmptyListIfNoPointsAreWithinRange(t *testing.T) {
 }
 
 func TestGetByID(t *testing.T) {
-	is, ms := testSetup(t, http.StatusOK, waterQualityJSON)
+	is, server := testSetup(t, http.StatusOK, multipleTemporalJSON)
 	ctx := context.Background()
-	defer ms.Close()
 
-	wq := NewWaterQualityService(ctx, ms.URL(), "default")
+	wq := NewWaterQualityService(ctx, server.URL, "default")
 	wq.Start(ctx)
 	defer wq.Shutdown(ctx)
 
 	_, err := wq.Refresh(ctx)
 	is.NoErr(err)
-
-	ms2 := testutils.NewMockServiceThat(
-		Expects(is, anyInput()),
-		Returns(
-			response.Code(http.StatusOK),
-			response.ContentType("application/ld+json"),
-			response.Body([]byte(singleTemporalJSON)),
-		),
-	)
-	defer ms2.Close()
-
-	svc := wq.(*wqsvc)
-	svc.contextBrokerURL = ms2.URL() // doing this to ensure the request in svcMock.GetByID reaches the correct response body
 
 	wqo, err := wq.GetByID(ctx, "urn:ngsi-ld:WaterQualityObserved:testID", time.Time{}, time.Time{})
 	is.NoErr(err)
 
 	wqoJson, _ := json.Marshal(wqo)
-	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}]}`
+	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:testID","temperature":[{"value":10.8,"observedAt":"2021-05-22T15:23:09Z"},{"value":10.8,"observedAt":"2021-05-21T14:23:09Z"},{"value":10.8,"observedAt":"2021-05-20T13:23:09Z"},{"value":10.8,"observedAt":"2021-05-18T12:23:09Z"}],"location":{"type":"Point","coordinates":[17.57263982458684,62.53515242132986]}}`
 	is.Equal(string(wqoJson), expectation)
 }
 
 func TestGetByIDSortsTemporalData(t *testing.T) {
-	is, ms := testSetup(t, http.StatusOK, waterQualityJSON)
+	is, ms := testSetup(t, http.StatusOK, multipleTemporalJSON)
 	ctx := context.Background()
 	defer ms.Close()
 
-	wq := NewWaterQualityService(ctx, ms.URL(), "default")
+	wq := NewWaterQualityService(ctx, ms.URL, "default")
 	wq.Start(ctx)
 	defer wq.Shutdown(ctx)
 
 	_, err := wq.Refresh(ctx)
 	is.NoErr(err)
-
-	ms2 := testutils.NewMockServiceThat(
-		Expects(is, anyInput()),
-		Returns(
-			response.Code(http.StatusOK),
-			response.ContentType("application/ld+json"),
-			response.Body([]byte(multipleTemporalJSON)),
-		),
-	)
-	defer ms2.Close()
-
-	svc := wq.(*wqsvc)
-	svc.contextBrokerURL = ms2.URL() // doing this to ensure the request in svcMock.GetByID reaches the correct response body
 
 	wqo, err := wq.GetByID(ctx, "urn:ngsi-ld:WaterQualityObserved:testID", time.Time{}, time.Time{})
 	is.NoErr(err)
@@ -152,30 +123,16 @@ func TestGetByIDSortsTemporalData(t *testing.T) {
 }
 
 func TestGetByIDWithTimespan(t *testing.T) {
-	is, ms := testSetup(t, http.StatusOK, waterQualityJSON)
+	is, ms := testSetup(t, http.StatusOK, singleTemporalJSON)
 	ctx := context.Background()
 	defer ms.Close()
 
-	wq := NewWaterQualityService(ctx, ms.URL(), "default")
+	wq := NewWaterQualityService(ctx, ms.URL, "default")
 	wq.Start(ctx)
 	defer wq.Shutdown(ctx)
 
 	_, err := wq.Refresh(ctx)
 	is.NoErr(err)
-
-	ms2 := testutils.NewMockServiceThat(
-		Expects(is, anyInput()),
-		Returns(
-			response.Code(http.StatusOK),
-			response.ContentType("application/ld+json"),
-			response.Body([]byte(singleTemporalJSON)),
-		),
-	)
-	defer ms2.Close()
-
-	// doing this to ensure the request in svcMock.GetByID receives the correct response body
-	svc := wq.(*wqsvc)
-	svc.contextBrokerURL = ms2.URL()
 
 	from, _ := time.Parse(time.RFC3339, "2021-05-18T19:23:09Z")
 	to, _ := time.Parse(time.RFC3339, "2021-05-18T19:23:09Z")
@@ -184,27 +141,24 @@ func TestGetByIDWithTimespan(t *testing.T) {
 	is.NoErr(err)
 
 	wqoJson, _ := json.Marshal(wqo)
-	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z","temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}]}`
+	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:testID","temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}],"location":{"type":"Point","coordinates":[17.57263982458684,62.53515242132986]}}`
 	is.Equal(string(wqoJson), expectation)
 }
 
-var Expects = testutils.Expects
-var Returns = testutils.Returns
-var anyInput = expects.AnyInput
-
-func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, testutils.MockService) {
+func testSetup(t *testing.T, statusCode int, temporalJSON string) (*is.I, *httptest.Server) {
 	is := is.New(t)
 
-	ms := testutils.NewMockServiceThat(
-		Expects(is, anyInput()),
-		Returns(
-			response.Code(statusCode),
-			response.ContentType("application/ld+json"),
-			response.Body([]byte(responseBody)),
-		),
-	)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/ngsi-ld/v1/temporal/entities/") {
+			w.WriteHeader(statusCode)
+			w.Write([]byte(temporalJSON))
+		} else {
+			w.WriteHeader(statusCode)
+			w.Write([]byte(waterQualityJSON))
+		}
+	}))
 
-	return is, ms
+	return is, server
 }
 
 const singleTemporalJSON string = `{
@@ -219,7 +173,7 @@ const singleTemporalJSON string = `{
 		"@value": "2021-05-18T19:23:09Z"
 	  }
 	},
-	"id": "urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z",
+	"id": "urn:ngsi-ld:WaterQualityObserved:testID",
 	"temperature": [{
 	  "type": "Property",
 	  "value": 10.8,
@@ -240,7 +194,7 @@ const multipleTemporalJSON string = `{
 		"@value": "2021-05-18T19:23:09Z"
 	  }
 	},
-	"id": "urn:ngsi-ld:WaterQualityObserved:temperature:se:servanet:lora:sk-elt-temp-02:2021-05-18T19:23:09Z",
+	"id": "urn:ngsi-ld:WaterQualityObserved:testID",
 	"temperature": [{
 		"type": "Property",
 		"value": 10.8,
