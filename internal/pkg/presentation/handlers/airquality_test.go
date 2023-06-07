@@ -45,25 +45,16 @@ const expectedAirQualityOutput string = "{\n  \"data\": {\"id\":\"aq1\",\"locati
 func defaultAirQualityMock() *services.AirQualityServiceMock {
 	aqList := []domain.AirQuality{
 		{
-			ID: "aq1",
-			Location: domain.LocationPoint{
-				Type:  "GeoProperty",
-				Value: *domain.NewPoint(62.1, 17.1),
-			},
+			ID:       "aq1",
+			Location: *domain.NewPoint(62.1, 17.1),
 		},
 		{
-			ID: "aq2",
-			Location: domain.LocationPoint{
-				Type:  "GeoProperty",
-				Value: *domain.NewPoint(62.2, 17.2),
-			},
+			ID:       "aq2",
+			Location: *domain.NewPoint(62.2, 17.2),
 		},
 		{
-			ID: "aq3",
-			Location: domain.LocationPoint{
-				Type:  "GeoProperty",
-				Value: *domain.NewPoint(62.3, 17.3),
-			},
+			ID:       "aq3",
+			Location: *domain.NewPoint(62.3, 17.3),
 		},
 	}
 

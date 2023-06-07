@@ -139,7 +139,7 @@ func (svc *aqsvc) refresh() error {
 
 		details := domain.AirQualityDetails{
 			ID:                        a.ID,
-			Location:                  a.Location,
+			Location:                  a.Location.Value,
 			DateObserved:              a.DateObserved,
 			AtmosphericPressure:       a.AtmosphericPressure,
 			Temperature:               a.Temperature,
