@@ -199,7 +199,11 @@ func newSportsFieldsMapper(fields []string, location func(*domain.SportsField) a
 			return "dateLastPreparation", omitempty(sf.DateLastPreparation)
 		},
 		"datemodified": func(sf *domain.SportsField) (string, any) { return "dateModified", *sf.DateModified },
-		"source":       func(t *domain.SportsField) (string, any) { return "source", t.Source },
+		"publicaccess": func(sf *domain.SportsField) (string, any) { return "publicAccess", omitempty(&sf.PublicAccess) },
+		"source":       func(sf *domain.SportsField) (string, any) { return "source", sf.Source },
+		"managedby":    func(sf *domain.SportsField) (string, any) { return "managedBy", sf.ManagedBy },
+		"owner":        func(sf *domain.SportsField) (string, any) { return "owner", sf.Owner },
+		"status":       func(sf *domain.SportsField) (string, any) { return "status", omitempty(&sf.Status) },
 	}
 
 	return func(t *domain.SportsField) ([]byte, error) {
@@ -210,7 +214,7 @@ func newSportsFieldsMapper(fields []string, location func(*domain.SportsField) a
 				return nil, fmt.Errorf("unknown field: %s", f)
 			}
 			key, value := mapper(t)
-			if value != nil {
+			if propertyIsNotNil(value) {
 				result[key] = value
 			}
 		}

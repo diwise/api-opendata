@@ -4,6 +4,7 @@
 package sportsfields
 
 import (
+	"context"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"sync"
 )
@@ -14,34 +15,34 @@ var _ SportsFieldService = &SportsFieldServiceMock{}
 
 // SportsFieldServiceMock is a mock implementation of SportsFieldService.
 //
-// 	func TestSomethingThatUsesSportsFieldService(t *testing.T) {
+//	func TestSomethingThatUsesSportsFieldService(t *testing.T) {
 //
-// 		// make and configure a mocked SportsFieldService
-// 		mockedSportsFieldService := &SportsFieldServiceMock{
-// 			BrokerFunc: func() string {
-// 				panic("mock out the Broker method")
-// 			},
-// 			GetAllFunc: func(requiredCategories []string) []domain.SportsField {
-// 				panic("mock out the GetAll method")
-// 			},
-// 			GetByIDFunc: func(id string) (*domain.SportsField, error) {
-// 				panic("mock out the GetByID method")
-// 			},
-// 			ShutdownFunc: func()  {
-// 				panic("mock out the Shutdown method")
-// 			},
-// 			StartFunc: func()  {
-// 				panic("mock out the Start method")
-// 			},
-// 			TenantFunc: func() string {
-// 				panic("mock out the Tenant method")
-// 			},
-// 		}
+//		// make and configure a mocked SportsFieldService
+//		mockedSportsFieldService := &SportsFieldServiceMock{
+//			BrokerFunc: func() string {
+//				panic("mock out the Broker method")
+//			},
+//			GetAllFunc: func(requiredCategories []string) []domain.SportsField {
+//				panic("mock out the GetAll method")
+//			},
+//			GetByIDFunc: func(id string) (*domain.SportsField, error) {
+//				panic("mock out the GetByID method")
+//			},
+//			ShutdownFunc: func(ctx context.Context)  {
+//				panic("mock out the Shutdown method")
+//			},
+//			StartFunc: func(ctx context.Context)  {
+//				panic("mock out the Start method")
+//			},
+//			TenantFunc: func() string {
+//				panic("mock out the Tenant method")
+//			},
+//		}
 //
-// 		// use mockedSportsFieldService in code that requires SportsFieldService
-// 		// and then make assertions.
+//		// use mockedSportsFieldService in code that requires SportsFieldService
+//		// and then make assertions.
 //
-// 	}
+//	}
 type SportsFieldServiceMock struct {
 	// BrokerFunc mocks the Broker method.
 	BrokerFunc func() string
@@ -53,10 +54,10 @@ type SportsFieldServiceMock struct {
 	GetByIDFunc func(id string) (*domain.SportsField, error)
 
 	// ShutdownFunc mocks the Shutdown method.
-	ShutdownFunc func()
+	ShutdownFunc func(ctx context.Context)
 
 	// StartFunc mocks the Start method.
-	StartFunc func()
+	StartFunc func(ctx context.Context)
 
 	// TenantFunc mocks the Tenant method.
 	TenantFunc func() string
@@ -78,9 +79,13 @@ type SportsFieldServiceMock struct {
 		}
 		// Shutdown holds details about calls to the Shutdown method.
 		Shutdown []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// Start holds details about calls to the Start method.
 		Start []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// Tenant holds details about calls to the Tenant method.
 		Tenant []struct {
@@ -109,7 +114,8 @@ func (mock *SportsFieldServiceMock) Broker() string {
 
 // BrokerCalls gets all the calls that were made to Broker.
 // Check the length with:
-//     len(mockedSportsFieldService.BrokerCalls())
+//
+//	len(mockedSportsFieldService.BrokerCalls())
 func (mock *SportsFieldServiceMock) BrokerCalls() []struct {
 } {
 	var calls []struct {
@@ -138,7 +144,8 @@ func (mock *SportsFieldServiceMock) GetAll(requiredCategories []string) []domain
 
 // GetAllCalls gets all the calls that were made to GetAll.
 // Check the length with:
-//     len(mockedSportsFieldService.GetAllCalls())
+//
+//	len(mockedSportsFieldService.GetAllCalls())
 func (mock *SportsFieldServiceMock) GetAllCalls() []struct {
 	RequiredCategories []string
 } {
@@ -169,7 +176,8 @@ func (mock *SportsFieldServiceMock) GetByID(id string) (*domain.SportsField, err
 
 // GetByIDCalls gets all the calls that were made to GetByID.
 // Check the length with:
-//     len(mockedSportsFieldService.GetByIDCalls())
+//
+//	len(mockedSportsFieldService.GetByIDCalls())
 func (mock *SportsFieldServiceMock) GetByIDCalls() []struct {
 	ID string
 } {
@@ -183,24 +191,30 @@ func (mock *SportsFieldServiceMock) GetByIDCalls() []struct {
 }
 
 // Shutdown calls ShutdownFunc.
-func (mock *SportsFieldServiceMock) Shutdown() {
+func (mock *SportsFieldServiceMock) Shutdown(ctx context.Context) {
 	if mock.ShutdownFunc == nil {
 		panic("SportsFieldServiceMock.ShutdownFunc: method is nil but SportsFieldService.Shutdown was just called")
 	}
 	callInfo := struct {
-	}{}
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
 	mock.lockShutdown.Lock()
 	mock.calls.Shutdown = append(mock.calls.Shutdown, callInfo)
 	mock.lockShutdown.Unlock()
-	mock.ShutdownFunc()
+	mock.ShutdownFunc(ctx)
 }
 
 // ShutdownCalls gets all the calls that were made to Shutdown.
 // Check the length with:
-//     len(mockedSportsFieldService.ShutdownCalls())
+//
+//	len(mockedSportsFieldService.ShutdownCalls())
 func (mock *SportsFieldServiceMock) ShutdownCalls() []struct {
+	Ctx context.Context
 } {
 	var calls []struct {
+		Ctx context.Context
 	}
 	mock.lockShutdown.RLock()
 	calls = mock.calls.Shutdown
@@ -209,24 +223,30 @@ func (mock *SportsFieldServiceMock) ShutdownCalls() []struct {
 }
 
 // Start calls StartFunc.
-func (mock *SportsFieldServiceMock) Start() {
+func (mock *SportsFieldServiceMock) Start(ctx context.Context) {
 	if mock.StartFunc == nil {
 		panic("SportsFieldServiceMock.StartFunc: method is nil but SportsFieldService.Start was just called")
 	}
 	callInfo := struct {
-	}{}
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
 	mock.lockStart.Lock()
 	mock.calls.Start = append(mock.calls.Start, callInfo)
 	mock.lockStart.Unlock()
-	mock.StartFunc()
+	mock.StartFunc(ctx)
 }
 
 // StartCalls gets all the calls that were made to Start.
 // Check the length with:
-//     len(mockedSportsFieldService.StartCalls())
+//
+//	len(mockedSportsFieldService.StartCalls())
 func (mock *SportsFieldServiceMock) StartCalls() []struct {
+	Ctx context.Context
 } {
 	var calls []struct {
+		Ctx context.Context
 	}
 	mock.lockStart.RLock()
 	calls = mock.calls.Start
@@ -249,7 +269,8 @@ func (mock *SportsFieldServiceMock) Tenant() string {
 
 // TenantCalls gets all the calls that were made to Tenant.
 // Check the length with:
-//     len(mockedSportsFieldService.TenantCalls())
+//
+//	len(mockedSportsFieldService.TenantCalls())
 func (mock *SportsFieldServiceMock) TenantCalls() []struct {
 } {
 	var calls []struct {

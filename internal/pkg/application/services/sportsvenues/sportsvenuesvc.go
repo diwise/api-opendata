@@ -7,9 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/organisations"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
@@ -24,18 +26,17 @@ type SportsVenueService interface {
 	GetAll(requiredCategories []string) []domain.SportsVenue
 	GetByID(id string) (*domain.SportsVenue, error)
 
-	Start()
-	Shutdown()
+	Start(ctx context.Context)
+	Shutdown(ctx context.Context)
 }
 
-func NewSportsVenueService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string) SportsVenueService {
+func NewSportsVenueService(ctx context.Context, contextBrokerURL, tenant string, orgreg organisations.Registry) SportsVenueService {
 	svc := &sportsvenueSvc{
-		ctx:                 ctx,
 		sportsvenues:        []domain.SportsVenue{},
 		sportsvenuesDetails: map[string]int{},
 		contextBrokerURL:    contextBrokerURL,
+		orgRegistry:         orgreg,
 		tenant:              tenant,
-		log:                 logger,
 		keepRunning:         true,
 	}
 
@@ -43,13 +44,12 @@ func NewSportsVenueService(ctx context.Context, logger zerolog.Logger, contextBr
 }
 
 type sportsvenueSvc struct {
-	ctx                 context.Context
 	sportsvenuesMutex   sync.Mutex
 	sportsvenues        []domain.SportsVenue
 	sportsvenuesDetails map[string]int
+	orgRegistry         organisations.Registry
 	contextBrokerURL    string
 	tenant              string
-	log                 zerolog.Logger
 	keepRunning         bool
 }
 
@@ -104,31 +104,34 @@ func (svc *sportsvenueSvc) GetByID(id string) (*domain.SportsVenue, error) {
 	return &svc.sportsvenues[index], nil
 }
 
-func (svc *sportsvenueSvc) Start() {
-	svc.log.Info().Msg("starting sports venues service")
+func (svc *sportsvenueSvc) Start(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("starting sports venues service")
 	// TODO: Prevent multiple starts on the same service
-	go svc.run()
+	go svc.run(ctx)
 }
 
-func (svc *sportsvenueSvc) Shutdown() {
-	svc.log.Info().Msg("shutting down sports venues service")
+func (svc *sportsvenueSvc) Shutdown(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("shutting down sports venues service")
 	svc.keepRunning = false
 }
 
-func (svc *sportsvenueSvc) run() {
+func (svc *sportsvenueSvc) run(ctx context.Context) {
 	nextRefreshTime := time.Now()
+	logger := logging.GetFromContext(ctx)
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing sports venue info")
-			count, err := svc.refresh()
+			logger.Info().Msg("refreshing sports venue info")
+			count, err := svc.refresh(ctx, logger)
 
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh sports venues")
+				logger.Error().Err(err).Msg("failed to refresh sports venues")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
-				svc.log.Info().Msgf("refreshed %d sports venues", count)
+				logger.Info().Msgf("refreshed %d sports venues", count)
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
 			}
@@ -138,35 +141,50 @@ func (svc *sportsvenueSvc) run() {
 		time.Sleep(1 * time.Second)
 	}
 
-	svc.log.Info().Msg("sports venues service exiting")
+	logger.Info().Msg("sports venues service exiting")
 }
 
-func (svc *sportsvenueSvc) refresh() (count int, err error) {
+func (svc *sportsvenueSvc) refresh(ctx context.Context, log zerolog.Logger) (count int, err error) {
 
-	ctx, span := tracer.Start(svc.ctx, "refresh-sports-venues")
+	ctx, span := tracer.Start(ctx, "refresh-sports-venues")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
+	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, log, ctx)
 
 	sportsvenues := []domain.SportsVenue{}
 
-	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "SportsVenue", nil, func(sf sportsVenueDTO) {
+	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "SportsVenue", nil, func(sv sportsVenueDTO) {
 
 		venue := domain.SportsVenue{
-			ID:          sf.ID,
-			Name:        sf.Name,
-			Description: sf.Description,
-			Categories:  sf.Categories(),
-			Location:    sf.Location,
-			Source:      sf.Source,
-			SeeAlso:     sf.SeeAlso(),
+			ID:           sv.ID,
+			Name:         sv.Name,
+			Description:  sv.Description,
+			Categories:   sv.Categories(),
+			PublicAccess: sv.PublicAccess,
+			Location:     sv.Location,
+			Source:       sv.Source,
+			SeeAlso:      sv.SeeAlso(),
 		}
 
-		if sf.DateCreated != nil {
-			venue.DateCreated = &sf.DateCreated.Value
+		if len(sv.ManagedBy) > 0 {
+			venue.ManagedBy, err = svc.orgRegistry.Get(sv.ManagedBy)
+			if err != nil {
+				logger.Error().Err(err).Msg("failed to resolve organisation")
+			}
 		}
-		if sf.DateModified != nil {
-			venue.DateModified = &sf.DateModified.Value
+
+		if len(sv.Owner) > 0 {
+			venue.Owner, err = svc.orgRegistry.Get(sv.Owner)
+			if err != nil {
+				logger.Error().Err(err).Msg("failed to resolve organisation")
+			}
+		}
+
+		if sv.DateCreated != nil {
+			venue.DateCreated = &sv.DateCreated.Value
+		}
+		if sv.DateModified != nil {
+			venue.DateModified = &sv.DateModified.Value
 		}
 
 		sportsvenues = append(sportsvenues, venue)
@@ -199,11 +217,14 @@ type sportsVenueDTO struct {
 	Name         string              `json:"name"`
 	Description  string              `json:"description"`
 	Category     json.RawMessage     `json:"category"`
+	PublicAccess string              `json:"publicAccess"`
 	Location     domain.MultiPolygon `json:"location"`
 	DateCreated  *domain.DateTime    `json:"dateCreated"`
 	DateModified *domain.DateTime    `json:"dateModified,omitempty"`
 	See          json.RawMessage     `json:"seeAlso"`
 	Source       string              `json:"source"`
+	ManagedBy    string              `json:"managedBy"`
+	Owner        string              `json:"owner"`
 }
 
 // Categories extracts the venue categories as a string array, regardless

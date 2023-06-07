@@ -2,24 +2,19 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
-	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
+	"github.com/diwise/service-chassis/pkg/presentation/api/http/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const (
@@ -35,24 +30,27 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, beachService beaches.Bea
 		ctx, span := tracer.Start(r.Context(), "retrieve-beach-by-id")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 		beachID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if beachID == "" {
 			err = fmt.Errorf("no beach id supplied in query")
 			log.Error().Err(err).Msg("bad request")
-			w.WriteHeader(http.StatusBadRequest)
+			problem := errors.NewProblemReport(http.StatusBadRequest, "badrequest", errors.Detail(err.Error()), errors.TraceID(traceID))
+			problem.WriteResponse(w)
 			return
 		}
 
-		body, err := beachService.GetByID(beachID)
-
+		beach, err := beachService.GetByID(ctx, beachID)
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
+			problem := errors.NewProblemReport(http.StatusNotFound, "notfound", errors.Detail("no such beach"), errors.TraceID(traceID))
+			problem.WriteResponse(w)
 			return
 		}
 
-		body = []byte("{\n  \"data\": " + string(body) + "\n}")
+		beachJSON, err := json.Marshal(beach)
+
+		body := []byte("{\"data\":" + string(beachJSON) + "}")
 
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=600")
@@ -60,199 +58,185 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, beachService beaches.Bea
 	})
 }
 
-func NewRetrieveBeachesHandler(logger zerolog.Logger, beachService beaches.BeachService) http.HandlerFunc {
-
+func NewRetrieveBeachesHandler(log zerolog.Logger, beachService beaches.BeachService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
 
-		acceptedContentType := r.Header.Get("Accept")
-		if strings.HasPrefix(acceptedContentType, "application/json") {
-			serveBeachesAsJSON(logger, beachService, w, r)
-		} else {
-			serveBeachesAsTextCSV(logger, beachService.Broker(), beachService.Tenant(), w, r)
+		_, span := tracer.Start(r.Context(), "retrieve-beaches")
+		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
+
+		traceID, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, log, r.Context())
+
+		fields := urlValueAsSlice(r.URL.Query(), "fields")
+
+		allBeaches := beachService.GetAll(ctx)
+
+		const geoJSONContentType string = "application/geo+json"
+
+		acceptedContentType := "application/json"
+		if len(r.Header["Accept"]) > 0 {
+			acceptHeader := r.Header["Accept"][0]
+			if acceptHeader != "" && strings.HasPrefix(acceptHeader, geoJSONContentType) {
+				acceptedContentType = geoJSONContentType
+			}
 		}
-	})
-}
 
-func serveBeachesAsJSON(logger zerolog.Logger, beachService beaches.BeachService, w http.ResponseWriter, r *http.Request) {
-	var err error
-	_, span := tracer.Start(r.Context(), "retrieve-beaches")
-	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
-	body := beachService.GetAll()
-
-	beachJSON := "{\n  \"data\": " + string(body) + "\n}"
-
-	w.Header().Add("Content-Type", "application/json")
-	w.Header().Add("Cache-Control", "max-age=3600")
-	w.Write([]byte(beachJSON))
-}
-
-func serveBeachesAsTextCSV(logger zerolog.Logger, contextBroker, tenant string, w http.ResponseWriter, r *http.Request) {
-	var err error
-	ctx, span := tracer.Start(r.Context(), "retrieve-beaches-csv")
-	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
-	_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
-
-	beachesCsv := bytes.NewBufferString("place_id;name;latitude;longitude;hov_ref;wikidata;updated;temp_url;description")
-
-	err = getBeachesFromContextBroker(ctx, log, contextBroker, tenant, func(b beach) {
-		latitude, longitude := b.LatLon()
-
-		time := getDateModifiedFromBeach(&b)
-		nutsCode := getNutsCodeFromBeach(&b)
-		wiki := getWikiRefFromBeach(&b)
-
-		tempURL := fmt.Sprintf(
-			"\"%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near%%3BmaxDistance==500&geometry=Point&coordinates=[%f,%f]\"",
-			contextBroker, longitude, latitude,
-		)
-
-		beachInfo := fmt.Sprintf("\r\n%s;%s;%f;%f;%s;%s;%s;%s;\"%s\"",
-			b.ID, b.Name, latitude, longitude,
-			nutsCode,
-			wiki,
-			time,
-			tempURL,
-			strings.ReplaceAll(b.Description, "\"", "\"\""),
-		)
-
-		beachesCsv.Write([]byte(beachInfo))
-	})
-
-	if err != nil {
-		log.Error().Err(err).Msgf("failed to get beaches from %s", contextBroker)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Add("Content-Type", "text/csv")
-	w.Write(beachesCsv.Bytes())
-}
-
-var ErrNoSuchBeach error = fmt.Errorf("beach not found")
-
-func getBeachesFromContextBroker(ctx context.Context, logger zerolog.Logger, brokerURL, tenant string, callback func(b beach)) error {
-	var err error
-
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, brokerURL+"/ngsi-ld/v1/entities?type=Beach&limit=100&options=keyValues", nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %s", err.Error())
-	}
-
-	req.Header.Add("Accept", "application/ld+json")
-	linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
-	req.Header.Add("Link", linkHeaderURL)
-
-	if tenant != entities.DefaultNGSITenant {
-		req.Header.Add("NGSILD-Tenant", tenant)
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send request: %s", err.Error())
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %s", err.Error())
-	}
-
-	if resp.StatusCode >= http.StatusBadRequest {
-		reqbytes, _ := httputil.DumpRequest(req, false)
-		respbytes, _ := httputil.DumpResponse(resp, false)
-
-		logger.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
-		return fmt.Errorf("request failed")
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		contentType := resp.Header.Get("Content-Type")
-		return fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", resp.StatusCode, contentType, string(respBody))
-	}
-
-	var beaches []beach
-	err = json.Unmarshal(respBody, &beaches)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal response: %s", err.Error())
-	}
-
-	for _, b := range beaches {
-		callback(b)
-	}
-
-	return nil
-}
-
-func getNutsCodeFromBeach(b *beach) string {
-	for _, ref := range b.SeeAlso() {
-		if strings.HasPrefix(ref, NUTSCodePrefix) {
-			return strings.TrimPrefix(ref, NUTSCodePrefix)
-		}
-	}
-
-	return ""
-}
-
-func getDateModifiedFromBeach(b *beach) string {
-	if b.DateModified.Value == "" {
-		return ""
-	}
-
-	timestamp, err := time.Parse(time.RFC3339, b.DateModified.Value)
-	if err != nil {
-		return ""
-	}
-
-	return timestamp.Format(YearMonthDayISO8601)
-}
-
-func getWikiRefFromBeach(b *beach) string {
-	for _, ref := range b.SeeAlso() {
-		if strings.HasPrefix(ref, WikidataPrefix) {
-			return strings.TrimPrefix(ref, WikidataPrefix)
-		}
-	}
-
-	return ""
-}
-
-type beach struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Location    struct {
-		Type        string          `json:"type"`
-		Coordinates [][][][]float64 `json:"coordinates"`
-	} `json:"location"`
-	See          json.RawMessage `json:"seeAlso"`
-	DateModified domain.DateTime `json:"dateModified"`
-}
-
-func (b *beach) LatLon() (float64, float64) {
-	// TODO: A more fancy calculation of midpoint or something?
-	return b.Location.Coordinates[0][0][0][1], b.Location.Coordinates[0][0][0][0]
-}
-
-func (b *beach) SeeAlso() []string {
-	refsAsArray := []string{}
-
-	if len(b.See) > 0 {
-		if err := json.Unmarshal(b.See, &refsAsArray); err != nil {
-			var refsAsString string
-
-			if err = json.Unmarshal(b.See, &refsAsString); err != nil {
-				return []string{err.Error()}
+		waterqualityMapper := func(b *beaches.Beach) any {
+			if b.WaterQuality != nil && len(*b.WaterQuality) > 0 {
+				return &(*b.WaterQuality)[0]
 			}
 
-			return []string{refsAsString}
+			return nil
 		}
+
+		if acceptedContentType == geoJSONContentType {
+			locationMapper := func(b *beaches.Beach) any { return b.Location }
+
+			fields = append([]string{"type", "name", "location"}, fields...)
+			beachGeoJSON, err := marshalBeachToJSON(
+				allBeaches,
+				newBeachGeoJSONMapper(
+					newBeachMapper(fields, locationMapper, waterqualityMapper),
+				))
+			if err != nil {
+				err := fmt.Errorf("failed to marshal beach list to geo json: %s", err.Error())
+				logger.Error().Err(err).Msgf("marshalling error")
+				problem := errors.NewProblemReport(http.StatusInternalServerError, "internalerror", errors.Detail(err.Error()), errors.TraceID(traceID))
+				problem.WriteResponse(w)
+				return
+			}
+
+			body := "{\"type\":\"FeatureCollection\", \"features\": " + string(beachGeoJSON) + "}"
+
+			w.Header().Add("Content-Type", acceptedContentType)
+			w.Header().Add("Cache-Control", "max-age=3600")
+			w.Write([]byte(body))
+
+		} else {
+			locationMapper := func(b *beaches.Beach) any {
+				return domain.NewPoint(b.Location.Coordinates[0][0][0][1], b.Location.Coordinates[0][0][0][0])
+			}
+
+			fields := append([]string{"id", "name", "location"}, fields...)
+			beachJSON, err := marshalBeachToJSON(
+				allBeaches,
+				newBeachMapper(fields, locationMapper, waterqualityMapper),
+			)
+			if err != nil {
+				err := fmt.Errorf("failed to marshal beach list to json: %s", err.Error())
+				logger.Error().Err(err).Msgf("marshalling error")
+				problem := errors.NewProblemReport(http.StatusInternalServerError, "internalerror", errors.Detail(err.Error()), errors.TraceID(traceID))
+				problem.WriteResponse(w)
+				return
+			}
+
+			body := "{\"data\":" + string(beachJSON) + "}"
+
+			w.Header().Add("Content-Type", "application/json")
+			w.Header().Add("Cache-Control", "max-age=3600")
+			w.Write([]byte(body))
+		}
+	})
+}
+
+type BeachMapperFunc func(*beaches.Beach) ([]byte, error)
+
+func newBeachGeoJSONMapper(baseMapper BeachMapperFunc) BeachMapperFunc {
+	return func(b *beaches.Beach) ([]byte, error) {
+		body, err := baseMapper(b)
+		if err != nil {
+			return nil, err
+		}
+
+		var props any
+		json.Unmarshal(body, &props)
+
+		feature := struct {
+			Type       string `json:"type"`
+			ID         string `json:"id"`
+			Geometry   any    `json:"geometry"`
+			Properties any    `json:"properties"`
+		}{"Feature", b.ID, b.Location, props}
+
+		return json.Marshal(&feature)
+	}
+}
+
+func marshalBeachToJSON(allBeaches []beaches.Beach, mapper BeachMapperFunc) ([]byte, error) {
+	beachCount := len(allBeaches)
+
+	if beachCount == 0 {
+		return []byte("[]"), nil
 	}
 
-	return refsAsArray
+	backingBuffer := make([]byte, 0, 1024*1024)
+	buffer := bytes.NewBuffer(backingBuffer)
+
+	beachBytes, err := mapper(&allBeaches[0])
+	if err != nil {
+		return nil, err
+	}
+
+	buffer.Write([]byte("["))
+	buffer.Write(beachBytes)
+
+	for index := 1; index < beachCount; index++ {
+		beachBytes, err := mapper(&allBeaches[index])
+		if err != nil {
+			return nil, err
+		}
+
+		buffer.Write([]byte(","))
+		buffer.Write(beachBytes)
+	}
+
+	buffer.Write([]byte("]"))
+
+	return buffer.Bytes(), nil
+}
+
+func newBeachMapper(fields []string, location, wq func(*beaches.Beach) any) BeachMapperFunc {
+
+	omitempty := func(v any) any {
+		switch value := v.(type) {
+		case []string:
+			if len(value) == 0 || (len(value) == 1 && len(value[0]) == 0) {
+				return nil
+			}
+		case string:
+			if len(value) == 0 {
+				return nil
+			}
+		}
+
+		return v
+	}
+
+	mappers := map[string]func(*beaches.Beach) (string, any){
+		"id":           func(b *beaches.Beach) (string, any) { return "id", b.ID },
+		"type":         func(b *beaches.Beach) (string, any) { return "type", "Beach" },
+		"name":         func(b *beaches.Beach) (string, any) { return "name", b.Name },
+		"description":  func(b *beaches.Beach) (string, any) { return "description", b.Description },
+		"location":     func(b *beaches.Beach) (string, any) { return "location", location(b) },
+		"waterquality": func(b *beaches.Beach) (string, any) { return "waterQuality", wq(b) },
+		"seealso":      func(b *beaches.Beach) (string, any) { return "seeAlso", omitempty(b.SeeAlso) },
+		"source":       func(b *beaches.Beach) (string, any) { return "source", omitempty(b.Source) },
+	}
+
+	return func(b *beaches.Beach) ([]byte, error) {
+		result := map[string]any{}
+		for _, f := range fields {
+			mapper, ok := mappers[f]
+			if !ok {
+				return nil, fmt.Errorf("unknown field: %s", f)
+			}
+			key, value := mapper(b)
+			if propertyIsNotNil(value) {
+				result[key] = value
+			}
+		}
+
+		return json.Marshal(&result)
+	}
+
 }

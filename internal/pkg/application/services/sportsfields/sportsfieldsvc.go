@@ -7,9 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/organisations"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
@@ -24,18 +26,17 @@ type SportsFieldService interface {
 	GetAll(requiredCategories []string) []domain.SportsField
 	GetByID(id string) (*domain.SportsField, error)
 
-	Start()
-	Shutdown()
+	Start(ctx context.Context)
+	Shutdown(ctx context.Context)
 }
 
-func NewSportsFieldService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string) SportsFieldService {
+func NewSportsFieldService(ctx context.Context, contextBrokerURL, tenant string, orgreg organisations.Registry) SportsFieldService {
 	svc := &sportsfieldSvc{
-		ctx:                 ctx,
 		sportsfields:        []domain.SportsField{},
 		sportsfieldsDetails: map[string]int{},
+		orgRegistry:         orgreg,
 		contextBrokerURL:    contextBrokerURL,
 		tenant:              tenant,
-		log:                 logger,
 		keepRunning:         true,
 	}
 
@@ -43,13 +44,12 @@ func NewSportsFieldService(ctx context.Context, logger zerolog.Logger, contextBr
 }
 
 type sportsfieldSvc struct {
-	ctx                 context.Context
 	sportsfieldsMutex   sync.Mutex
 	sportsfields        []domain.SportsField
 	sportsfieldsDetails map[string]int
+	orgRegistry         organisations.Registry
 	contextBrokerURL    string
 	tenant              string
-	log                 zerolog.Logger
 	keepRunning         bool
 }
 
@@ -104,31 +104,34 @@ func (svc *sportsfieldSvc) GetByID(id string) (*domain.SportsField, error) {
 	return &svc.sportsfields[index], nil
 }
 
-func (svc *sportsfieldSvc) Start() {
-	svc.log.Info().Msg("starting sports fields service")
+func (svc *sportsfieldSvc) Start(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("starting sports fields service")
 	// TODO: Prevent multiple starts on the same service
-	go svc.run()
+	go svc.run(ctx)
 }
 
-func (svc *sportsfieldSvc) Shutdown() {
-	svc.log.Info().Msg("shutting down sports fields service")
+func (svc *sportsfieldSvc) Shutdown(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("shutting down sports fields service")
 	svc.keepRunning = false
 }
 
-func (svc *sportsfieldSvc) run() {
+func (svc *sportsfieldSvc) run(ctx context.Context) {
 	nextRefreshTime := time.Now()
+	logger := logging.GetFromContext(ctx)
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing sports field info")
-			count, err := svc.refresh()
+			logger.Info().Msg("refreshing sports field info")
+			count, err := svc.refresh(ctx, logger)
 
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh sports fields")
+				logger.Error().Err(err).Msg("failed to refresh sports fields")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
-				svc.log.Info().Msgf("refreshed %d sports fields", count)
+				logger.Info().Msgf("refreshed %d sports fields", count)
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
 			}
@@ -138,27 +141,43 @@ func (svc *sportsfieldSvc) run() {
 		time.Sleep(1 * time.Second)
 	}
 
-	svc.log.Info().Msg("sports fields service exiting")
+	logger.Info().Msg("sports fields service exiting")
 }
 
-func (svc *sportsfieldSvc) refresh() (count int, err error) {
+func (svc *sportsfieldSvc) refresh(ctx context.Context, logger zerolog.Logger) (count int, err error) {
 
-	ctx, span := tracer.Start(svc.ctx, "refresh-sports-fields")
+	ctx, span := tracer.Start(ctx, "refresh-sports-fields")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
+	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
 	sportsfields := []domain.SportsField{}
 
 	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "SportsField", nil, func(sf sportsFieldDTO) {
 
 		sportsfield := domain.SportsField{
-			ID:          sf.ID,
-			Name:        sf.Name,
-			Description: sf.Description,
-			Categories:  sf.Categories(),
-			Location:    sf.Location,
-			Source:      sf.Source,
+			ID:           sf.ID,
+			Name:         sf.Name,
+			Description:  sf.Description,
+			Categories:   sf.Categories(),
+			PublicAccess: sf.PublicAccess,
+			Location:     sf.Location,
+			Source:       sf.Source,
+			Status:       sf.Status,
+		}
+
+		if len(sf.ManagedBy) > 0 {
+			sportsfield.ManagedBy, err = svc.orgRegistry.Get(sf.ManagedBy)
+			if err != nil {
+				logger.Error().Err(err).Msg("failed to resolve organisation")
+			}
+		}
+
+		if len(sf.Owner) > 0 {
+			sportsfield.Owner, err = svc.orgRegistry.Get(sf.Owner)
+			if err != nil {
+				logger.Error().Err(err).Msg("failed to resolve organisation")
+			}
 		}
 
 		if sf.DateCreated != nil {
@@ -201,11 +220,15 @@ type sportsFieldDTO struct {
 	Name                string              `json:"name"`
 	Description         string              `json:"description"`
 	Category            json.RawMessage     `json:"category"`
+	PublicAccess        string              `json:"publicAccess"`
 	Location            domain.MultiPolygon `json:"location"`
 	DateCreated         *domain.DateTime    `json:"dateCreated"`
 	DateModified        *domain.DateTime    `json:"dateModified,omitempty"`
 	DateLastPreparation *domain.DateTime    `json:"dateLastPreparation,omitempty"`
 	Source              string              `json:"source"`
+	ManagedBy           string              `json:"managedBy"`
+	Owner               string              `json:"owner"`
+	Status              string              `json:"status"`
 }
 
 // Categories extracts the field categories as a string array, regardless

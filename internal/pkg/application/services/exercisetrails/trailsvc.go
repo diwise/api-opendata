@@ -8,9 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/organisations"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
@@ -25,18 +27,17 @@ type ExerciseTrailService interface {
 	GetAll(requiredCategories []string) []domain.ExerciseTrail
 	GetByID(id string) (*domain.ExerciseTrail, error)
 
-	Start()
-	Shutdown()
+	Start(ctx context.Context)
+	Shutdown(ctx context.Context)
 }
 
-func NewExerciseTrailService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string) ExerciseTrailService {
+func NewExerciseTrailService(ctx context.Context, contextBrokerURL, tenant string, orgreg organisations.Registry) ExerciseTrailService {
 	svc := &exerciseTrailSvc{
-		ctx:              ctx,
 		trails:           []domain.ExerciseTrail{},
 		trailDetails:     map[string]int{},
+		orgRegistry:      orgreg,
 		contextBrokerURL: contextBrokerURL,
 		tenant:           tenant,
-		log:              logger,
 		keepRunning:      true,
 	}
 
@@ -47,12 +48,11 @@ type exerciseTrailSvc struct {
 	contextBrokerURL string
 	tenant           string
 
+	orgRegistry organisations.Registry
+
 	trailMutex   sync.Mutex
 	trails       []domain.ExerciseTrail
 	trailDetails map[string]int
-
-	ctx context.Context
-	log zerolog.Logger
 
 	keepRunning bool
 }
@@ -108,31 +108,34 @@ func (svc *exerciseTrailSvc) GetByID(id string) (*domain.ExerciseTrail, error) {
 	return &svc.trails[index], nil
 }
 
-func (svc *exerciseTrailSvc) Start() {
-	svc.log.Info().Msg("starting exercise trail service")
+func (svc *exerciseTrailSvc) Start(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("starting exercise trail service")
 	// TODO: Prevent multiple starts on the same service
-	go svc.run()
+	go svc.run(ctx)
 }
 
-func (svc *exerciseTrailSvc) Shutdown() {
-	svc.log.Info().Msg("shutting down exercise trail service")
+func (svc *exerciseTrailSvc) Shutdown(ctx context.Context) {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("shutting down exercise trail service")
 	svc.keepRunning = false
 }
 
-func (svc *exerciseTrailSvc) run() {
+func (svc *exerciseTrailSvc) run(ctx context.Context) {
 	nextRefreshTime := time.Now()
+	logger := logging.GetFromContext(ctx)
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing exercise trail info")
-			count, err := svc.refresh()
+			logger.Info().Msg("refreshing exercise trail info")
+			count, err := svc.refresh(ctx, logger)
 
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh exercise trails")
+				logger.Error().Err(err).Msg("failed to refresh exercise trails")
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
-				svc.log.Info().Msgf("refreshed %d exercise trails", count)
+				logger.Info().Msgf("refreshed %d exercise trails", count)
 
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
@@ -143,15 +146,15 @@ func (svc *exerciseTrailSvc) run() {
 		time.Sleep(1 * time.Second)
 	}
 
-	svc.log.Info().Msg("exercise trail service exiting")
+	logger.Info().Msg("exercise trail service exiting")
 }
 
-func (svc *exerciseTrailSvc) refresh() (count int, err error) {
+func (svc *exerciseTrailSvc) refresh(ctx context.Context, log zerolog.Logger) (count int, err error) {
 
-	ctx, span := tracer.Start(svc.ctx, "refresh-trails")
+	ctx, span := tracer.Start(ctx, "refresh-trails")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, _ = o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
+	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, log, ctx)
 
 	trails := []domain.ExerciseTrail{}
 
@@ -162,6 +165,7 @@ func (svc *exerciseTrailSvc) refresh() (count int, err error) {
 			Name:                t.Name,
 			Description:         t.Description,
 			Categories:          t.Categories(),
+			PublicAccess:        t.PublicAccess,
 			Location:            *domain.NewLineString(t.Location.Coordinates),
 			Length:              math.Round(t.Length*10) / 10,
 			Difficulty:          math.Round(t.Difficulty*100) / 100,
@@ -170,6 +174,21 @@ func (svc *exerciseTrailSvc) refresh() (count int, err error) {
 			DateLastPreparation: t.DateLastPreparation.Value,
 			Source:              t.Source,
 			AreaServed:          t.AreaServed,
+			SeeAlso:             t.SeeAlso(),
+		}
+
+		if len(t.ManagedBy) > 0 {
+			trail.ManagedBy, err = svc.orgRegistry.Get(t.ManagedBy)
+			if err != nil {
+				logger.Error().Err(err).Msg("failed to resolve organisation")
+			}
+		}
+
+		if len(t.Owner) > 0 {
+			trail.Owner, err = svc.orgRegistry.Get(t.Owner)
+			if err != nil {
+				logger.Error().Err(err).Msg("failed to resolve organisation")
+			}
 		}
 
 		trails = append(trails, trail)
@@ -197,11 +216,12 @@ func (svc *exerciseTrailSvc) storeExerciseTrailList(list []domain.ExerciseTrail)
 }
 
 type trailDTO struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	Category    json.RawMessage `json:"category"`
-	Location    struct {
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description"`
+	Category     json.RawMessage `json:"category"`
+	PublicAccess string          `json:"publicAccess"`
+	Location     struct {
 		Type        string      `json:"type"`
 		Coordinates [][]float64 `json:"coordinates"`
 	} `json:"location"`
@@ -213,6 +233,9 @@ type trailDTO struct {
 	AreaServed          string          `json:"areaServed"`
 	DateModified        domain.DateTime `json:"dateModified"`
 	DateLastPreparation domain.DateTime `json:"dateLastPreparation"`
+	ManagedBy           string          `json:"managedBy"`
+	Owner               string          `json:"owner"`
+	See                 json.RawMessage `json:"seeAlso"`
 }
 
 // LatLon tries to guess a suitable location point by assuming that the
@@ -247,4 +270,28 @@ func (t *trailDTO) Categories() []string {
 	}
 
 	return catsAsArray
+}
+
+// SeeAlso extracts the trail reference links as a string array, regardless
+// of the format string vs []string of the response property
+func (t *trailDTO) SeeAlso() []string {
+	return rawJSONToSliceOfStrings(t.See)
+}
+
+func rawJSONToSliceOfStrings(rm json.RawMessage) []string {
+	valueAsArray := []string{}
+
+	if len(rm) > 0 {
+		if err := json.Unmarshal(rm, &valueAsArray); err != nil {
+			var valueAsString string
+
+			if err = json.Unmarshal(rm, &valueAsString); err != nil {
+				return []string{err.Error()}
+			}
+
+			return []string{valueAsString}
+		}
+	}
+
+	return valueAsArray
 }

@@ -1,9 +1,10 @@
-package application
+package presentation
 
 import (
 	"bytes"
 	"compress/flate"
 	"context"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -12,10 +13,12 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/exercisetrails"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/organisations"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/roadaccidents"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsfields"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsvenues"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
@@ -30,19 +33,18 @@ import (
 )
 
 type API interface {
-	Start(port string) error
+	Start(ctx context.Context, port string) error
 }
 
 type opendataAPI struct {
 	router chi.Router
-	log    zerolog.Logger
 }
 
-func NewAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) API {
-	return newOpendataAPI(r, ctx, dcatResponse, openapiResponse)
+func NewAPI(ctx context.Context, r chi.Router, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer, orgfile io.Reader) API {
+	return newOpendataAPI(ctx, r, dcatResponse, openapiResponse, orgfile)
 }
 
-func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer) *opendataAPI {
+func newOpendataAPI(ctx context.Context, r chi.Router, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer, orgfile io.Reader) *opendataAPI {
 	log := logging.GetFromContext(ctx)
 
 	r.Use(cors.New(cors.Options{
@@ -61,10 +63,9 @@ func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffe
 
 	o := &opendataAPI{
 		router: r,
-		log:    log,
 	}
 
-	o.addDiwiseHandlers(r, log)
+	o.addDiwiseHandlers(ctx, r, orgfile)
 	o.addProbeHandlers(r)
 
 	o.router.Get("/api/datasets/dcat", o.newRetrieveDatasetsHandler(log, dcatResponse))
@@ -74,134 +75,149 @@ func newOpendataAPI(r chi.Router, ctx context.Context, dcatResponse *bytes.Buffe
 	return o
 }
 
-func (a *opendataAPI) Start(port string) error {
-	a.log.Info().Msgf("Starting api-opendata on port:%s", port)
+func (a *opendataAPI) Start(ctx context.Context, port string) error {
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msgf("Starting api-opendata on port:%s", port)
+
 	return http.ListenAndServe(":"+port, a.router)
 }
 
-func (o *opendataAPI) addDiwiseHandlers(r chi.Router, log zerolog.Logger) {
-	contextBrokerURL := env.GetVariableOrDie(log, "DIWISE_CONTEXT_BROKER_URL", "context broker URL")
-	contextBrokerTenant := env.GetVariableOrDefault(log, "DIWISE_CONTEXT_BROKER_TENANT", entities.DefaultNGSITenant)
-	maxWQODistStr := env.GetVariableOrDefault(log, "WATER_QUALITY_MAX_DISTANCE", "1000")
+func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfile io.Reader) {
+	logger := logging.GetFromContext(ctx)
+
+	contextBrokerURL := env.GetVariableOrDie(logger, "DIWISE_CONTEXT_BROKER_URL", "context broker URL")
+	contextBrokerTenant := env.GetVariableOrDefault(logger, "DIWISE_CONTEXT_BROKER_TENANT", entities.DefaultNGSITenant)
+	maxWQODistStr := env.GetVariableOrDefault(logger, "WATER_QUALITY_MAX_DISTANCE", "1000")
 
 	maxWQODistance, err := strconv.ParseInt(maxWQODistStr, 10, 32)
 	if err != nil {
 		maxWQODistance = 1000
 	}
 
-	airQualitySvc := airquality.NewAirQualityService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
+	organisationsRegistry, err := organisations.NewRegistry(orgfile)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to create organisations registry")
+	}
+	airQualitySvc := airquality.NewAirQualityService(context.Background(), logger, contextBrokerURL, contextBrokerTenant)
 	airQualitySvc.Start()
 
-	beachService := beaches.NewBeachService(context.Background(), log, contextBrokerURL, contextBrokerTenant, int(maxWQODistance))
-	beachService.Start()
+	waterqualitySvc := waterquality.NewWaterQualityService(ctx, contextBrokerURL, contextBrokerTenant)
+	waterqualitySvc.Start(ctx)
 
-	trailService := exercisetrails.NewExerciseTrailService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
-	trailService.Start()
+	beachService := beaches.NewBeachService(ctx, contextBrokerURL, contextBrokerTenant, int(maxWQODistance), waterqualitySvc)
+	beachService.Start(ctx)
 
-	cityworkService := citywork.NewCityworksService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
-	cityworkService.Start()
+	trailService := exercisetrails.NewExerciseTrailService(ctx, contextBrokerURL, contextBrokerTenant, organisationsRegistry)
+	trailService.Start(ctx)
 
-	roadAccidentSvc := roadaccidents.NewRoadAccidentService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
-	roadAccidentSvc.Start()
+	cityworkService := citywork.NewCityworksService(ctx, contextBrokerURL, contextBrokerTenant)
+	cityworkService.Start(ctx)
 
-	sportsfieldsSvc := sportsfields.NewSportsFieldService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
-	sportsfieldsSvc.Start()
+	roadAccidentSvc := roadaccidents.NewRoadAccidentService(ctx, contextBrokerURL, contextBrokerTenant)
+	roadAccidentSvc.Start(ctx)
 
-	sportsvenuesSvc := sportsvenues.NewSportsVenueService(context.Background(), log, contextBrokerURL, contextBrokerTenant)
-	sportsvenuesSvc.Start()
+	sportsfieldsSvc := sportsfields.NewSportsFieldService(ctx, contextBrokerURL, contextBrokerTenant, organisationsRegistry)
+	sportsfieldsSvc.Start(ctx)
 
-	waterQualityQueryParams := os.Getenv("WATER_QUALITY_QUERY_PARAMS")
+	sportsvenuesSvc := sportsvenues.NewSportsVenueService(ctx, contextBrokerURL, contextBrokerTenant, organisationsRegistry)
+	sportsvenuesSvc.Start(ctx)
 
-	stratsysEnabled := (env.GetVariableOrDefault(log, "STRATSYS_ENABLED", "true") != "false")
-	stratsysCompanyCode := os.Getenv("STRATSYS_COMPANY_CODE")
-	stratsysClientId := os.Getenv("STRATSYS_CLIENT_ID")
-	stratsysScope := os.Getenv("STRATSYS_SCOPE")
-	stratsysLoginUrl := os.Getenv("STRATSYS_LOGIN_URL")
-	stratsysDefaultUrl := os.Getenv("STRATSYS_DEFAULT_URL")
-
-	r.Get(
-		"/api/temperature/water",
-		handlers.NewRetrieveWaterQualityHandler(log, contextBrokerURL, waterQualityQueryParams),
-	)
 	r.Get(
 		"/api/airquality",
-		handlers.NewRetrieveAirQualitiesHandler(log, airQualitySvc),
+		handlers.NewRetrieveAirQualitiesHandler(logger, airQualitySvc),
 	)
 	r.Get(
 		"/api/airquality/{id}",
-		handlers.NewRetrieveAirQualityByIDHandler(log, airQualitySvc),
+		handlers.NewRetrieveAirQualityByIDHandler(logger, airQualitySvc),
 	)
 	r.Get(
 		"/api/beaches",
-		handlers.NewRetrieveBeachesHandler(log, beachService),
+		handlers.NewRetrieveBeachesHandler(logger, beachService),
 	)
 	r.Get(
 		"/api/beaches/{id}",
-		handlers.NewRetrieveBeachByIDHandler(log, beachService),
-	)
-	r.Get(
-		"/api/exercisetrails",
-		handlers.NewRetrieveExerciseTrailsHandler(log, trailService),
-	)
-	r.Get(
-		"/api/exercisetrails/{id}",
-		handlers.NewRetrieveExerciseTrailByIDHandler(log, trailService),
-	)
-	r.Get(
-		"/api/temperature/air",
-		handlers.NewRetrieveTemperaturesHandler(log, temperature.NewTempService(contextBrokerURL)),
-	)
-	r.Get(
-		"/api/temperature/air/sensors",
-		handlers.NewRetrieveTemperatureSensorsHandler(log, contextBrokerURL),
-	)
-	r.Get(
-		"/api/trafficflow",
-		handlers.NewRetrieveTrafficFlowsHandler(log, contextBrokerURL),
+		handlers.NewRetrieveBeachByIDHandler(logger, beachService),
 	)
 	r.Get(
 		"/api/cityworks",
-		handlers.NewRetrieveCityworksHandler(log, cityworkService),
+		handlers.NewRetrieveCityworksHandler(logger, cityworkService),
 	)
 	r.Get(
 		"/api/cityworks/{id}",
-		handlers.NewRetrieveCityworksByIDHandler(log, cityworkService),
+		handlers.NewRetrieveCityworksByIDHandler(logger, cityworkService),
+	)
+	r.Get(
+		"/api/exercisetrails",
+		handlers.NewRetrieveExerciseTrailsHandler(logger, trailService),
+	)
+	r.Get(
+		"/api/exercisetrails/{id}",
+		handlers.NewRetrieveExerciseTrailByIDHandler(logger, trailService),
 	)
 	r.Get(
 		"/api/roadaccidents",
-		handlers.NewRetrieveRoadAccidentsHandler(log, roadAccidentSvc),
+		handlers.NewRetrieveRoadAccidentsHandler(logger, roadAccidentSvc),
 	)
 	r.Get(
 		"/api/roadaccidents/{id}",
-		handlers.NewRetrieveRoadAccidentByIDHandler(log, roadAccidentSvc),
+		handlers.NewRetrieveRoadAccidentByIDHandler(logger, roadAccidentSvc),
 	)
 	r.Get(
 		"/api/sportsfields",
-		handlers.NewRetrieveSportsFieldsHandler(log, sportsfieldsSvc),
+		handlers.NewRetrieveSportsFieldsHandler(logger, sportsfieldsSvc),
 	)
 	r.Get(
 		"/api/sportsfields/{id}",
-		handlers.NewRetrieveSportsFieldByIDHandler(log, sportsfieldsSvc),
+		handlers.NewRetrieveSportsFieldByIDHandler(logger, sportsfieldsSvc),
 	)
 	r.Get(
 		"/api/sportsvenues",
-		handlers.NewRetrieveSportsVenuesHandler(log, sportsvenuesSvc),
+		handlers.NewRetrieveSportsVenuesHandler(logger, sportsvenuesSvc),
 	)
 	r.Get(
 		"/api/sportsvenues/{id}",
-		handlers.NewRetrieveSportsVenueByIDHandler(log, sportsvenuesSvc),
+		handlers.NewRetrieveSportsVenueByIDHandler(logger, sportsvenuesSvc),
 	)
 
+	stratsysEnabled := (env.GetVariableOrDefault(logger, "STRATSYS_ENABLED", "true") != "false")
+
 	if stratsysEnabled {
+		stratsysCompanyCode := os.Getenv("STRATSYS_COMPANY_CODE")
+		stratsysClientId := os.Getenv("STRATSYS_CLIENT_ID")
+		stratsysScope := os.Getenv("STRATSYS_SCOPE")
+		stratsysLoginUrl := os.Getenv("STRATSYS_LOGIN_URL")
+		stratsysDefaultUrl := os.Getenv("STRATSYS_DEFAULT_URL")
+
 		r.Get(
 			"/api/stratsys/publishedreports",
-			stratsys.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
+			stratsys.NewRetrieveStratsysReportsHandler(logger, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
 		)
 		r.Get(
 			"/api/stratsys/publishedreports/{id}",
-			stratsys.NewRetrieveStratsysReportsHandler(log, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
+			stratsys.NewRetrieveStratsysReportsHandler(logger, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
 		)
 	}
+
+	r.Get(
+		"/api/temperature/air",
+		handlers.NewRetrieveTemperaturesHandler(logger, temperature.NewTempService(contextBrokerURL)),
+	)
+	r.Get(
+		"/api/temperature/air/sensors",
+		handlers.NewRetrieveTemperatureSensorsHandler(logger, contextBrokerURL),
+	)
+	r.Get(
+		"/api/trafficflow",
+		handlers.NewRetrieveTrafficFlowsHandler(logger, contextBrokerURL),
+	)
+	r.Get(
+		"/api/waterqualities",
+		handlers.NewRetrieveWaterQualityHandler(logger, waterqualitySvc),
+	)
+	r.Get(
+		"/api/waterqualities/{id}",
+		handlers.NewRetrieveWaterQualityByIDHandler(logger, waterqualitySvc),
+	)
 }
 
 func (o *opendataAPI) addProbeHandlers(r chi.Router) {

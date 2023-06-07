@@ -3,70 +3,85 @@ package citywork
 import (
 	"context"
 	"net/http"
-	"net/http/httptest"
 	"testing"
+
+	testutils "github.com/diwise/service-chassis/pkg/test/http"
+	"github.com/diwise/service-chassis/pkg/test/http/expects"
+	"github.com/diwise/service-chassis/pkg/test/http/response"
 
 	"github.com/matryer/is"
 	"github.com/rs/zerolog"
 )
 
 func TestThatRefreshReturnsErrorOnNoValidHostNotFound(t *testing.T) {
-	is, log, _ := testSetup(t, 200, "")
+	is, log, _ := testSetup(t, http.StatusOK, "")
 
-	cwSvc := NewCityworksService(context.Background(), log, "http://lolcat:1234", "default")
+	cwSvc := NewCityworksService(context.Background(), "http://lolcat:1234", "default")
 
 	svc, ok := cwSvc.(*cityworksSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.True(err != nil) // should return err due to invalid host
 }
 
 func TestThatRefreshFailsOnEmptyResponseBody(t *testing.T) {
-	is, log, server := testSetup(t, 200, "")
+	is, log, server := testSetup(t, http.StatusOK, "")
 
-	cwSvc := NewCityworksService(context.Background(), log, server.URL, "default")
+	cwSvc := NewCityworksService(context.Background(), server.URL(), "default")
 
 	svc, ok := cwSvc.(*cityworksSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.True(err != nil)
 	is.Equal("failed to retrieve cityworks from context broker: failed to unmarshal response: unexpected end of JSON input", err.Error()) // should fail to unmarshal due to empty response
 }
 
 func TestThatRefreshFailsOnStatusCode400(t *testing.T) {
-	is, log, server := testSetup(t, 400, "")
+	is, log, server := testSetup(t, http.StatusBadRequest, "")
 
-	cwSvc := NewCityworksService(context.Background(), log, server.URL, "default")
+	cwSvc := NewCityworksService(context.Background(), server.URL(), "default")
 
 	svc, ok := cwSvc.(*cityworksSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.True(err != nil)
 	is.Equal("failed to retrieve cityworks from context broker: request failed", err.Error()) // should fail on failed get request to context broker
 }
 
 func TestThatItWorks(t *testing.T) {
-	is, log, server := testSetup(t, 200, testData)
+	is, log, server := testSetup(t, http.StatusOK, testData)
 
-	cwSvc := NewCityworksService(context.Background(), log, server.URL, "default")
+	cwSvc := NewCityworksService(context.Background(), server.URL(), "default")
 
 	svc, ok := cwSvc.(*cityworksSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), log)
 	is.NoErr(err)
 	is.Equal(len(svc.cityworksDetails), 2) // should be equal to 2
 }
 
-func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, zerolog.Logger, *httptest.Server) {
+var Expects = testutils.Expects
+var Returns = testutils.Returns
+var anyInput = expects.AnyInput
+
+func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, zerolog.Logger, testutils.MockService) {
 	is := is.New(t)
 	log := zerolog.Logger{}
-	server := setupMockServiceThatReturns(statusCode, responseBody)
 
-	return is, log, server
+	ms := testutils.NewMockServiceThat(
+		Expects(is, anyInput()),
+		Returns(
+			response.Code(statusCode),
+			response.ContentType("application/ld+json"),
+			response.Body([]byte(responseBody)),
+		),
+	)
+
+	return is, log, ms
 }
 
 const testData string = `[
@@ -118,13 +133,3 @@ const testData string = `[
 	}
 ]
 `
-
-func setupMockServiceThatReturns(responseCode int, body string) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(responseCode)
-		w.Header().Add("Content-Type", "application/ld+json")
-		if body != "" {
-			w.Write([]byte(body))
-		}
-	}))
-}

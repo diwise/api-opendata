@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsvenues"
@@ -179,32 +180,62 @@ func marshalSportsVenuesToJSON(sportsvenues []domain.SportsVenue, mapper SportsV
 
 func newSportsVenuesMapper(fields []string, location func(*domain.SportsVenue) any) SportsVenuesMapperFunc {
 
-	mappers := map[string]func(*domain.SportsVenue) (string, any){
-		"id":           func(sf *domain.SportsVenue) (string, any) { return "id", sf.ID },
-		"type":         func(sf *domain.SportsVenue) (string, any) { return "type", "SportsVenue" },
-		"name":         func(sf *domain.SportsVenue) (string, any) { return "name", sf.Name },
-		"description":  func(sf *domain.SportsVenue) (string, any) { return "description", sf.Description },
-		"location":     func(sf *domain.SportsVenue) (string, any) { return "location", location(sf) },
-		"categories":   func(sf *domain.SportsVenue) (string, any) { return "categories", sf.Categories },
-		"datecreated":  func(sf *domain.SportsVenue) (string, any) { return "dateCreated", *sf.DateCreated },
-		"datemodified": func(sf *domain.SportsVenue) (string, any) { return "dateModified", *sf.DateModified },
-		"seealso":      func(sf *domain.SportsVenue) (string, any) { return "seeAlso", sf.SeeAlso },
-		"source":       func(t *domain.SportsVenue) (string, any) { return "source", t.Source },
+	omitempty := func(v any) any {
+		switch value := v.(type) {
+		case []string:
+			if len(value) == 0 || (len(value) == 1 && len(value[0]) == 0) {
+				return nil
+			}
+		case string:
+			if len(value) == 0 {
+				return nil
+			}
+		}
+
+		return v
 	}
 
-	return func(t *domain.SportsVenue) ([]byte, error) {
+	mappers := map[string]func(*domain.SportsVenue) (string, any){
+		"id":           func(sv *domain.SportsVenue) (string, any) { return "id", sv.ID },
+		"type":         func(sv *domain.SportsVenue) (string, any) { return "type", "SportsVenue" },
+		"name":         func(sv *domain.SportsVenue) (string, any) { return "name", sv.Name },
+		"description":  func(sv *domain.SportsVenue) (string, any) { return "description", sv.Description },
+		"location":     func(sv *domain.SportsVenue) (string, any) { return "location", location(sv) },
+		"categories":   func(sv *domain.SportsVenue) (string, any) { return "categories", sv.Categories },
+		"datecreated":  func(sv *domain.SportsVenue) (string, any) { return "dateCreated", *sv.DateCreated },
+		"datemodified": func(sv *domain.SportsVenue) (string, any) { return "dateModified", *sv.DateModified },
+		"publicaccess": func(sv *domain.SportsVenue) (string, any) { return "publicAccess", omitempty(sv.PublicAccess) },
+		"seealso":      func(sv *domain.SportsVenue) (string, any) { return "seeAlso", omitempty(sv.SeeAlso) },
+		"source":       func(sv *domain.SportsVenue) (string, any) { return "source", sv.Source },
+		"managedby":    func(sv *domain.SportsVenue) (string, any) { return "managedBy", sv.ManagedBy },
+		"owner":        func(sv *domain.SportsVenue) (string, any) { return "owner", sv.Owner },
+	}
+
+	return func(sv *domain.SportsVenue) ([]byte, error) {
 		result := map[string]any{}
 		for _, f := range fields {
 			mapper, ok := mappers[f]
 			if !ok {
 				return nil, fmt.Errorf("unknown field: %s", f)
 			}
-			key, value := mapper(t)
-			if value != nil {
+			key, value := mapper(sv)
+			if propertyIsNotNil(value) {
 				result[key] = value
 			}
 		}
 
 		return json.Marshal(&result)
 	}
+}
+
+// TODO: Explain the peculiarities of nil interfaces to Go newcomers ...
+func propertyIsNotNil(v any) bool {
+	if v == nil {
+		return false
+	}
+	switch reflect.TypeOf(v).Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Array, reflect.Chan, reflect.Slice:
+		return !reflect.ValueOf(v).IsNil()
+	}
+	return true
 }

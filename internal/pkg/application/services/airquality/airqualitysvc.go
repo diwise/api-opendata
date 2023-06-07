@@ -267,19 +267,19 @@ type airqualityDTO struct {
 		Type  string       `json:"type"`
 		Value domain.Point `json:"value"`
 	} `json:"location"`
-	DateObserved              domain.DateTime `json:"dateObserved"`
-	AtmosphericPressure       *domain.Number  `json:"atmosphericPressure"`
-	Temperature               *domain.Number  `json:"temperature"`
-	RelativeHumidity          *domain.Number  `json:"relativeHumidity"`
-	ParticleCount             *domain.Number  `json:"particleCount"`
-	PM1                       *domain.Number  `json:"PM1"`
-	PM4                       *domain.Number  `json:"PM4"`
-	PM10                      *domain.Number  `json:"PM10"`
-	PM25                      *domain.Number  `json:"PM25"`
-	TotalSuspendedParticulate *domain.Number  `json:"totalSuspendedParticulate"`
-	CO2                       *domain.Number  `json:"CO2"`
-	NO                        *domain.Number  `json:"NO"`
-	NO2                       *domain.Number  `json:"NO2"`
-	NOx                       *domain.Number  `json:"NOx"`
-	Voltage                   *domain.Number  `json:"voltage"`
+	DateObserved              domain.DateTime   `json:"dateObserved"`
+	AtmosphericPressure       *domain.Pollutant `json:"atmosphericPressure"`
+	Temperature               *domain.Pollutant `json:"temperature"`
+	RelativeHumidity          *domain.Pollutant `json:"relativeHumidity"`
+	ParticleCount             *domain.Pollutant `json:"particleCount"`
+	PM1                       *domain.Pollutant `json:"PM1"`
+	PM4                       *domain.Pollutant `json:"PM4"`
+	PM10                      *domain.Pollutant `json:"PM10"`
+	PM25                      *domain.Pollutant `json:"PM25"`
+	TotalSuspendedParticulate *domain.Pollutant `json:"totalSuspendedParticulate"`
+	CO2                       *domain.Pollutant `json:"CO2"`
+	NO                        *domain.Pollutant `json:"NO"`
+	NO2                       *domain.Pollutant `json:"NO2"`
+	NOx                       *domain.Pollutant `json:"NOx"`
+	Voltage                   *domain.Pollutant `json:"voltage"`
 }

@@ -3,25 +3,20 @@ package beaches
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"math"
-	"net/http"
-	"net/http/httputil"
-	"sort"
-	"strconv"
-	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
-	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 )
 
@@ -31,41 +26,45 @@ type BeachService interface {
 	Broker() string
 	Tenant() string
 
-	GetAll() []byte
-	GetByID(id string) ([]byte, error)
+	GetAll(ctx context.Context) []Beach
+	GetByID(ctx context.Context, id string) (*Beach, error)
 
-	Start()
-	Shutdown()
+	Start(context.Context)
+	Refresh(context.Context) (int, error)
+	Shutdown(context.Context)
 }
 
-func NewBeachService(ctx context.Context, logger zerolog.Logger, contextBrokerURL, tenant string, maxWQODistance int) BeachService {
+var ErrNoSuchBeach error = errors.New("no such beach")
+
+func NewBeachService(ctx context.Context, contextBrokerURL, tenant string, maxWQODistance int, wqsvc waterquality.WaterQualityService) BeachService {
 	svc := &beachSvc{
-		ctx:                 ctx,
-		beaches:             []byte("[]"),
-		beachDetails:        map[string][]byte{},
+		wqsvc:               wqsvc,
+		beaches:             []Beach{},
+		beachByID:           map[string]Beach{},
 		beachMaxWQODistance: maxWQODistance,
 		contextBrokerURL:    contextBrokerURL,
 		tenant:              tenant,
-		log:                 logger,
-		keepRunning:         true,
+		queue:               make(chan func()),
+		keepRunning:         &atomic.Bool{},
 	}
 
 	return svc
 }
 
 type beachSvc struct {
+	wqsvc waterquality.WaterQualityService
+
 	contextBrokerURL string
 	tenant           string
 
-	beachMutex          sync.Mutex
-	beaches             []byte
-	beachDetails        map[string][]byte
+	beaches             []Beach
+	beachByID           map[string]Beach
 	beachMaxWQODistance int
 
-	ctx context.Context
-	log zerolog.Logger
+	queue chan func()
 
-	keepRunning bool
+	keepRunning *atomic.Bool
+	wg          sync.WaitGroup
 }
 
 func (svc *beachSvc) Broker() string {
@@ -76,113 +75,182 @@ func (svc *beachSvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *beachSvc) GetAll() []byte {
-	svc.beachMutex.Lock()
-	defer svc.beachMutex.Unlock()
+func (svc *beachSvc) GetAll(ctx context.Context) []Beach {
+	result := make(chan []Beach)
 
-	return svc.beaches
-}
-
-func (svc *beachSvc) GetByID(id string) ([]byte, error) {
-	svc.beachMutex.Lock()
-	defer svc.beachMutex.Unlock()
-
-	body, ok := svc.beachDetails[id]
-	if !ok {
-		return []byte{}, fmt.Errorf("no such beach")
+	svc.queue <- func() {
+		result <- svc.beaches
 	}
 
-	return body, nil
+	return <-result
 }
 
-func (svc *beachSvc) Start() {
-	svc.log.Info().Msg("starting beach service")
-	// TODO: Prevent multiple starts on the same service
-	go svc.run()
+func (svc *beachSvc) GetByID(ctx context.Context, beachID string) (*Beach, error) {
+	result := make(chan Beach)
+	err := make(chan error)
+
+	svc.queue <- func() {
+		body, ok := svc.beachByID[beachID]
+		if !ok {
+			err <- ErrNoSuchBeach
+		} else {
+			result <- body
+		}
+	}
+
+	select {
+	case r := <-result:
+		return &r, nil
+	case e := <-err:
+		return nil, e
+	}
 }
 
-func (svc *beachSvc) Shutdown() {
-	svc.log.Info().Msg("shutting down beach service")
-	svc.keepRunning = false
+func (svc *beachSvc) Start(ctx context.Context) {
+	go svc.run(ctx)
 }
 
-func (svc *beachSvc) run() {
-	nextRefreshTime := time.Now()
+func (svc *beachSvc) Refresh(ctx context.Context) (int, error) {
+	logger := logging.GetFromContext(ctx)
 
-	for svc.keepRunning {
-		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing beach info")
-			count, err := svc.refresh()
+	refreshDone := make(chan int)
+	refreshFailed := make(chan error)
 
+	svc.queue <- func() {
+		count, err := svc.refresh(ctx, logger)
+		if err != nil {
+			refreshFailed <- err
+		} else {
+			refreshDone <- count
+		}
+	}
+
+	select {
+	case c := <-refreshDone:
+		return c, nil
+	case e := <-refreshFailed:
+		return 0, e
+	}
+}
+
+func (svc *beachSvc) Shutdown(ctx context.Context) {
+	svc.queue <- func() {
+		svc.keepRunning.Store(false)
+	}
+
+	svc.wg.Wait()
+}
+
+func (svc *beachSvc) run(ctx context.Context) {
+	svc.wg.Add(1)
+	defer svc.wg.Done()
+
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("starting up beach service")
+
+	// use atomic swap to avoid startup races
+	alreadyStarted := svc.keepRunning.Swap(true)
+	if alreadyStarted {
+		logger.Error().Msg("attempt to start the beach service multiple times")
+		return
+	}
+
+	const RefreshIntervalOnFail time.Duration = 5 * time.Second
+	const RefreshIntervalOnSuccess time.Duration = 5 * time.Minute
+
+	var refreshTimer *time.Timer
+	count, err := svc.refresh(ctx, logger)
+
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to refresh beaches")
+		refreshTimer = time.NewTimer(RefreshIntervalOnFail)
+	} else {
+		logger.Info().Msgf("refreshed %d beaches", count)
+		refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
+	}
+
+	for svc.keepRunning.Load() {
+		select {
+		case fn := <-svc.queue:
+			fn()
+		case <-refreshTimer.C:
+			count, err := svc.refresh(ctx, logger)
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh beaches")
-				// Retry every 10 seconds on error
-				nextRefreshTime = time.Now().Add(10 * time.Second)
+				logger.Error().Err(err).Msg("failed to refresh beaches")
+				refreshTimer = time.NewTimer(RefreshIntervalOnFail)
 			} else {
-				svc.log.Info().Msgf("refreshed %d beaches", count)
-				// Refresh every 5 minutes on success
-				nextRefreshTime = time.Now().Add(5 * time.Minute)
+				logger.Info().Msgf("refreshed %d beaches", count)
+				refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
 			}
 		}
-
-		// TODO: Use blocking channels instead of sleeps
-		time.Sleep(1 * time.Second)
 	}
 
-	svc.log.Info().Msg("beach service exiting")
+	logger.Info().Msg("beach service exiting")
 }
 
-func (svc *beachSvc) refresh() (count int, err error) {
+func (svc *beachSvc) refresh(ctx context.Context, log zerolog.Logger) (count int, err error) {
 
-	ctx, span := tracer.Start(svc.ctx, "refresh-beaches")
+	ctx, span := tracer.Start(ctx, "refresh-beaches")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
+	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, log, ctx)
 
-	beaches := []domain.Beach{}
+	logger.Info().Msg("refreshing beach info")
 
-	count, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "Beach", nil, func(b beachDTO) {
-		latitude, longitude := b.LatLon()
+	beaches := []Beach{}
 
-		details := domain.BeachDetails{
+	_, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "Beach", nil, func(b beachDTO) {
+
+		beach := Beach{
 			ID:          b.ID,
 			Name:        b.Name,
 			Description: &b.Description,
-			Location:    *domain.NewPoint(latitude, longitude),
+			Location:    b.Location,
 		}
 
 		seeAlso := b.SeeAlso()
 		if len(seeAlso) > 0 {
-			details.SeeAlso = &seeAlso
+			beach.SeeAlso = &seeAlso
 		}
 
-		wqo, err_ := svc.getWaterQualitiesNearBeach(ctx, latitude, longitude)
+		if len(b.Source) > 0 {
+			src := b.Source
+			beach.Source = &src
+		}
+
+		from := time.Now().UTC().Add(-24 * time.Hour)
+		to := time.Now().UTC()
+
+		latitude, longitude := b.LatLon()
+		pt := waterquality.NewPoint(latitude, longitude)
+		wqots, err_ := svc.wqsvc.GetAllNearPointWithinTimespan(ctx, pt, svc.beachMaxWQODistance, from, to)
 		if err_ != nil {
 			logger.Error().Err(err_).Msgf("failed to get water qualities near %s (%s)", b.Name, b.ID)
 		} else {
-			details.WaterQuality = &wqo
-		}
+			wq := []WaterQuality{}
 
-		jsonBytes, err_ := json.MarshalIndent(details, "  ", "  ")
-		if err_ != nil {
-			err = fmt.Errorf("failed to marshal beach to json: %w", err_)
-			return
-		}
+			for _, t := range wqots {
+				newWQ := WaterQuality{}
 
-		svc.storeBeachDetails(b.ID, jsonBytes)
+				if t.Temperature > 0 {
+					newWQ.Temperature = t.Temperature
+				}
 
-		beach := domain.Beach{
-			ID:       b.ID,
-			Name:     b.Name,
-			Location: details.Location,
-		}
+				if t.Source != nil {
+					newWQ.Source = t.Source
+				}
 
-		if details.WaterQuality != nil && len(*details.WaterQuality) > 0 {
-			mostRecentWQ := (*details.WaterQuality)[0]
-			if mostRecentWQ.Age() < 24*time.Hour {
-				beach.WaterQuality = &mostRecentWQ
+				if t.DateObserved != "" {
+					newWQ.DateObserved = t.DateObserved
+				}
+
+				wq = append(wq, newWQ)
 			}
+
+			beach.WaterQuality = &wq
 		}
+
+		svc.beachByID[b.ID] = beach
 
 		beaches = append(beaches, beach)
 	})
@@ -191,177 +259,9 @@ func (svc *beachSvc) refresh() (count int, err error) {
 		return
 	}
 
-	jsonBytes, err_ := json.MarshalIndent(beaches, "  ", "  ")
-	if err_ != nil {
-		err = fmt.Errorf("failed to marshal beaches to json: %w", err_)
-		return
-	}
+	svc.beaches = beaches
 
-	svc.storeBeachList(jsonBytes)
-
-	return
-}
-
-func (svc *beachSvc) storeBeachDetails(id string, body []byte) {
-	svc.beachMutex.Lock()
-	defer svc.beachMutex.Unlock()
-
-	svc.beachDetails[id] = body
-}
-
-func (svc *beachSvc) storeBeachList(body []byte) {
-	svc.beachMutex.Lock()
-	defer svc.beachMutex.Unlock()
-
-	svc.beaches = body
-}
-
-func (svc *beachSvc) getWaterQualitiesNearBeach(ctx context.Context, latitude, longitude float64) ([]domain.WaterQuality, error) {
-	var err error
-	ctx, span := tracer.Start(ctx, "retrieve-water-qualites")
-	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
-
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
-	baseURL := fmt.Sprintf(
-		"%s/ngsi-ld/v1/entities?type=WaterQualityObserved&georel=near%%3BmaxDistance==%d&geometry=Point&coordinates=[%f,%f]",
-		svc.contextBrokerURL, svc.beachMaxWQODistance, longitude, latitude,
-	)
-
-	count, err := func() (int64, error) {
-		subctx, subspan := tracer.Start(ctx, "retrieve-wqo-count")
-		defer func() { tracing.RecordAnyErrorAndEndSpan(err, subspan) }()
-
-		requestURL := fmt.Sprintf("%s&limit=0&count=true", baseURL)
-
-		req, err := http.NewRequestWithContext(subctx, http.MethodGet, requestURL, nil)
-		if err != nil {
-			err = fmt.Errorf("failed to create request: %s", err.Error())
-			return 0, err
-		}
-
-		req.Header.Add("Accept", "application/ld+json")
-		linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
-		req.Header.Add("Link", linkHeaderURL)
-
-		if svc.tenant != entities.DefaultNGSITenant {
-			req.Header.Add("NGSILD-Tenant", svc.tenant)
-		}
-
-		svc.log.Debug().Msgf("calling %s", requestURL)
-
-		resp, err := httpClient.Do(req)
-		if err != nil {
-			err = fmt.Errorf("failed to send request: %s", err.Error())
-			return 0, err
-		}
-		defer resp.Body.Close()
-
-		resultsCount := resp.Header.Get("Ngsild-Results-Count")
-		if resultsCount == "" {
-			return 0, nil
-		}
-
-		count, err := strconv.ParseInt(resultsCount, 10, 64)
-		if err != nil {
-			err = fmt.Errorf("malformed results header value: %s", err.Error())
-		}
-
-		return count, err
-	}()
-
-	if count == 0 || err != nil {
-		return []domain.WaterQuality{}, err
-	}
-
-	const MaxTempCount int64 = 12
-	requestURL := baseURL + "&options=keyValues"
-
-	if MaxTempCount < count {
-		requestURL = fmt.Sprintf("%s&offset=%d", requestURL, count-MaxTempCount)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
-	if err != nil {
-		err = fmt.Errorf("failed to create request: %s", err.Error())
-		return nil, err
-	}
-
-	req.Header.Add("Accept", "application/ld+json")
-	linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
-	req.Header.Add("Link", linkHeaderURL)
-
-	if svc.tenant != entities.DefaultNGSITenant {
-		req.Header.Add("NGSILD-Tenant", svc.tenant)
-	}
-
-	svc.log.Debug().Msgf("calling %s", requestURL)
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		err = fmt.Errorf("failed to send request: %s", err.Error())
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		err = fmt.Errorf("failed to read response body: %s", err.Error())
-		return nil, err
-	}
-
-	if resp.StatusCode >= http.StatusBadRequest {
-		reqbytes, _ := httputil.DumpRequest(req, false)
-		respbytes, _ := httputil.DumpResponse(resp, false)
-
-		log := logging.GetFromContext(ctx)
-		log.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
-		return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		contentType := resp.Header.Get("Content-Type")
-		err = fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", resp.StatusCode, contentType, string(respBody))
-		return nil, err
-	}
-
-	var wqo []struct {
-		Temperature  float64         `json:"temperature"`
-		DateObserved domain.DateTime `json:"dateObserved"`
-		Source       *string         `json:"source"`
-	}
-	err = json.Unmarshal(respBody, &wqo)
-	if err != nil {
-		err = fmt.Errorf("failed to unmarshal response: %s", err.Error())
-		return nil, err
-	}
-
-	// Sort the observations in chronologically reverse order
-	sort.Slice(wqo, func(i, j int) bool {
-		return strings.Compare(wqo[i].DateObserved.Value, wqo[j].DateObserved.Value) == 1
-	})
-
-	waterQualities := make([]domain.WaterQuality, 0, len(wqo))
-	previousTime := ""
-
-	for _, observation := range wqo {
-		// Filter out all but the first observation with the same timestamp
-		if previousTime == observation.DateObserved.Value {
-			continue
-		}
-
-		waterQualities = append(waterQualities, domain.WaterQuality{
-			Temperature:  math.Round(observation.Temperature*10) / 10,
-			DateObserved: observation.DateObserved.Value,
-			Source:       observation.Source,
-		})
-
-		previousTime = observation.DateObserved.Value
-	}
-
-	return waterQualities, nil
+	return len(svc.beaches), nil
 }
 
 type beachDTO struct {
@@ -373,7 +273,8 @@ type beachDTO struct {
 		Coordinates [][][][]float64 `json:"coordinates"`
 	} `json:"location"`
 	See          json.RawMessage `json:"seeAlso"`
-	DateModified domain.DateTime `json:"dateModified"`
+	Source       string          `json:"source"`
+	DateModified json.RawMessage `json:"dateModified"`
 }
 
 func round(v float64) float64 {
@@ -411,4 +312,30 @@ func (b *beachDTO) SeeAlso() []string {
 	}
 
 	return refsAsArray
+}
+
+type WaterQuality struct {
+	Temperature  float64 `json:"temperature"`
+	DateObserved string  `json:"dateObserved"`
+	Source       *string `json:"source,omitempty"`
+}
+
+func (w WaterQuality) Age() time.Duration {
+	observedAt, err := time.Parse(time.RFC3339, w.DateObserved)
+	if err != nil {
+		// Pretend it was almost 100 years ago
+		return 100 * 365 * 24 * time.Hour
+	}
+
+	return time.Since(observedAt)
+}
+
+type Beach struct {
+	ID           string              `json:"id"`
+	Name         string              `json:"name"`
+	Location     domain.MultiPolygon `json:"location"`
+	WaterQuality *[]WaterQuality     `json:"waterquality,omitempty"`
+	Description  *string             `json:"description,omitempty"`
+	SeeAlso      *[]string           `json:"seeAlso,omitempty"`
+	Source       *string             `json:"source,omitempty"`
 }

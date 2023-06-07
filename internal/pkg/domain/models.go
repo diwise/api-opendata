@@ -44,6 +44,10 @@ type Agent struct {
 	Name  string
 }
 
+type Organisation struct {
+	Name string `json:"name"`
+}
+
 type Organization struct {
 	About    string
 	Fn       string
@@ -65,23 +69,23 @@ type AirQualityDetails struct {
 	ID                        string        `json:"id"`
 	Location                  LocationPoint `json:"location"`
 	DateObserved              DateTime      `json:"dateObserved"`
-	AtmosphericPressure       *Number       `json:"atmosphericPressure,omitempty"`
-	Temperature               *Number       `json:"temperature,omitempty"`
-	RelativeHumidity          *Number       `json:"relativeHumidity,omitempty"`
-	ParticleCount             *Number       `json:"particleCount,omitempty"`
-	PM1                       *Number       `json:"PM1,omitempty"`
-	PM4                       *Number       `json:"PM4,omitempty"`
-	PM10                      *Number       `json:"PM10,omitempty"`
-	PM25                      *Number       `json:"PM25,omitempty"`
-	TotalSuspendedParticulate *Number       `json:"totalSuspendedParticulate,omitempty"`
-	CO2                       *Number       `json:"CO2,omitempty"`
-	NO                        *Number       `json:"NO,omitempty"`
-	NO2                       *Number       `json:"NO2,omitempty"`
-	NOx                       *Number       `json:"NOx,omitempty"`
-	Voltage                   *Number       `json:"voltage,omitempty"`
+	AtmosphericPressure       *Pollutant    `json:"atmosphericPressure,omitempty"`
+	Temperature               *Pollutant    `json:"temperature,omitempty"`
+	RelativeHumidity          *Pollutant    `json:"relativeHumidity,omitempty"`
+	ParticleCount             *Pollutant    `json:"particleCount,omitempty"`
+	PM1                       *Pollutant    `json:"PM1,omitempty"`
+	PM4                       *Pollutant    `json:"PM4,omitempty"`
+	PM10                      *Pollutant    `json:"PM10,omitempty"`
+	PM25                      *Pollutant    `json:"PM25,omitempty"`
+	TotalSuspendedParticulate *Pollutant    `json:"totalSuspendedParticulate,omitempty"`
+	CO2                       *Pollutant    `json:"CO2,omitempty"`
+	NO                        *Pollutant    `json:"NO,omitempty"`
+	NO2                       *Pollutant    `json:"NO2,omitempty"`
+	NOx                       *Pollutant    `json:"NOx,omitempty"`
+	Voltage                   *Pollutant    `json:"voltage,omitempty"`
 }
 
-type Number struct {
+type Pollutant struct {
 	Type     string  `json:"type"`
 	Value    float64 `json:"value"`
 	UnitCode string  `json:"unitCode"`
@@ -104,18 +108,22 @@ type BeachDetails struct {
 }
 
 type ExerciseTrail struct {
-	ID                  string     `json:"id"`
-	Name                string     `json:"name"`
-	Description         string     `json:"description"`
-	Location            LineString `json:"location"`
-	Categories          []string   `json:"categories"`
-	Length              float64    `json:"length"`
-	Difficulty          float64    `json:"difficulty"`
-	PaymentRequired     bool       `json:"paymentRequired"`
-	Status              string     `json:"status"`
-	DateLastPreparation string     `json:"dateLastPreparation,omitempty"`
-	Source              string     `json:"source"`
-	AreaServed          string     `json:"areaServed"`
+	ID                  string        `json:"id"`
+	Name                string        `json:"name"`
+	Description         string        `json:"description"`
+	Location            LineString    `json:"location"`
+	Categories          []string      `json:"categories"`
+	PublicAccess        string        `json:"publicAccess"`
+	Length              float64       `json:"length"`
+	Difficulty          float64       `json:"difficulty"`
+	PaymentRequired     bool          `json:"paymentRequired"`
+	Status              string        `json:"status"`
+	DateLastPreparation string        `json:"dateLastPreparation,omitempty"`
+	Source              string        `json:"source"`
+	AreaServed          string        `json:"areaServed"`
+	ManagedBy           *Organisation `json:"managedBy,omitempty"`
+	Owner               *Organisation `json:"owner,omitempty"`
+	SeeAlso             []string      `json:"seeAlso,omitempty"`
 }
 
 type MultiPolygon struct {
@@ -129,27 +137,34 @@ type Sensor struct {
 }
 
 type SportsField struct {
-	ID                  string       `json:"id"`
-	Name                string       `json:"name"`
-	Description         string       `json:"description"`
-	Categories          []string     `json:"categories"`
-	Location            MultiPolygon `json:"location"`
-	DateCreated         *string      `json:"dateCreated,omitempty"`
-	DateModified        *string      `json:"dateModified,omitempty"`
-	DateLastPreparation *string      `json:"dateLastPreparation,omitempty"`
-	Source              string       `json:"source"`
+	ID                  string        `json:"id"`
+	Name                string        `json:"name"`
+	Description         string        `json:"description"`
+	Categories          []string      `json:"categories"`
+	PublicAccess        string        `json:"publicAccess"`
+	Location            MultiPolygon  `json:"location"`
+	DateCreated         *string       `json:"dateCreated,omitempty"`
+	DateModified        *string       `json:"dateModified,omitempty"`
+	DateLastPreparation *string       `json:"dateLastPreparation,omitempty"`
+	Source              string        `json:"source"`
+	ManagedBy           *Organisation `json:"managedBy,omitempty"`
+	Owner               *Organisation `json:"owner,omitempty"`
+	Status              string        `json:"status,omitempty"`
 }
 
 type SportsVenue struct {
-	ID           string       `json:"id"`
-	Name         string       `json:"name"`
-	Description  string       `json:"description"`
-	Categories   []string     `json:"categories"`
-	Location     MultiPolygon `json:"location"`
-	DateCreated  *string      `json:"dateCreated,omitempty"`
-	DateModified *string      `json:"dateModified,omitempty"`
-	Source       string       `json:"source"`
-	SeeAlso      []string     `json:"seeAlso,omitempty"`
+	ID           string        `json:"id"`
+	Name         string        `json:"name"`
+	Description  string        `json:"description"`
+	Categories   []string      `json:"categories"`
+	PublicAccess string        `json:"publicAccess,omitempty"`
+	Location     MultiPolygon  `json:"location"`
+	DateCreated  *string       `json:"dateCreated,omitempty"`
+	DateModified *string       `json:"dateModified,omitempty"`
+	Source       string        `json:"source"`
+	SeeAlso      []string      `json:"seeAlso,omitempty"`
+	ManagedBy    *Organisation `json:"managedBy,omitempty"`
+	Owner        *Organisation `json:"owner,omitempty"`
 }
 
 type Temperature struct {
@@ -161,22 +176,6 @@ type Temperature struct {
 	When    *time.Time
 	From    *time.Time
 	To      *time.Time
-}
-
-type WaterQuality struct {
-	Temperature  float64 `json:"temperature"`
-	DateObserved string  `json:"dateObserved"`
-	Source       *string `json:"source,omitempty"`
-}
-
-func (wq WaterQuality) Age() time.Duration {
-	observedAt, err := time.Parse(time.RFC3339, wq.DateObserved)
-	if err != nil {
-		// Pretend it was almost 100 years ago
-		return 100 * 365 * 24 * time.Hour
-	}
-
-	return time.Since(observedAt)
 }
 
 type Cityworks struct {
@@ -232,4 +231,34 @@ type RoadAccidentDetails struct {
 	DateCreated  string `json:"dateCreated"`
 	DateModified string `json:"dateModified,omitempty"`
 	Status       string `json:"status"`
+}
+
+type WaterQuality struct {
+	ID           string  `json:"id"`
+	Temperature  float64 `json:"temperature"`
+	DateObserved string  `json:"dateObserved"`
+	Source       *string `json:"source,omitempty"`
+	Location     *Point  `json:"location,omitempty"`
+}
+
+type WaterQualityTemporal struct {
+	ID          string  `json:"id"`
+	Temperature []Value `json:"temperature"`
+	Source      string  `json:"source,omitempty"`
+	Location    *Point  `json:"location,omitempty"`
+}
+
+type Value struct {
+	Value      float64 `json:"value"`
+	ObservedAt string  `json:"observedAt"`
+}
+
+func (w WaterQuality) Age() time.Duration {
+	observedAt, err := time.Parse(time.RFC3339, w.DateObserved)
+	if err != nil {
+		// Pretend it was almost 100 years ago
+		return 100 * 365 * 24 * time.Hour
+	}
+
+	return time.Since(observedAt)
 }

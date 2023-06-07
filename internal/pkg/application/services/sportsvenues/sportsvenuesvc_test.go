@@ -27,11 +27,11 @@ func TestExpectedOutputOfGetByID(t *testing.T) {
 	)
 	defer ms.Close()
 
-	svci := NewSportsVenueService(context.Background(), zerolog.Logger{}, ms.URL(), "ignored")
+	svci := NewSportsVenueService(context.Background(), ms.URL(), "ignored", nil)
 	svc, ok := svci.(*sportsvenueSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), zerolog.Logger{})
 	is.NoErr(err)
 
 	sportsvenue, err := svc.GetByID("urn:ngsi-ld:SportsVenue:se:sundsvall:facilities:641")
@@ -51,11 +51,11 @@ func TestExpectedOutputOfGetAll(t *testing.T) {
 	)
 	defer ms.Close()
 
-	svci := NewSportsVenueService(context.Background(), zerolog.Logger{}, ms.URL(), "ignored")
+	svci := NewSportsVenueService(context.Background(), ms.URL(), "ignored", nil)
 	svc, ok := svci.(*sportsvenueSvc)
 	is.True(ok)
 
-	_, err := svc.refresh()
+	_, err := svc.refresh(context.Background(), zerolog.Logger{})
 	is.NoErr(err)
 
 	sportsfields := svc.GetAll([]string{})

@@ -16,7 +16,7 @@ func NewRetrieveCityworksHandler(logger zerolog.Logger, cityworkSvc citywork.Cit
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body := cityworkSvc.GetAll()
 
-		roadworksJSON := "{\n  \"data\": " + string(body) + "\n}"
+		roadworksJSON := "{\"data\": " + string(body) + "}"
 
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=3600")
@@ -47,7 +47,7 @@ func NewRetrieveCityworksByIDHandler(logger zerolog.Logger, cityworkSvc citywork
 			return
 		}
 
-		body = []byte("{\n  \"data\": " + string(body) + "\n}")
+		body = []byte("{\"data\": " + string(body) + "}")
 
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=600")
