@@ -55,34 +55,29 @@ type Organization struct {
 }
 
 type AirQuality struct {
-	ID           string        `json:"id"`
-	Location     LocationPoint `json:"location"`
-	DateObserved DateTime      `json:"dateObserved"`
-}
-
-type LocationPoint struct {
-	Type  string `json:"type"`
-	Value Point  `json:"value"`
+	ID           string   `json:"id"`
+	Location     Point    `json:"location"`
+	DateObserved DateTime `json:"dateObserved"`
 }
 
 type AirQualityDetails struct {
-	ID                        string        `json:"id"`
-	Location                  LocationPoint `json:"location"`
-	DateObserved              DateTime      `json:"dateObserved"`
-	AtmosphericPressure       *Pollutant    `json:"atmosphericPressure,omitempty"`
-	Temperature               *Pollutant    `json:"temperature,omitempty"`
-	RelativeHumidity          *Pollutant    `json:"relativeHumidity,omitempty"`
-	ParticleCount             *Pollutant    `json:"particleCount,omitempty"`
-	PM1                       *Pollutant    `json:"PM1,omitempty"`
-	PM4                       *Pollutant    `json:"PM4,omitempty"`
-	PM10                      *Pollutant    `json:"PM10,omitempty"`
-	PM25                      *Pollutant    `json:"PM25,omitempty"`
-	TotalSuspendedParticulate *Pollutant    `json:"totalSuspendedParticulate,omitempty"`
-	CO2                       *Pollutant    `json:"CO2,omitempty"`
-	NO                        *Pollutant    `json:"NO,omitempty"`
-	NO2                       *Pollutant    `json:"NO2,omitempty"`
-	NOx                       *Pollutant    `json:"NOx,omitempty"`
-	Voltage                   *Pollutant    `json:"voltage,omitempty"`
+	ID                        string     `json:"id"`
+	Location                  Point      `json:"location"`
+	DateObserved              DateTime   `json:"dateObserved"`
+	AtmosphericPressure       *Pollutant `json:"atmosphericPressure,omitempty"`
+	Temperature               *Pollutant `json:"temperature,omitempty"`
+	RelativeHumidity          *Pollutant `json:"relativeHumidity,omitempty"`
+	ParticleCount             *Pollutant `json:"particleCount,omitempty"`
+	PM1                       *Pollutant `json:"PM1,omitempty"`
+	PM4                       *Pollutant `json:"PM4,omitempty"`
+	PM10                      *Pollutant `json:"PM10,omitempty"`
+	PM25                      *Pollutant `json:"PM25,omitempty"`
+	TotalSuspendedParticulate *Pollutant `json:"totalSuspendedParticulate,omitempty"`
+	CO2                       *Pollutant `json:"CO2,omitempty"`
+	NO                        *Pollutant `json:"NO,omitempty"`
+	NO2                       *Pollutant `json:"NO2,omitempty"`
+	NOx                       *Pollutant `json:"NOx,omitempty"`
+	Voltage                   *Pollutant `json:"voltage,omitempty"`
 }
 
 type Pollutant struct {
