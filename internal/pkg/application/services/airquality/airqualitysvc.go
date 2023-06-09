@@ -3,20 +3,18 @@ package airquality
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"net/http/httputil"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
-	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 )
 
@@ -27,25 +25,29 @@ const (
 )
 
 type AirQualityService interface {
+	Refresh(ctx context.Context) (int, error)
+	Shutdown(ctx context.Context)
+	Start(ctx context.Context)
+
 	Broker() string
 	Tenant() string
 
-	GetAll() []byte
-	GetByID(id string) ([]byte, error)
-
-	Start()
-	Shutdown()
+	GetAll(ctx context.Context) []domain.AirQuality
+	GetByID(ctx context.Context, id string) (*domain.AirQualityDetails, error)
 }
 
-func NewAirQualityService(ctx context.Context, log zerolog.Logger, ctxBrokerURL, ctxBrokerTenant string) AirQualityService {
+var ErrNoSuchAirQuality error = errors.New("no such air quality")
+
+func NewAirQualityService(ctx context.Context, ctxBrokerURL, ctxBrokerTenant string) AirQualityService {
 	return &aqsvc{
-		ctx:              ctx,
-		aqo:              []byte("[]"),
-		aqoDetails:       map[string][]byte{},
 		contextBrokerURL: ctxBrokerURL,
 		tenant:           ctxBrokerTenant,
-		log:              log,
-		keepRunning:      true,
+
+		airQualities:   []domain.AirQuality{},
+		airQualityByID: map[string]domain.AirQualityDetails{},
+
+		queue:       make(chan func()),
+		keepRunning: &atomic.Bool{},
 	}
 }
 
@@ -53,14 +55,13 @@ type aqsvc struct {
 	contextBrokerURL string
 	tenant           string
 
-	aqoMutex   sync.Mutex
-	aqo        []byte
-	aqoDetails map[string][]byte
+	airQualities   []domain.AirQuality
+	airQualityByID map[string]domain.AirQualityDetails
 
-	ctx context.Context
-	log zerolog.Logger
+	queue chan func()
 
-	keepRunning bool
+	keepRunning *atomic.Bool
+	wg          sync.WaitGroup
 }
 
 func (svc *aqsvc) Broker() string {
@@ -71,98 +72,147 @@ func (svc *aqsvc) Tenant() string {
 	return svc.tenant
 }
 
-func (svc *aqsvc) GetAll() []byte {
-	svc.aqoMutex.Lock()
-	defer svc.aqoMutex.Unlock()
+func (svc *aqsvc) GetAll(ctx context.Context) []domain.AirQuality {
+	result := make(chan []domain.AirQuality)
 
-	return svc.aqo
-}
-
-func (svc *aqsvc) GetByID(id string) ([]byte, error) {
-	svc.aqoMutex.Lock()
-	defer svc.aqoMutex.Unlock()
-
-	body, ok := svc.aqoDetails[id]
-	if !ok {
-		return []byte{}, fmt.Errorf("no such air quality")
+	svc.queue <- func() {
+		result <- svc.airQualities
 	}
 
-	return body, nil
+	return <-result
 }
 
-func (svc *aqsvc) Start() {
-	svc.log.Info().Msg("starting air quality service")
-	// TODO: Prevent multiple starts on the same service
-	go svc.run()
+func (svc *aqsvc) GetByID(ctx context.Context, id string) (*domain.AirQualityDetails, error) {
+	result := make(chan domain.AirQualityDetails)
+	err := make(chan error)
+
+	svc.queue <- func() {
+		body, ok := svc.airQualityByID[id]
+		if !ok {
+			err <- ErrNoSuchAirQuality
+		} else {
+			result <- body
+		}
+	}
+
+	select {
+	case r := <-result:
+		return &r, nil
+	case e := <-err:
+		return nil, e
+	}
 }
 
-func (svc *aqsvc) Shutdown() {
-	svc.log.Info().Msg("shutting down air quality service")
-	svc.keepRunning = false
+func (svc *aqsvc) Refresh(ctx context.Context) (int, error) {
+	logger := logging.GetFromContext(ctx)
+
+	refreshDone := make(chan int)
+	refreshFailed := make(chan error)
+
+	svc.queue <- func() {
+		count, err := svc.refresh(ctx, logger)
+		if err != nil {
+			refreshFailed <- err
+		} else {
+			refreshDone <- count
+		}
+	}
+
+	select {
+	case c := <-refreshDone:
+		return c, nil
+	case e := <-refreshFailed:
+		return 0, e
+	}
 }
 
-func (svc *aqsvc) run() {
-	nextRefreshTime := time.Now()
+func (svc *aqsvc) Start(ctx context.Context) {
+	go svc.run(ctx)
+}
 
-	for svc.keepRunning {
-		if time.Now().After(nextRefreshTime) {
-			svc.log.Info().Msg("refreshing air quality info")
-			err := svc.refresh()
+func (svc *aqsvc) Shutdown(ctx context.Context) {
+	svc.queue <- func() {
+		svc.keepRunning.Store(false)
+	}
 
+	svc.wg.Wait()
+}
+
+func (svc *aqsvc) run(ctx context.Context) {
+	svc.wg.Add(1)
+	defer svc.wg.Done()
+
+	logger := logging.GetFromContext(ctx)
+	logger.Info().Msg("starting up air quality service")
+
+	// use atomic swap to avoid startup races
+	alreadyStarted := svc.keepRunning.Swap(true)
+	if alreadyStarted {
+		logger.Error().Msg("attempt to start the air quality service multiple times")
+		return
+	}
+
+	const RefreshIntervalOnFail time.Duration = 5 * time.Second
+	const RefreshIntervalOnSuccess time.Duration = 5 * time.Minute
+
+	var refreshTimer *time.Timer
+	count, err := svc.refresh(ctx, logger)
+
+	if err != nil {
+		logger.Error().Err(err).Msg("failed to refresh air qualities")
+		refreshTimer = time.NewTimer(RefreshIntervalOnFail)
+	} else {
+		logger.Info().Msgf("refreshed %d air qualities", count)
+		refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
+	}
+
+	for svc.keepRunning.Load() {
+		select {
+		case fn := <-svc.queue:
+			fn()
+		case <-refreshTimer.C:
+			count, err := svc.refresh(ctx, logger)
 			if err != nil {
-				svc.log.Error().Err(err).Msg("failed to refresh air quality info")
-				// Retry every 10 seconds on error
-				nextRefreshTime = time.Now().Add(10 * time.Second)
+				logger.Error().Err(err).Msg("failed to refresh air qualities")
+				refreshTimer = time.NewTimer(RefreshIntervalOnFail)
 			} else {
-				// Refresh every 5 minutes on success
-				nextRefreshTime = time.Now().Add(5 * time.Minute)
+				logger.Info().Msgf("refreshed %d air qualities", count)
+				refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
 			}
 		}
-
-		// TODO: Use blocking channels instead of sleeps
-		time.Sleep(1 * time.Second)
 	}
 
-	svc.log.Info().Msg("exercise trail service exiting")
+	logger.Info().Msg("air quality service exiting")
 }
 
-func (svc *aqsvc) refresh() error {
-	var err error
-	ctx, span := tracer.Start(svc.ctx, "refresh-air-quality")
+func (svc *aqsvc) refresh(ctx context.Context, log zerolog.Logger) (count int, err error) {
+	ctx, span := tracer.Start(ctx, "refresh-air-quality")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, svc.log, ctx)
+	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, log, ctx)
+
+	logger.Info().Msg("refreshing air quality info")
 
 	airqualities := []domain.AirQuality{}
 
-	err = svc.getAirQualitiesFromContextBroker(ctx, func(a airqualityDTO) {
+	_, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "AirQualityObserved", nil, func(a airqualityDTO) {
+
+		aBytes, _ := json.Marshal(a)
+		fmt.Printf("air quality dto: %s\n", aBytes)
 
 		details := domain.AirQualityDetails{
-			ID:                        a.ID,
-			Location:                  a.Location.Value,
-			DateObserved:              a.DateObserved,
-			AtmosphericPressure:       a.AtmosphericPressure,
-			Temperature:               a.Temperature,
-			RelativeHumidity:          a.RelativeHumidity,
-			ParticleCount:             a.ParticleCount,
-			PM1:                       a.PM1,
-			PM4:                       a.PM4,
-			PM10:                      a.PM10,
-			PM25:                      a.PM25,
-			TotalSuspendedParticulate: a.TotalSuspendedParticulate,
-			CO2:                       a.CO2,
-			NO:                        a.NO,
-			NO2:                       a.NO2,
-			NOx:                       a.NOx,
+			ID: a.ID,
 		}
 
-		jsonBytes, err := json.Marshal(details)
-		if err != nil {
-			logger.Error().Err(err).Msg("failed to marshal air quality to json")
-			return
+		if a.Location != nil {
+			details.Location = *a.Location
 		}
 
-		svc.storeAirQualityDetails(a.ID, jsonBytes)
+		if a.DateObserved != nil {
+			details.DateObserved = *a.DateObserved
+		}
+
+		svc.airQualityByID[details.ID] = details
 
 		aq := domain.AirQuality{
 			ID:           a.ID,
@@ -172,114 +222,35 @@ func (svc *aqsvc) refresh() error {
 
 		airqualities = append(airqualities, aq)
 	})
+
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to retrieve air qualities from context broker")
-		return err
+		return
 	}
 
-	jsonBytes, err := json.Marshal(airqualities)
-	if err != nil {
-		logger.Error().Err(err).Msg("failed to marshal air qualities to json")
-		return err
-	}
+	svc.airQualities = airqualities
 
-	svc.storeAirQualitiesList(jsonBytes)
-
-	return nil
-}
-
-func (svc *aqsvc) storeAirQualitiesList(body []byte) {
-	svc.aqoMutex.Lock()
-	defer svc.aqoMutex.Unlock()
-
-	svc.aqo = body
-}
-
-func (svc *aqsvc) storeAirQualityDetails(id string, body []byte) {
-	svc.aqoMutex.Lock()
-	defer svc.aqoMutex.Unlock()
-
-	svc.aqoDetails[id] = body
-}
-
-func (svc *aqsvc) getAirQualitiesFromContextBroker(ctx context.Context, callback func(a airqualityDTO)) error {
-	var err error
-
-	logger := logging.GetFromContext(ctx)
-
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, svc.contextBrokerURL+"/ngsi-ld/v1/entities?type=AirQualityObserved&limit=1000&options=keyValues", nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %s", err.Error())
-	}
-
-	req.Header.Add("Accept", "application/ld+json")
-	linkHeaderURL := fmt.Sprintf("<%s>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"", entities.DefaultContextURL)
-	req.Header.Add("Link", linkHeaderURL)
-
-	if svc.tenant != DefaultBrokerTenant {
-		req.Header.Add("NGSILD-Tenant", svc.tenant)
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send request: %s", err.Error())
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %s", err.Error())
-	}
-
-	if resp.StatusCode >= http.StatusBadRequest {
-		reqbytes, _ := httputil.DumpRequest(req, false)
-		respbytes, _ := httputil.DumpResponse(resp, false)
-
-		logger.Error().Str("request", string(reqbytes)).Str("response", string(respbytes)).Msg("request failed")
-		return fmt.Errorf("request failed")
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		contentType := resp.Header.Get("Content-Type")
-		return fmt.Errorf("context source returned status code %d (content-type: %s, body: %s)", resp.StatusCode, contentType, string(respBody))
-	}
-
-	var airQualities []airqualityDTO
-	err = json.Unmarshal(respBody, &airQualities)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal response: %s", err.Error())
-	}
-
-	for _, a := range airQualities {
-		callback(a)
-	}
-
-	return nil
+	return len(svc.airQualities), nil
 }
 
 type airqualityDTO struct {
-	ID       string `json:"id"`
-	Location struct {
-		Type  string       `json:"type"`
-		Value domain.Point `json:"value"`
-	} `json:"location"`
-	DateObserved              domain.DateTime   `json:"dateObserved"`
-	AtmosphericPressure       *domain.Pollutant `json:"atmosphericPressure"`
-	Temperature               *domain.Pollutant `json:"temperature"`
-	RelativeHumidity          *domain.Pollutant `json:"relativeHumidity"`
-	ParticleCount             *domain.Pollutant `json:"particleCount"`
-	PM1                       *domain.Pollutant `json:"PM1"`
-	PM4                       *domain.Pollutant `json:"PM4"`
-	PM10                      *domain.Pollutant `json:"PM10"`
-	PM25                      *domain.Pollutant `json:"PM25"`
-	TotalSuspendedParticulate *domain.Pollutant `json:"totalSuspendedParticulate"`
-	CO2                       *domain.Pollutant `json:"CO2"`
-	NO                        *domain.Pollutant `json:"NO"`
-	NO2                       *domain.Pollutant `json:"NO2"`
-	NOx                       *domain.Pollutant `json:"NOx"`
-	Voltage                   *domain.Pollutant `json:"voltage"`
+	ID                        string           `json:"id"`
+	Location                  *domain.Point    `json:"location"`
+	DateObserved              *domain.DateTime `json:"dateObserved"`
+	AtmosphericPressure       *float64         `json:"atmosphericPressure,omitempty"`
+	Temperature               *float64         `json:"temperature,omitempty"`
+	RelativeHumidity          *float64         `json:"relativeHumidity,omitempty"`
+	ParticleCount             *float64         `json:"particleCount,omitempty"`
+	PM1                       *float64         `json:"PM1,omitempty"`
+	PM4                       *float64         `json:"PM4,omitempty"`
+	PM10                      *float64         `json:"PM10,omitempty"`
+	PM25                      *float64         `json:"PM25,omitempty"`
+	TotalSuspendedParticulate *float64         `json:"totalSuspendedParticulate,omitempty"`
+	CO2                       *float64         `json:"CO2,omitempty"`
+	NO                        *float64         `json:"NO,omitempty"`
+	NO2                       *float64         `json:"NO2,omitempty"`
+	NOx                       *float64         `json:"NOx,omitempty"`
+	Voltage                   *float64         `json:"voltage,omitempty"`
+	WindDirection             *float64         `json:"windDirection"`
+	WindSpeed                 *float64         `json:"windSpeed"`
 }

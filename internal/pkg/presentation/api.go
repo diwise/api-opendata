@@ -98,8 +98,8 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to create organisations registry")
 	}
-	airQualitySvc := airquality.NewAirQualityService(context.Background(), logger, contextBrokerURL, contextBrokerTenant)
-	airQualitySvc.Start()
+	airQualitySvc := airquality.NewAirQualityService(context.Background(), contextBrokerURL, contextBrokerTenant)
+	airQualitySvc.Start(ctx)
 
 	waterqualitySvc := waterquality.NewWaterQualityService(ctx, contextBrokerURL, contextBrokerTenant)
 	waterqualitySvc.Start(ctx)

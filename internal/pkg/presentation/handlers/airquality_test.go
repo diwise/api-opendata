@@ -1,7 +1,8 @@
 package handlers
 
 import (
-	"encoding/json"
+	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -25,14 +26,9 @@ func TestRetrieveAirQuality(t *testing.T) {
 func TestRetrieveAirQualityByID(t *testing.T) {
 	is, r, ts := setupTest(t)
 	svc := defaultAirQualityMock()
-	oldfunc := svc.GetByIDFunc
-	svc.GetByIDFunc = func(id string) ([]byte, error) {
-		is.Equal(id, "aq0")
-		return oldfunc(id)
-	}
 
 	r.Get("/{id}", NewRetrieveAirQualityByIDHandler(zerolog.Logger{}, svc))
-	response, responseBody := newGetRequest(is, ts, "application/ld+json", "/aq0", nil)
+	response, responseBody := newGetRequest(is, ts, "application/ld+json", "/aq1", nil)
 
 	is.Equal(response.StatusCode, http.StatusOK)
 	is.Equal(len(svc.GetByIDCalls()), 1)
@@ -40,35 +36,58 @@ func TestRetrieveAirQualityByID(t *testing.T) {
 	is.Equal(responseBody, expectedAirQualityOutput)
 }
 
-const expectedAirQualityOutput string = "{\n  \"data\": {\"id\":\"aq1\",\"location\":{\"type\":\"GeoProperty\",\"value\":{\"type\":\"Point\",\"coordinates\":[17.1,62.1]}}}\n}"
+const expectedAirQualityOutput string = `{"data": {"id":"aq1","location":{"type":"Point","coordinates":[17.1,62.1]},"dateObserved":{"@type":"Property","@value":"2022-10-20T13:10:00Z"},"PM1":{"type":"Property","value":0.6,"unitCode":"GQ"}}}`
 
 func defaultAirQualityMock() *services.AirQualityServiceMock {
-	aqList := []domain.AirQuality{
-		{
-			ID:       "aq1",
-			Location: *domain.NewPoint(62.1, 17.1),
-		},
-		{
-			ID:       "aq2",
-			Location: *domain.NewPoint(62.2, 17.2),
-		},
-		{
-			ID:       "aq3",
-			Location: *domain.NewPoint(62.3, 17.3),
-		},
-	}
-
-	aqListBytes, _ := json.Marshal(aqList)
-	aq0Bytes, _ := json.Marshal(aqList[0])
-
 	mock := &services.AirQualityServiceMock{
-		GetAllFunc: func() []byte {
-			return aqListBytes
+		GetAllFunc: func(ctx context.Context) []domain.AirQuality {
+			return aqList
 		},
-		GetByIDFunc: func(id string) ([]byte, error) {
-			return aq0Bytes, nil
+		GetByIDFunc: func(ctx context.Context, id string) (*domain.AirQualityDetails, error) {
+			aq, ok := aqDetails[id]
+			if ok {
+				return &aq, nil
+			} else {
+				return nil, fmt.Errorf("no such air quality")
+			}
 		},
 	}
 
 	return mock
+}
+
+var aqList = []domain.AirQuality{
+	{
+		ID:       "aq1",
+		Location: *domain.NewPoint(62.1, 17.1),
+		DateObserved: domain.DateTime{
+			Value: "2022-10-20T13:10:00Z",
+		},
+	},
+	{
+		ID:       "aq2",
+		Location: *domain.NewPoint(62.2, 17.2),
+		DateObserved: domain.DateTime{
+			Value: "2022-10-21T13:10:00Z",
+		},
+	},
+	{
+		ID:       "aq3",
+		Location: *domain.NewPoint(62.3, 17.3),
+		DateObserved: domain.DateTime{
+			Value: "2022-10-22T13:10:00Z",
+		},
+	},
+}
+
+var aqDetails = map[string]domain.AirQualityDetails{
+	"aq1": {
+		ID:       "aq1",
+		Location: *domain.NewPoint(62.1, 17.1),
+		DateObserved: domain.DateTime{
+			Type:  "Property",
+			Value: "2022-10-20T13:10:00Z",
+		},
+		PM1: 0.6,
+	},
 }

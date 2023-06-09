@@ -2,202 +2,104 @@ package airquality
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 
+	testutils "github.com/diwise/service-chassis/pkg/test/http"
+	"github.com/diwise/service-chassis/pkg/test/http/expects"
+	"github.com/diwise/service-chassis/pkg/test/http/response"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestGetByID(t *testing.T) {
+	is, server := testSetup(t, http.StatusOK, testData)
+
+	ctx := context.Background()
+
+	svc := NewAirQualityService(ctx, server.URL(), "ignored")
+	svc.Start(ctx)
+	defer svc.Shutdown(ctx)
+
+	_, err := svc.Refresh(ctx)
+	is.NoErr(err)
+
+	aq, err := svc.GetByID(ctx, "urn:ngsi-ld:AirQualityObserved:test1")
+	is.NoErr(err)
+
+	aqBytes, err := json.Marshal(aq)
+	is.NoErr(err)
+
+	is.Equal(string(aqBytes), `{"id":"urn:ngsi-ld:AirQualityObserved:test1","location":{"type":"Point","coordinates":[17.472639,62.435152]},"dateObserved":{"@type":"DateTime","@value":"2023-03-12T06:23:09Z"}}`)
+}
+
+func TestGetAll(t *testing.T) {
+	is, server := testSetup(t, http.StatusOK, testData)
+	ctx := context.Background()
+
+	svc := NewAirQualityService(ctx, server.URL(), "ignored")
+	svc.Start(ctx)
+	defer svc.Shutdown(ctx)
+
+	_, err := svc.Refresh(ctx)
+	is.NoErr(err)
+
+	aqos := svc.GetAll(ctx)
+	is.True(len(aqos) > 0)
+
+	aqosBytes, _ := json.Marshal(aqos)
+
+	is.Equal(string(aqosBytes), `[{"id":"urn:ngsi-ld:AirQualityObserved:test1","location":{"type":"Point","coordinates":[17.472639,62.435152]},"dateObserved":{"@type":"DateTime","@value":"2023-03-12T06:23:09Z"}}]`)
+}
+
+var Expects = testutils.Expects
+var Returns = testutils.Returns
+var anyInput = expects.AnyInput
+
+func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, testutils.MockService) {
 	is := is.New(t)
-	broker := setupMockServiceThatReturns(http.StatusOK, testData)
-	defer broker.Close()
 
-	svci := NewAirQualityService(context.Background(), zerolog.Logger{}, broker.URL, "ignored")
-	svc, ok := svci.(*aqsvc)
-	is.True(ok)
+	server := testutils.NewMockServiceThat(
+		Expects(is, anyInput()),
+		Returns(
+			response.Code(statusCode),
+			response.ContentType("application/ld+json"),
+			response.Body([]byte(responseBody)),
+		),
+	)
 
-	err := svc.refresh()
-	is.NoErr(err)
-
-	aq, err := svc.GetByID("urn:ngsi-ld:AirQualityObserved:888100")
-	is.NoErr(err)
-
-	is.True(strings.Contains(string(aq), "urn:ngsi-ld:AirQualityObserved:888100"))
+	return is, server
 }
 
-func setupMockServiceThatReturns(responseCode int, body string, headers ...func(w http.ResponseWriter)) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		for _, applyHeaderTo := range headers {
-			applyHeaderTo(w)
-		}
-
-		w.WriteHeader(responseCode)
-
-		if body != "" {
-			w.Write([]byte(body))
-		}
-	}))
-}
-
-const testData string = `[{"@context": [
-	  "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld"
-	],
-	"NO": {
-	  "type": "Property",
-	  "value": 1.747,
-	  "unitCode": "61"
-	},
-	"NO2": {
-	  "type": "Property",
-	  "value": 4.464,
-	  "unitCode": "61"
-	},
-	"NOx": {
-	  "type": "Property",
-	  "value": 6.211,
-	  "unitCode": "61"
-	},
-	"PM1": {
-	  "type": "Property",
-	  "value": 0.659,
-	  "unitCode": "GQ"
-	},
-	"PM10": {
-	  "type": "Property",
-	  "value": 26.74,
-	  "unitCode": "GQ"
-	},
-	"PM25": {
-	  "type": "Property",
-	  "value": 3.843,
-	  "unitCode": "GQ"
-	},
-	"PM4": {
-	  "type": "Property",
-	  "value": 6.871,
-	  "unitCode": "GQ"
-	},
-	"atmosphericPressure": {
-	  "type": "Property",
-	  "value": 1019,
-	  "unitCode": "MBR"
-	},
-	"dateObserved": {
-	  "type": "Property",
-	  "value": {
-		"@type": "DateTime",
-		"@value": "2022-10-20T13:10:00Z"
-	  }
-	},
-	"id": "urn:ngsi-ld:AirQualityObserved:888100",
-	"location": {
-	  "type": "GeoProperty",
-	  "value": {
-		"type": "Point",
-		"coordinates": [
-		  17.308968,
-		  62.388618
-		]
-	  }
-	},
-	"particleCount": {
-	  "type": "Property",
-	  "value": 15.075,
-	  "unitCode": "Particles per cm3"
-	},
-	"relativeHumidity": {
-	  "type": "Property",
-	  "value": 64.42,
-	  "unitCode": "P1"
-	},
-	"temperature": {
-	  "type": "Property",
-	  "value": 9.845,
-	  "unitCode": "CEL"
-	},
-	"totalSuspendedParticulate": {
-	  "type": "Property",
-	  "value": 60.597,
-	  "unitCode": "GQ"
-	},
-	"type": "AirQualityObserved"
-  },
-  {
-	"@context": [
-	  "https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonld"
-	],
-	"PM1": {
-	  "type": "Property",
-	  "value": 0.659,
-	  "unitCode": "GQ"
-	},
-	"PM10": {
-	  "type": "Property",
-	  "value": 32.69,
-	  "unitCode": "GQ"
-	},
-	"PM25": {
-	  "type": "Property",
-	  "value": 4.723,
-	  "unitCode": "GQ"
-	},
-	"PM4": {
-	  "type": "Property",
-	  "value": 8.641,
-	  "unitCode": "GQ"
-	},
-	"atmosphericPressure": {
-	  "type": "Property",
-	  "value": 1018,
-	  "unitCode": "A97"
-	},
-	"dateObserved": {
-	  "type": "Property",
-	  "value": {
-		"@type": "DateTime",
-		"@value": "2022-10-20T13:11:00Z"
-	  }
-	},
-	"id": "urn:ngsi-ld:AirQualityObserved:1098100",
-	"location": {
-	  "type": "GeoProperty",
-	  "value": {
-		"type": "Point",
-		"coordinates": [
-		  17.303442,
-		  62.386485
-		]
-	  }
-	},
-	"particleCount": {
-	  "type": "Property",
-	  "value": 15.3,
-	  "unitCode": "GQ"
-	},
-	"relativeHumidity": {
-	  "type": "Property",
-	  "value": 61.61,
-	  "unitCode": "P1"
-	},
-	"temperature": {
-	  "type": "Property",
-	  "value": 10,
-	  "unitCode": "CEL"
-	},
-	"totalSuspendedParticulate": {
-	  "type": "Property",
-	  "value": 76.77,
-	  "unitCode": "GQ"
-	},
-	"type": "AirQualityObserved",
-	"voltage": {
-	  "type": "Property",
-	  "value": 12.3,
-	  "unitCode": "VLT"
+const testData string = `[
+	{
+		"@context": [
+			"https://raw.githubusercontent.com/diwise/context-broker/main/assets/jsonldcontexts/default-context.jsonl"
+		],
+		"CO": 500,
+		"CO_Level": "moderate",
+		"NO": 45,
+		"NO2": 69,
+		"NOx": 139,
+		"SO2": 11,
+		"airQualityIndex": 65,
+		"airQualityLevel": "moderate",
+		"dateObserved": {
+			"@type": "DateTime",
+			"@value": "2023-03-12T06:23:09Z"
+		},
+		"location": {
+			"type": "Point",
+			"coordinates": [17.472639,62.435152]
+		},
+		"id": "urn:ngsi-ld:AirQualityObserved:test1",
+		"precipitation": 0,
+		"relativeHumidity": 0.54,
+		"reliability": 0.7,
+		"source": "http://datos.madrid.es",
+		"temperature": 12.2,
+		"type": "AirQualityObserved",
+		"windDirection": 186,
+		"windSpeed": 0.64
 	}
-  }
-  ]`
+]`
