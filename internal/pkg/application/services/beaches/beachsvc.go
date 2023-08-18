@@ -89,6 +89,9 @@ func (svc *beachSvc) GetByID(ctx context.Context, beachID string) (*Beach, error
 	result := make(chan Beach)
 	err := make(chan error)
 
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	svc.queue <- func() {
 		body, ok := svc.beachByID[beachID]
 		if !ok {
@@ -97,9 +100,6 @@ func (svc *beachSvc) GetByID(ctx context.Context, beachID string) (*Beach, error
 			result <- body
 		}
 	}
-
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
 
 	select {
 	case r := <-result:
@@ -121,6 +121,9 @@ func (svc *beachSvc) Refresh(ctx context.Context) (int, error) {
 	refreshDone := make(chan int)
 	refreshFailed := make(chan error)
 
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	svc.queue <- func() {
 		count, err := svc.refresh(ctx, logger)
 		if err != nil {
@@ -129,9 +132,6 @@ func (svc *beachSvc) Refresh(ctx context.Context) (int, error) {
 			refreshDone <- count
 		}
 	}
-
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
 
 	select {
 	case c := <-refreshDone:
