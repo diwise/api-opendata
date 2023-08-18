@@ -98,11 +98,16 @@ func (svc *beachSvc) GetByID(ctx context.Context, beachID string) (*Beach, error
 		}
 	}
 
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	select {
 	case r := <-result:
 		return &r, nil
 	case e := <-err:
 		return nil, e
+	case <-ctx.Done():
+		return nil, errors.New("timeout")
 	}
 }
 
@@ -125,11 +130,16 @@ func (svc *beachSvc) Refresh(ctx context.Context) (int, error) {
 		}
 	}
 
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	select {
 	case c := <-refreshDone:
 		return c, nil
 	case e := <-refreshFailed:
 		return 0, e
+	case <-ctx.Done():
+		return 0, errors.New("timeout")
 	}
 }
 
