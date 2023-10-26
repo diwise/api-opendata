@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"log/slog"
+
 	services "github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -75,7 +77,7 @@ func NewRetrieveTemperaturesHandler(ctx context.Context, svc services.TempServic
 		if sensor == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			err := fmt.Errorf("no sensor specified in temperature request")
-			log.Error("bad request", "error", err)
+			log.Error("bad request", slog.String("error", err.Error()))
 			return
 		}
 
@@ -85,7 +87,7 @@ func NewRetrieveTemperaturesHandler(ctx context.Context, svc services.TempServic
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			err = fmt.Errorf("unable to get time range (%w)", err)
-			log.Error("bad request", "error", err)
+			log.Error("bad request", slog.String("error", err.Error()))
 			return
 		}
 
@@ -102,7 +104,7 @@ func NewRetrieveTemperaturesHandler(ctx context.Context, svc services.TempServic
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			err = fmt.Errorf("unable to get temperatures")
-			log.Error("internal error", "error", err)
+			log.Error("internal error", slog.String("error", err.Error()))
 			return
 		}
 
@@ -139,7 +141,7 @@ func NewRetrieveTemperaturesHandler(ctx context.Context, svc services.TempServic
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			err = fmt.Errorf("unable to marshal results to json (%w)", err)
-			log.Error("internal error", "error", err)
+			log.Error("internal error", slog.String("error", err.Error()))
 			return
 		}
 
@@ -165,21 +167,21 @@ func NewRetrieveTemperatureSensorsHandler(ctx context.Context, brokerURL string)
 		log.Info("requesting device information", "url", url)
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
-			log.Error("failed to create http request", "error", err)
+			log.Error("failed to create http request", slog.String("error", err.Error()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		response, err := httpClient.Do(req)
 		if err != nil {
-			log.Error("failed to query devices from broker", "error", err)
+			log.Error("failed to query devices from broker", slog.String("error", err.Error()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		defer response.Body.Close()
 
 		if response.StatusCode != http.StatusOK {
-			log.Error("failed to query devices from broker", "status", response.StatusCode, "error", err)
+			log.Error("failed to query devices from broker", "status", response.StatusCode, slog.String("error", err.Error()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -189,7 +191,7 @@ func NewRetrieveTemperatureSensorsHandler(ctx context.Context, brokerURL string)
 		err = json.Unmarshal(b, &devices)
 
 		if err != nil {
-			log.Error("failed to unmarshal response from broker", "error", err)
+			log.Error("failed to unmarshal response from broker", slog.String("error", err.Error()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -206,7 +208,7 @@ func NewRetrieveTemperatureSensorsHandler(ctx context.Context, brokerURL string)
 
 		bytes, err := json.MarshalIndent(devices[0:numberOfTempSensors], " ", "  ")
 		if err != nil {
-			log.Error("unable to marshal devices to json", "error", err)
+			log.Error("unable to marshal devices to json", slog.String("error", err.Error()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

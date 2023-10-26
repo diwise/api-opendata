@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"log/slog"
+
 	"github.com/diwise/api-opendata/internal/pkg/application/services/organisations"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
@@ -126,11 +128,11 @@ func (svc *sportsfieldSvc) run(ctx context.Context) {
 			count, err := svc.refresh(ctx)
 
 			if err != nil {
-				logger.Error("failed to refresh sports fields", "error", err)
+				logger.Error("failed to refresh sports fields", slog.String("error", err.Error()))
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
-				logger.Info("refreshed sports fields", "count", count)
+				logger.Info("refreshed sports fields", slog.Int("count", count))
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
 			}
@@ -168,14 +170,14 @@ func (svc *sportsfieldSvc) refresh(ctx context.Context) (count int, err error) {
 		if len(sf.ManagedBy) > 0 {
 			sportsfield.ManagedBy, err = svc.orgRegistry.Get(sf.ManagedBy)
 			if err != nil {
-				logger.Error("failed to resolve organisation", "error", err)
+				logger.Error("failed to resolve organisation", slog.String("error", err.Error()))
 			}
 		}
 
 		if len(sf.Owner) > 0 {
 			sportsfield.Owner, err = svc.orgRegistry.Get(sf.Owner)
 			if err != nil {
-				logger.Error("failed to resolve organisation", "error", err)
+				logger.Error("failed to resolve organisation", slog.String("error", err.Error()))
 			}
 		}
 

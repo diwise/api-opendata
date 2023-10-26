@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"strings"
 
+	"log/slog"
+
 	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsvenues"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -29,7 +31,7 @@ func NewRetrieveSportsVenueByIDHandler(ctx context.Context, sfsvc sportsvenues.S
 		sportsvenueID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if sportsvenueID == "" {
 			err = fmt.Errorf("no sports venue is supplied in query")
-			log.Error("bad request", "error", err)
+			log.Error("bad request", slog.String("error", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -42,7 +44,7 @@ func NewRetrieveSportsVenueByIDHandler(ctx context.Context, sfsvc sportsvenues.S
 
 		responseBody, err := json.Marshal(venue)
 		if err != nil {
-			log.Error("failed to marshal sports venue to json", "error", err)
+			log.Error("failed to marshal sports venue to json", slog.String("error", err.Error()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -88,7 +90,7 @@ func NewRetrieveSportsVenuesHandler(ctx context.Context, sfsvc sportsvenues.Spor
 					newSportsVenuesMapper(fields, locationMapper),
 				))
 			if err != nil {
-				log.Error("failed to marshal sportsvenues list to geo json", "error", err)
+				log.Error("failed to marshal sportsvenues list to geo json", slog.String("error", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -107,7 +109,7 @@ func NewRetrieveSportsVenuesHandler(ctx context.Context, sfsvc sportsvenues.Spor
 			sportsvenuesJSON, err := marshalSportsVenuesToJSON(sportsvenues, newSportsVenuesMapper(fields, locationMapper))
 
 			if err != nil {
-				log.Error("failed to marshal sportsvenues list to json", "error", err)
+				log.Error("failed to marshal sportsvenues list to json", slog.String("error", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}

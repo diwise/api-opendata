@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 
+	"log/slog"
+
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -32,7 +34,7 @@ func NewRetrieveTrafficFlowsHandler(ctx context.Context, contextBroker string) h
 		tfos, err := getTrafficFlowsFromContextBroker(ctx, contextBroker, from, to)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Error("failed to get traffic flow observations from context broker", "error", err, "contextBrokerUrl", contextBroker)
+			log.Error("failed to get traffic flow observations from context broker", slog.String("error", err.Error()), "contextBrokerUrl", contextBroker)
 			return
 		}
 

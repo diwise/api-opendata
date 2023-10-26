@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	presentation "github.com/diwise/api-opendata/internal/pkg/presentation"
@@ -20,7 +21,7 @@ func openFile(ctx context.Context, description, path string) *os.File {
 	file, err := os.Open(path)
 	if err != nil {
 		log := logging.GetFromContext(ctx)
-		log.Error("failed to open file", "description", description, "path", path, "error", err)
+		log.Error("failed to open file", slog.String("description", description), slog.String("path", path), slog.String("error", err.Error()))
 		return nil
 	}
 	return file
@@ -73,7 +74,7 @@ func main() {
 		written, err := io.Copy(datasetResponseBuffer, datafile)
 
 		if err != nil {
-			log.Error("unable to copy datasets file into response buffer", "error", err)
+			log.Error("unable to copy datasets file into response buffer", slog.String("error", err.Error()))
 			os.Exit(1)
 		}
 
@@ -87,7 +88,7 @@ func main() {
 			written, err := io.Copy(oasResponseBuffer, oasfile)
 
 			if err != nil {
-				log.Error("failed to copy OpenAPI specification into response buffer", "error", err)
+				log.Error("failed to copy OpenAPI specification into response buffer", slog.String("error", err.Error()))
 			} else {
 				log.Info(fmt.Sprintf("copied %d bytes from %s into openapi response buffer.", written, openApiSpecFileName))
 			}
@@ -105,7 +106,7 @@ func main() {
 		port := env.GetVariableOrDefault(ctx, "SERVICE_PORT", "8080")
 		err = api.Start(ctx, port)
 		if err != nil {
-			log.Error("failed to start router: %s", err.Error())
+			log.Error("failed to start router", slog.String("error", err.Error()))
 			os.Exit(1)
 		}
 	}

@@ -9,6 +9,8 @@ import (
 	"os"
 	"strconv"
 
+	"log/slog"
+
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/exercisetrails"
@@ -92,7 +94,7 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 
 	organisationsRegistry, err := organisations.NewRegistry(orgfile)
 	if err != nil {
-		logger.Error("failed to create organisations registry", "error", err)
+		logger.Error("failed to create organisations registry", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 

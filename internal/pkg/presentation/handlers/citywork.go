@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"log/slog"
+
 	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -36,7 +38,7 @@ func NewRetrieveCityworksByIDHandler(ctx context.Context, cityworkSvc citywork.C
 		cityworkID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if cityworkID == "" {
 			err = fmt.Errorf("no cityworks id supplied in query")
-			log.Error("bad request", "error", err)
+			log.Error("bad request", slog.String("error", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

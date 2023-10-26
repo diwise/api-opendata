@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"log/slog"
+
 	"github.com/diwise/api-opendata/internal/pkg/application/services/roadaccidents"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -24,7 +26,7 @@ func NewRetrieveRoadAccidentByIDHandler(ctx context.Context, roadAccidentSvc roa
 		roadAccidentID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if roadAccidentID == "" {
 			err = fmt.Errorf("no road accident id supplied in query")
-			log.Error("bad request", "error", err)
+			log.Error("bad request", slog.String("error", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

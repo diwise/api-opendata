@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -183,10 +184,10 @@ func (svc *beachSvc) run(ctx context.Context) {
 		case <-refreshTimer.C:
 			count, err := svc.refresh(ctx)
 			if err != nil {
-				logger.Error("failed to refresh beaches", "error", err)
+				logger.Error("failed to refresh beaches", slog.String("error", err.Error()))
 				refreshTimer = time.NewTimer(RefreshIntervalOnFail)
 			} else {
-				logger.Info("refreshed beaches", "count", count)
+				logger.Info("refreshed beaches", slog.Int("count", count))
 				refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
 			}
 		}
@@ -233,7 +234,7 @@ func (svc *beachSvc) refresh(ctx context.Context) (count int, err error) {
 		pt := waterquality.NewPoint(latitude, longitude)
 		wqots, err_ := svc.wqsvc.GetAllNearPointWithinTimespan(ctx, pt, svc.beachMaxWQODistance, from, to)
 		if err_ != nil {
-			logger.Error("failed to get water qualities", "name", b.Name, "id", b.ID, "error", err_)
+			logger.Error("failed to get water qualities", slog.String("name", b.Name), slog.String("id", b.ID), slog.String("error", err_.Error()))
 		} else {
 			wq := []WaterQuality{}
 

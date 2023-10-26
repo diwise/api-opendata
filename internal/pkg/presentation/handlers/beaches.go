@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 
+	"log/slog"
+
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -36,7 +38,7 @@ func NewRetrieveBeachByIDHandler(ctx context.Context, beachService beaches.Beach
 		beachID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if beachID == "" {
 			err = fmt.Errorf("no beach id supplied in query")
-			log.Error("bad request", "error", err)
+			log.Error("bad request", slog.String("error", err.Error()))
 			problem := errors.NewProblemReport(http.StatusBadRequest, "badrequest", errors.Detail(err.Error()), errors.TraceID(traceID))
 			problem.WriteResponse(w)
 			return
@@ -101,7 +103,7 @@ func NewRetrieveBeachesHandler(ctx context.Context, beachService beaches.BeachSe
 				))
 			if err != nil {
 				err := fmt.Errorf("failed to marshal beach list to geo json: %s", err.Error())
-				logger.Error("marshalling error", "error", err)
+				logger.Error("marshalling error", slog.String("error", err.Error()))
 				problem := errors.NewProblemReport(http.StatusInternalServerError, "internalerror", errors.Detail(err.Error()), errors.TraceID(traceID))
 				problem.WriteResponse(w)
 				return
@@ -125,7 +127,7 @@ func NewRetrieveBeachesHandler(ctx context.Context, beachService beaches.BeachSe
 			)
 			if err != nil {
 				err := fmt.Errorf("failed to marshal beach list to json: %s", err.Error())
-				logger.Error("marshalling error", "error", err)
+				logger.Error("marshalling error", slog.String("error", err.Error()))
 				problem := errors.NewProblemReport(http.StatusInternalServerError, "internalerror", errors.Detail(err.Error()), errors.TraceID(traceID))
 				problem.WriteResponse(w)
 				return
