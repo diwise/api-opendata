@@ -12,7 +12,6 @@ import (
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
@@ -53,11 +52,12 @@ func min(data []fiware.WeatherObserved, from, to int, aggregate domain.Temperatu
 	return aggregate
 }
 
+//go:generate moq -rm -out tempsvcquery_mock.go . TempServiceQuery
 type TempServiceQuery interface {
 	Aggregate(period, aggregates string) TempServiceQuery
 	BetweenTimes(from, to time.Time) TempServiceQuery
 	Sensor(sensor string) TempServiceQuery
-	Get(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, error)
+	Get(ctx context.Context) ([]domain.Sensor, error)
 }
 
 func NewTempService(contextBrokerURL string) TempService {
@@ -130,7 +130,7 @@ func (q tsq) Sensor(sensor string) TempServiceQuery {
 	return q
 }
 
-func (q tsq) Get(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, error) {
+func (q tsq) Get(ctx context.Context) ([]domain.Sensor, error) {
 
 	if q.err == nil && q.sensor == "" {
 		q.err = fmt.Errorf("a specific sensor must be specified")
@@ -142,7 +142,7 @@ func (q tsq) Get(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, erro
 
 	pageSize := uint64(1000)
 	maxResultSize := uint64(50000)
-	wos, err := requestData(ctx, log, q, 0, pageSize)
+	wos, err := requestData(ctx, q, 0, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func (q tsq) Get(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, erro
 	if len(wos) == int(pageSize) {
 		// We need to request more data page by page
 		for offset := pageSize; offset < maxResultSize; offset += pageSize {
-			page, err := requestData(ctx, log, q, offset, pageSize)
+			page, err := requestData(ctx, q, offset, pageSize)
 			if err != nil {
 				return nil, err
 			}
@@ -235,7 +235,7 @@ func (q tsq) Get(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, erro
 	return sensors, nil
 }
 
-func requestData(ctx context.Context, log zerolog.Logger, q tsq, offset, limit uint64) ([]fiware.WeatherObserved, error) {
+func requestData(ctx context.Context, q tsq, offset, limit uint64) ([]fiware.WeatherObserved, error) {
 	var err error
 
 	httpClient := http.Client{

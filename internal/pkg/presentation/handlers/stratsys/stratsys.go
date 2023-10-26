@@ -4,24 +4,29 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 )
 
 var tracer = otel.Tracer("api-opendata/api/stratsys")
 
-func NewRetrieveStratsysReportsHandler(logger zerolog.Logger, companyCode, clientID, scope, loginUrl, defaultUrl string) http.HandlerFunc {
+func NewRetrieveStratsysReportsHandler(ctx context.Context, companyCode, clientID, scope, loginUrl, defaultUrl string) http.HandlerFunc {
+	logger := logging.GetFromContext(ctx)
+
 	if companyCode == "" || clientID == "" || scope == "" || loginUrl == "" || defaultUrl == "" {
-		logger.Fatal().Msg("all environment variables need to be set")
+		logger.Error("all environment variables need to be set")
+		os.Exit(1)
 	}
 
 	loginUrl = fmt.Sprintf("%s/%s/connect/token", loginUrl, companyCode)
@@ -34,9 +39,9 @@ func NewRetrieveStratsysReportsHandler(logger zerolog.Logger, companyCode, clien
 
 		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-		token, err := getTokenBearer(ctx, log, clientID, scope, loginUrl)
+		token, err := getTokenBearer(ctx, clientID, scope, loginUrl)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to retrieve token")
+			log.Error("failed to retrieve token", "error", err)
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -44,9 +49,9 @@ func NewRetrieveStratsysReportsHandler(logger zerolog.Logger, companyCode, clien
 		reportId := chi.URLParam(r, "id")
 
 		if reportId != "" {
-			response, err := getReportById(ctx, log, reportId, defaultUrl, companyCode, token)
+			response, err := getReportById(ctx, reportId, defaultUrl, companyCode, token)
 			if err != nil {
-				log.Error().Err(err).Msg("failed to get reports")
+				log.Error("failed to get reports", "error", err)
 				w.WriteHeader(response.code)
 				return
 			}
@@ -55,9 +60,9 @@ func NewRetrieveStratsysReportsHandler(logger zerolog.Logger, companyCode, clien
 			}
 			w.Write(response.body)
 		} else {
-			response, err := getReports(ctx, log, defaultUrl, companyCode, token)
+			response, err := getReports(ctx, defaultUrl, companyCode, token)
 			if err != nil {
-				log.Error().Err(err).Msg("failed to get reports")
+				log.Error("failed to get reports", "error", err)
 				w.WriteHeader(response.code)
 				return
 			}
@@ -70,15 +75,15 @@ func NewRetrieveStratsysReportsHandler(logger zerolog.Logger, companyCode, clien
 	})
 }
 
-func getReportById(ctx context.Context, log zerolog.Logger, id, url, companyCode, token string) (stratsysResponse, error) {
-	return getReportOrReports(ctx, log, url+"/api/publishedreports/v2/"+id, companyCode, token)
+func getReportById(ctx context.Context, id, url, companyCode, token string) (stratsysResponse, error) {
+	return getReportOrReports(ctx, url+"/api/publishedreports/v2/"+id, companyCode, token)
 }
 
-func getReports(ctx context.Context, log zerolog.Logger, url, companyCode, token string) (stratsysResponse, error) {
-	return getReportOrReports(ctx, log, url+"/api/publishedreports/v2", companyCode, token)
+func getReports(ctx context.Context, url, companyCode, token string) (stratsysResponse, error) {
+	return getReportOrReports(ctx, url+"/api/publishedreports/v2", companyCode, token)
 }
 
-func getReportOrReports(ctx context.Context, log zerolog.Logger, url, companyCode, token string) (stratsysResponse, error) {
+func getReportOrReports(ctx context.Context, url, companyCode, token string) (stratsysResponse, error) {
 	var err error
 
 	httpClient := http.Client{
@@ -112,7 +117,7 @@ func getReportOrReports(ctx context.Context, log zerolog.Logger, url, companyCod
 	return ssresp, nil
 }
 
-func getTokenBearer(ctx context.Context, log zerolog.Logger, clientID, scope, authUrl string) (string, error) {
+func getTokenBearer(ctx context.Context, clientID, scope, authUrl string) (string, error) {
 	var err error
 
 	httpClient := http.Client{
@@ -149,7 +154,7 @@ func getTokenBearer(ctx context.Context, log zerolog.Logger, clientID, scope, au
 		return "", err
 	}
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		err = fmt.Errorf("failed to read response body: %w", err)
 		return "", err

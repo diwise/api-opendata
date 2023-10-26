@@ -8,7 +8,6 @@ import (
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestGetBeachesAsGeoJSON(t *testing.T) {
@@ -16,7 +15,7 @@ func TestGetBeachesAsGeoJSON(t *testing.T) {
 
 	svc := mockBeachSvc(is)
 
-	r.Get("/beaches", NewRetrieveBeachesHandler(zerolog.Logger{}, svc))
+	r.Get("/beaches", NewRetrieveBeachesHandler(context.Background(), svc))
 	resp, body := newGetRequest(is, ts, "application/geo+json", "/beaches?fields=waterquality,seealso", nil)
 
 	is.Equal(resp.StatusCode, http.StatusOK)
@@ -29,7 +28,7 @@ func TestGetBeachesByID(t *testing.T) {
 	is, router, server := testSetup(t)
 	beachsvc := mockBeachSvc(is)
 
-	router.Get("/{id}", NewRetrieveBeachByIDHandler(zerolog.Logger{}, beachsvc))
+	router.Get("/{id}", NewRetrieveBeachByIDHandler(context.Background(), beachsvc))
 	resp, body := newGetRequest(is, server, "application/json", "/urn:ngsi-ld:Beach:se:sundsvall:anlaggning:283", nil)
 
 	is.Equal(resp.StatusCode, http.StatusOK)
@@ -43,7 +42,7 @@ func TestGetBeaches(t *testing.T) {
 	is, router, ts := testSetup(t)
 	svc := mockBeachSvc(is)
 
-	router.Get("/beaches", NewRetrieveBeachesHandler(zerolog.Logger{}, svc))
+	router.Get("/beaches", NewRetrieveBeachesHandler(context.Background(), svc))
 	resp, body := newGetRequest(is, ts, "application/json", "/beaches?fields=waterquality", nil)
 
 	is.Equal(resp.StatusCode, http.StatusOK) // Request failed, status code not OK

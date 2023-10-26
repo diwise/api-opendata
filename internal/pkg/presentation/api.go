@@ -28,7 +28,6 @@ import (
 	"github.com/riandyrn/otelchi"
 
 	"github.com/rs/cors"
-	"github.com/rs/zerolog"
 )
 
 type API interface {
@@ -44,8 +43,6 @@ func NewAPI(ctx context.Context, r chi.Router, dcatResponse *bytes.Buffer, opena
 }
 
 func newOpendataAPI(ctx context.Context, r chi.Router, dcatResponse *bytes.Buffer, openapiResponse *bytes.Buffer, orgfile io.Reader) *opendataAPI {
-	log := logging.GetFromContext(ctx)
-
 	r.Use(cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
@@ -67,16 +64,16 @@ func newOpendataAPI(ctx context.Context, r chi.Router, dcatResponse *bytes.Buffe
 	o.addDiwiseHandlers(ctx, r, orgfile)
 	o.addProbeHandlers(r)
 
-	o.router.Get("/api/datasets/dcat", o.newRetrieveDatasetsHandler(log, dcatResponse))
-	o.router.Get("/api/api-docs", o.newRetrieveOpenAPIHandler(log, openapiResponse))
-	o.router.Get("/api/openapi", o.newRetrieveOpenAPIHandler(log, openapiResponse))
+	o.router.Get("/api/datasets/dcat", o.newRetrieveDatasetsHandler(ctx, dcatResponse))
+	o.router.Get("/api/api-docs", o.newRetrieveOpenAPIHandler(ctx, openapiResponse))
+	o.router.Get("/api/openapi", o.newRetrieveOpenAPIHandler(ctx, openapiResponse))
 
 	return o
 }
 
 func (a *opendataAPI) Start(ctx context.Context, port string) error {
 	logger := logging.GetFromContext(ctx)
-	logger.Info().Msgf("Starting api-opendata on port:%s", port)
+	logger.Info("Starting api-opendata on port:%s", port)
 
 	return http.ListenAndServe(":"+port, a.router)
 }
@@ -84,9 +81,9 @@ func (a *opendataAPI) Start(ctx context.Context, port string) error {
 func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfile io.Reader) {
 	logger := logging.GetFromContext(ctx)
 
-	contextBrokerURL := env.GetVariableOrDie(logger, "DIWISE_CONTEXT_BROKER_URL", "context broker URL")
-	contextBrokerTenant := env.GetVariableOrDefault(logger, "DIWISE_CONTEXT_BROKER_TENANT", entities.DefaultNGSITenant)
-	maxWQODistStr := env.GetVariableOrDefault(logger, "WATER_QUALITY_MAX_DISTANCE", "1000")
+	contextBrokerURL := env.GetVariableOrDie(ctx, "DIWISE_CONTEXT_BROKER_URL", "context broker URL")
+	contextBrokerTenant := env.GetVariableOrDefault(ctx, "DIWISE_CONTEXT_BROKER_TENANT", entities.DefaultNGSITenant)
+	maxWQODistStr := env.GetVariableOrDefault(ctx, "WATER_QUALITY_MAX_DISTANCE", "1000")
 
 	maxWQODistance, err := strconv.ParseInt(maxWQODistStr, 10, 32)
 	if err != nil {
@@ -95,7 +92,8 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 
 	organisationsRegistry, err := organisations.NewRegistry(orgfile)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to create organisations registry")
+		logger.Error("failed to create organisations registry", "error", err)
+		os.Exit(1)
 	}
 
 	waterqualitySvc := waterquality.NewWaterQualityService(ctx, contextBrokerURL, contextBrokerTenant)
@@ -121,54 +119,54 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 
 	r.Get(
 		"/api/beaches",
-		handlers.NewRetrieveBeachesHandler(logger, beachService),
+		handlers.NewRetrieveBeachesHandler(ctx, beachService),
 	)
 	r.Get(
 		"/api/beaches/{id}",
-		handlers.NewRetrieveBeachByIDHandler(logger, beachService),
+		handlers.NewRetrieveBeachByIDHandler(ctx, beachService),
 	)
 	r.Get(
 		"/api/cityworks",
-		handlers.NewRetrieveCityworksHandler(logger, cityworkService),
+		handlers.NewRetrieveCityworksHandler(ctx, cityworkService),
 	)
 	r.Get(
 		"/api/cityworks/{id}",
-		handlers.NewRetrieveCityworksByIDHandler(logger, cityworkService),
+		handlers.NewRetrieveCityworksByIDHandler(ctx, cityworkService),
 	)
 	r.Get(
 		"/api/exercisetrails",
-		handlers.NewRetrieveExerciseTrailsHandler(logger, trailService),
+		handlers.NewRetrieveExerciseTrailsHandler(ctx, trailService),
 	)
 	r.Get(
 		"/api/exercisetrails/{id}",
-		handlers.NewRetrieveExerciseTrailByIDHandler(logger, trailService),
+		handlers.NewRetrieveExerciseTrailByIDHandler(ctx, trailService),
 	)
 	r.Get(
 		"/api/roadaccidents",
-		handlers.NewRetrieveRoadAccidentsHandler(logger, roadAccidentSvc),
+		handlers.NewRetrieveRoadAccidentsHandler(ctx, roadAccidentSvc),
 	)
 	r.Get(
 		"/api/roadaccidents/{id}",
-		handlers.NewRetrieveRoadAccidentByIDHandler(logger, roadAccidentSvc),
+		handlers.NewRetrieveRoadAccidentByIDHandler(ctx, roadAccidentSvc),
 	)
 	r.Get(
 		"/api/sportsfields",
-		handlers.NewRetrieveSportsFieldsHandler(logger, sportsfieldsSvc),
+		handlers.NewRetrieveSportsFieldsHandler(ctx, sportsfieldsSvc),
 	)
 	r.Get(
 		"/api/sportsfields/{id}",
-		handlers.NewRetrieveSportsFieldByIDHandler(logger, sportsfieldsSvc),
+		handlers.NewRetrieveSportsFieldByIDHandler(ctx, sportsfieldsSvc),
 	)
 	r.Get(
 		"/api/sportsvenues",
-		handlers.NewRetrieveSportsVenuesHandler(logger, sportsvenuesSvc),
+		handlers.NewRetrieveSportsVenuesHandler(ctx, sportsvenuesSvc),
 	)
 	r.Get(
 		"/api/sportsvenues/{id}",
-		handlers.NewRetrieveSportsVenueByIDHandler(logger, sportsvenuesSvc),
+		handlers.NewRetrieveSportsVenueByIDHandler(ctx, sportsvenuesSvc),
 	)
 
-	stratsysEnabled := (env.GetVariableOrDefault(logger, "STRATSYS_ENABLED", "true") != "false")
+	stratsysEnabled := (env.GetVariableOrDefault(ctx, "STRATSYS_ENABLED", "true") != "false")
 
 	if stratsysEnabled {
 		stratsysCompanyCode := os.Getenv("STRATSYS_COMPANY_CODE")
@@ -179,33 +177,33 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 
 		r.Get(
 			"/api/stratsys/publishedreports",
-			stratsys.NewRetrieveStratsysReportsHandler(logger, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
+			stratsys.NewRetrieveStratsysReportsHandler(ctx, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
 		)
 		r.Get(
 			"/api/stratsys/publishedreports/{id}",
-			stratsys.NewRetrieveStratsysReportsHandler(logger, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
+			stratsys.NewRetrieveStratsysReportsHandler(ctx, stratsysCompanyCode, stratsysClientId, stratsysScope, stratsysLoginUrl, stratsysDefaultUrl),
 		)
 	}
 
 	r.Get(
 		"/api/temperature/air",
-		handlers.NewRetrieveTemperaturesHandler(logger, temperature.NewTempService(contextBrokerURL)),
+		handlers.NewRetrieveTemperaturesHandler(ctx, temperature.NewTempService(contextBrokerURL)),
 	)
 	r.Get(
 		"/api/temperature/air/sensors",
-		handlers.NewRetrieveTemperatureSensorsHandler(logger, contextBrokerURL),
+		handlers.NewRetrieveTemperatureSensorsHandler(ctx, contextBrokerURL),
 	)
 	r.Get(
 		"/api/trafficflow",
-		handlers.NewRetrieveTrafficFlowsHandler(logger, contextBrokerURL),
+		handlers.NewRetrieveTrafficFlowsHandler(ctx, contextBrokerURL),
 	)
 	r.Get(
 		"/api/waterqualities",
-		handlers.NewRetrieveWaterQualityHandler(logger, waterqualitySvc),
+		handlers.NewRetrieveWaterQualityHandler(ctx, waterqualitySvc),
 	)
 	r.Get(
 		"/api/waterqualities/{id}",
-		handlers.NewRetrieveWaterQualityByIDHandler(logger, waterqualitySvc),
+		handlers.NewRetrieveWaterQualityByIDHandler(ctx, waterqualitySvc),
 	)
 }
 
@@ -215,14 +213,14 @@ func (o *opendataAPI) addProbeHandlers(r chi.Router) {
 	})
 }
 
-func (o *opendataAPI) newRetrieveDatasetsHandler(log zerolog.Logger, dcatResponse *bytes.Buffer) http.HandlerFunc {
+func (o *opendataAPI) newRetrieveDatasetsHandler(ctx context.Context, dcatResponse *bytes.Buffer) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/rdf+xml")
 		w.Write(dcatResponse.Bytes())
 	})
 }
 
-func (o *opendataAPI) newRetrieveOpenAPIHandler(log zerolog.Logger, openapiResponse *bytes.Buffer) http.HandlerFunc {
+func (o *opendataAPI) newRetrieveOpenAPIHandler(ctx context.Context, openapiResponse *bytes.Buffer) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if openapiResponse == nil {
 			w.WriteHeader(http.StatusNotFound)

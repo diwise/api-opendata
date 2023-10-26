@@ -6,7 +6,6 @@ package temperature
 import (
 	"context"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
-	"github.com/rs/zerolog"
 	"sync"
 	"time"
 )
@@ -17,28 +16,28 @@ var _ TempServiceQuery = &TempServiceQueryMock{}
 
 // TempServiceQueryMock is a mock implementation of TempServiceQuery.
 //
-// 	func TestSomethingThatUsesTempServiceQuery(t *testing.T) {
+//	func TestSomethingThatUsesTempServiceQuery(t *testing.T) {
 //
-// 		// make and configure a mocked TempServiceQuery
-// 		mockedTempServiceQuery := &TempServiceQueryMock{
-// 			AggregateFunc: func(period string, aggregates string) TempServiceQuery {
-// 				panic("mock out the Aggregate method")
-// 			},
-// 			BetweenTimesFunc: func(from time.Time, to time.Time) TempServiceQuery {
-// 				panic("mock out the BetweenTimes method")
-// 			},
-// 			GetFunc: func(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, error) {
-// 				panic("mock out the Get method")
-// 			},
-// 			SensorFunc: func(sensor string) TempServiceQuery {
-// 				panic("mock out the Sensor method")
-// 			},
-// 		}
+//		// make and configure a mocked TempServiceQuery
+//		mockedTempServiceQuery := &TempServiceQueryMock{
+//			AggregateFunc: func(period string, aggregates string) TempServiceQuery {
+//				panic("mock out the Aggregate method")
+//			},
+//			BetweenTimesFunc: func(from time.Time, to time.Time) TempServiceQuery {
+//				panic("mock out the BetweenTimes method")
+//			},
+//			GetFunc: func(ctx context.Context) ([]domain.Sensor, error) {
+//				panic("mock out the Get method")
+//			},
+//			SensorFunc: func(sensor string) TempServiceQuery {
+//				panic("mock out the Sensor method")
+//			},
+//		}
 //
-// 		// use mockedTempServiceQuery in code that requires TempServiceQuery
-// 		// and then make assertions.
+//		// use mockedTempServiceQuery in code that requires TempServiceQuery
+//		// and then make assertions.
 //
-// 	}
+//	}
 type TempServiceQueryMock struct {
 	// AggregateFunc mocks the Aggregate method.
 	AggregateFunc func(period string, aggregates string) TempServiceQuery
@@ -47,7 +46,7 @@ type TempServiceQueryMock struct {
 	BetweenTimesFunc func(from time.Time, to time.Time) TempServiceQuery
 
 	// GetFunc mocks the Get method.
-	GetFunc func(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, error)
+	GetFunc func(ctx context.Context) ([]domain.Sensor, error)
 
 	// SensorFunc mocks the Sensor method.
 	SensorFunc func(sensor string) TempServiceQuery
@@ -72,8 +71,6 @@ type TempServiceQueryMock struct {
 		Get []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Log is the log argument value.
-			Log zerolog.Logger
 		}
 		// Sensor holds details about calls to the Sensor method.
 		Sensor []struct {
@@ -89,6 +86,9 @@ type TempServiceQueryMock struct {
 
 // Aggregate calls AggregateFunc.
 func (mock *TempServiceQueryMock) Aggregate(period string, aggregates string) TempServiceQuery {
+	if mock.AggregateFunc == nil {
+		panic("TempServiceQueryMock.AggregateFunc: method is nil but TempServiceQuery.Aggregate was just called")
+	}
 	callInfo := struct {
 		Period     string
 		Aggregates string
@@ -99,15 +99,13 @@ func (mock *TempServiceQueryMock) Aggregate(period string, aggregates string) Te
 	mock.lockAggregate.Lock()
 	mock.calls.Aggregate = append(mock.calls.Aggregate, callInfo)
 	mock.lockAggregate.Unlock()
-	if mock.AggregateFunc == nil {
-		return mock
-	}
 	return mock.AggregateFunc(period, aggregates)
 }
 
 // AggregateCalls gets all the calls that were made to Aggregate.
 // Check the length with:
-//     len(mockedTempServiceQuery.AggregateCalls())
+//
+//	len(mockedTempServiceQuery.AggregateCalls())
 func (mock *TempServiceQueryMock) AggregateCalls() []struct {
 	Period     string
 	Aggregates string
@@ -124,6 +122,9 @@ func (mock *TempServiceQueryMock) AggregateCalls() []struct {
 
 // BetweenTimes calls BetweenTimesFunc.
 func (mock *TempServiceQueryMock) BetweenTimes(from time.Time, to time.Time) TempServiceQuery {
+	if mock.BetweenTimesFunc == nil {
+		panic("TempServiceQueryMock.BetweenTimesFunc: method is nil but TempServiceQuery.BetweenTimes was just called")
+	}
 	callInfo := struct {
 		From time.Time
 		To   time.Time
@@ -134,15 +135,13 @@ func (mock *TempServiceQueryMock) BetweenTimes(from time.Time, to time.Time) Tem
 	mock.lockBetweenTimes.Lock()
 	mock.calls.BetweenTimes = append(mock.calls.BetweenTimes, callInfo)
 	mock.lockBetweenTimes.Unlock()
-	if mock.BetweenTimesFunc == nil {
-		return mock
-	}
 	return mock.BetweenTimesFunc(from, to)
 }
 
 // BetweenTimesCalls gets all the calls that were made to BetweenTimes.
 // Check the length with:
-//     len(mockedTempServiceQuery.BetweenTimesCalls())
+//
+//	len(mockedTempServiceQuery.BetweenTimesCalls())
 func (mock *TempServiceQueryMock) BetweenTimesCalls() []struct {
 	From time.Time
 	To   time.Time
@@ -158,37 +157,30 @@ func (mock *TempServiceQueryMock) BetweenTimesCalls() []struct {
 }
 
 // Get calls GetFunc.
-func (mock *TempServiceQueryMock) Get(ctx context.Context, log zerolog.Logger) ([]domain.Sensor, error) {
+func (mock *TempServiceQueryMock) Get(ctx context.Context) ([]domain.Sensor, error) {
+	if mock.GetFunc == nil {
+		panic("TempServiceQueryMock.GetFunc: method is nil but TempServiceQuery.Get was just called")
+	}
 	callInfo := struct {
 		Ctx context.Context
-		Log zerolog.Logger
 	}{
 		Ctx: ctx,
-		Log: log,
 	}
 	mock.lockGet.Lock()
 	mock.calls.Get = append(mock.calls.Get, callInfo)
 	mock.lockGet.Unlock()
-	if mock.GetFunc == nil {
-		var (
-			sensorsOut []domain.Sensor
-			errOut     error
-		)
-		return sensorsOut, errOut
-	}
-	return mock.GetFunc(ctx, log)
+	return mock.GetFunc(ctx)
 }
 
 // GetCalls gets all the calls that were made to Get.
 // Check the length with:
-//     len(mockedTempServiceQuery.GetCalls())
+//
+//	len(mockedTempServiceQuery.GetCalls())
 func (mock *TempServiceQueryMock) GetCalls() []struct {
 	Ctx context.Context
-	Log zerolog.Logger
 } {
 	var calls []struct {
 		Ctx context.Context
-		Log zerolog.Logger
 	}
 	mock.lockGet.RLock()
 	calls = mock.calls.Get
@@ -198,6 +190,9 @@ func (mock *TempServiceQueryMock) GetCalls() []struct {
 
 // Sensor calls SensorFunc.
 func (mock *TempServiceQueryMock) Sensor(sensor string) TempServiceQuery {
+	if mock.SensorFunc == nil {
+		panic("TempServiceQueryMock.SensorFunc: method is nil but TempServiceQuery.Sensor was just called")
+	}
 	callInfo := struct {
 		Sensor string
 	}{
@@ -206,15 +201,13 @@ func (mock *TempServiceQueryMock) Sensor(sensor string) TempServiceQuery {
 	mock.lockSensor.Lock()
 	mock.calls.Sensor = append(mock.calls.Sensor, callInfo)
 	mock.lockSensor.Unlock()
-	if mock.SensorFunc == nil {
-		return mock
-	}
 	return mock.SensorFunc(sensor)
 }
 
 // SensorCalls gets all the calls that were made to Sensor.
 // Check the length with:
-//     len(mockedTempServiceQuery.SensorCalls())
+//
+//	len(mockedTempServiceQuery.SensorCalls())
 func (mock *TempServiceQueryMock) SensorCalls() []struct {
 	Sensor string
 } {

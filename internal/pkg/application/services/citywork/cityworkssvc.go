@@ -12,7 +12,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
 )
 
@@ -82,13 +81,13 @@ func (svc *cityworksSvc) GetByID(id string) ([]byte, error) {
 
 func (svc *cityworksSvc) Start(ctx context.Context) {
 	logger := logging.GetFromContext(ctx)
-	logger.Info().Msg("starting cityworks service")
+	logger.Info("starting cityworks service")
 	go svc.run(ctx)
 }
 
 func (svc *cityworksSvc) Shutdown(ctx context.Context) {
 	logger := logging.GetFromContext(ctx)
-	logger.Info().Msg("shutting down cityworks service")
+	logger.Info("shutting down cityworks service")
 	svc.keepRunning = false
 }
 
@@ -98,15 +97,15 @@ func (svc *cityworksSvc) run(ctx context.Context) {
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			logger.Info().Msg("refreshing cityworks info")
-			count, err := svc.refresh(ctx, logger)
+			logger.Info("refreshing cityworks info")
+			count, err := svc.refresh(ctx)
 
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to refresh cityworks")
+				logger.Error("failed to refresh cityworks", "error", err)
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
-				logger.Info().Msgf("refreshed %d cityworks", count)
+				logger.Info("refreshed cityworks", "count", count)
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
 			}
@@ -115,10 +114,11 @@ func (svc *cityworksSvc) run(ctx context.Context) {
 		time.Sleep(1 * time.Second)
 	}
 
-	logger.Info().Msg("cityworks service exiting")
+	logger.Info("cityworks service exiting")
 }
 
-func (svc *cityworksSvc) refresh(ctx context.Context, logger zerolog.Logger) (count int, err error) {
+func (svc *cityworksSvc) refresh(ctx context.Context) (count int, err error) {
+	logger := logging.GetFromContext(ctx)
 
 	ctx, span := tracer.Start(ctx, "refresh-cityworks")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()

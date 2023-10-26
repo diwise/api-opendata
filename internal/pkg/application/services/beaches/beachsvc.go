@@ -16,7 +16,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
 )
 
@@ -116,8 +115,6 @@ func (svc *beachSvc) Start(ctx context.Context) {
 }
 
 func (svc *beachSvc) Refresh(ctx context.Context) (int, error) {
-	logger := logging.GetFromContext(ctx)
-
 	refreshDone := make(chan int)
 	refreshFailed := make(chan error)
 
@@ -125,7 +122,7 @@ func (svc *beachSvc) Refresh(ctx context.Context) (int, error) {
 	defer cancel()
 
 	svc.queue <- func() {
-		count, err := svc.refresh(ctx, logger)
+		count, err := svc.refresh(ctx)
 		if err != nil {
 			refreshFailed <- err
 		} else {
@@ -156,12 +153,12 @@ func (svc *beachSvc) run(ctx context.Context) {
 	defer svc.wg.Done()
 
 	logger := logging.GetFromContext(ctx)
-	logger.Info().Msg("starting up beach service")
+	logger.Info("starting up beach service")
 
 	// use atomic swap to avoid startup races
 	alreadyStarted := svc.keepRunning.Swap(true)
 	if alreadyStarted {
-		logger.Error().Msg("attempt to start the beach service multiple times")
+		logger.Error("attempt to start the beach service multiple times")
 		return
 	}
 
@@ -169,13 +166,13 @@ func (svc *beachSvc) run(ctx context.Context) {
 	const RefreshIntervalOnSuccess time.Duration = 5 * time.Minute
 
 	var refreshTimer *time.Timer
-	count, err := svc.refresh(ctx, logger)
+	count, err := svc.refresh(ctx)
 
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to refresh beaches")
+		logger.Error("failed to refresh beaches")
 		refreshTimer = time.NewTimer(RefreshIntervalOnFail)
 	} else {
-		logger.Info().Msgf("refreshed %d beaches", count)
+		logger.Info("refreshed %d beaches", count)
 		refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
 	}
 
@@ -184,28 +181,29 @@ func (svc *beachSvc) run(ctx context.Context) {
 		case fn := <-svc.queue:
 			fn()
 		case <-refreshTimer.C:
-			count, err := svc.refresh(ctx, logger)
+			count, err := svc.refresh(ctx)
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to refresh beaches")
+				logger.Error("failed to refresh beaches", "error", err)
 				refreshTimer = time.NewTimer(RefreshIntervalOnFail)
 			} else {
-				logger.Info().Msgf("refreshed %d beaches", count)
+				logger.Info("refreshed beaches", "count", count)
 				refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
 			}
 		}
 	}
 
-	logger.Info().Msg("beach service exiting")
+	logger.Info("beach service exiting")
 }
 
-func (svc *beachSvc) refresh(ctx context.Context, log zerolog.Logger) (count int, err error) {
+func (svc *beachSvc) refresh(ctx context.Context) (count int, err error) {
+	log := logging.GetFromContext(ctx)
 
 	ctx, span := tracer.Start(ctx, "refresh-beaches")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
 	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, log, ctx)
 
-	logger.Info().Msg("refreshing beach info")
+	logger.Info("refreshing beach info")
 
 	beaches := []Beach{}
 
@@ -235,7 +233,7 @@ func (svc *beachSvc) refresh(ctx context.Context, log zerolog.Logger) (count int
 		pt := waterquality.NewPoint(latitude, longitude)
 		wqots, err_ := svc.wqsvc.GetAllNearPointWithinTimespan(ctx, pt, svc.beachMaxWQODistance, from, to)
 		if err_ != nil {
-			logger.Error().Err(err_).Msgf("failed to get water qualities near %s (%s)", b.Name, b.ID)
+			logger.Error("failed to get water qualities", "name", b.Name, "id", b.ID, "error", err_)
 		} else {
 			wq := []WaterQuality{}
 

@@ -14,34 +14,33 @@ import (
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
 	ngsitypes "github.com/diwise/ngsi-ld-golang/pkg/ngsi-ld/types"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestThatQueryRequiresASensor(t *testing.T) {
-	is, log, svc := testSetup(t, http.StatusOK, "[]")
+	is, _, svc := testSetup(t, http.StatusOK, "[]")
 	ts := NewTempService(svc.URL())
 
-	sensors, err := ts.Query().Get(context.Background(), log)
+	sensors, err := ts.Query().Get(context.Background())
 
 	is.Equal(sensors, nil) // nil sensors should be returned
 	is.True(err != nil)    // an error should be returned
 }
 
 func TestEmptyResponse(t *testing.T) {
-	is, log, svc := testSetup(t, http.StatusOK, "[]")
+	is, _, svc := testSetup(t, http.StatusOK, "[]")
 	ts := NewTempService(svc.URL())
 
-	sensors, err := ts.Query().Sensor("testsensor").Get(context.Background(), log)
+	sensors, err := ts.Query().Sensor("testsensor").Get(context.Background())
 
 	is.NoErr(err)
 	is.Equal(len(sensors[0].Temperatures), 0) // should not return any temperatures
 }
 
 func TestFailureResponse(t *testing.T) {
-	is, log, svc := testSetup(t, http.StatusInternalServerError, "")
+	is, _, svc := testSetup(t, http.StatusInternalServerError, "")
 	ts := NewTempService(svc.URL())
 
-	sensors, err := ts.Query().Sensor("testsensor").Get(context.Background(), log)
+	sensors, err := ts.Query().Sensor("testsensor").Get(context.Background())
 
 	is.True(err != nil)     // should return an error
 	is.True(sensors == nil) // should return a nil slice
@@ -49,10 +48,10 @@ func TestFailureResponse(t *testing.T) {
 
 func TestSingleObservationResponse(t *testing.T) {
 	from, _ := time.Parse(time.RFC3339, "2021-09-01T12:00:00Z")
-	is, log, svc := testSetup(t, http.StatusOK, generateTestData(from, time.Hour, 12.7))
+	is, _, svc := testSetup(t, http.StatusOK, generateTestData(from, time.Hour, 12.7))
 	ts := NewTempService(svc.URL())
 
-	sensors, err := ts.Query().Sensor("testsensor").Get(context.Background(), log)
+	sensors, err := ts.Query().Sensor("testsensor").Get(context.Background())
 
 	is.NoErr(err)
 	is.Equal(len(sensors), 1) // should return a single temperature
@@ -60,10 +59,10 @@ func TestSingleObservationResponse(t *testing.T) {
 
 func TestMultipleObservationResponse(t *testing.T) {
 	from, _ := time.Parse(time.RFC3339, "2021-09-01T12:00:00Z")
-	is, log, svc := testSetup(t, http.StatusOK, generateTestData(from, time.Hour, 1.0, 1.1, 1.2, 1.3, 1.4))
+	is, _, svc := testSetup(t, http.StatusOK, generateTestData(from, time.Hour, 1.0, 1.1, 1.2, 1.3, 1.4))
 	ts := NewTempService(svc.URL())
 
-	sensors, err := ts.Query().Sensor("testsensor").Get(context.Background(), log)
+	sensors, err := ts.Query().Sensor("testsensor").Get(context.Background())
 
 	is.NoErr(err)
 	is.Equal(len(sensors[0].Temperatures), 5) // should return 5 temperatures
@@ -71,10 +70,10 @@ func TestMultipleObservationResponse(t *testing.T) {
 
 func TestAverageAggregationPT1H(t *testing.T) {
 	from, _ := time.Parse(time.RFC3339, "2021-09-01T12:00:00Z")
-	is, log, svc := testSetup(t, http.StatusOK, generateTestData(from, 20*time.Minute, 1.0, 2.0, 3.0, 4.0, 5.23))
+	is, _, svc := testSetup(t, http.StatusOK, generateTestData(from, 20*time.Minute, 1.0, 2.0, 3.0, 4.0, 5.23))
 	ts := NewTempService(svc.URL())
 
-	sensors, err := ts.Query().Sensor("testsensor").Aggregate("PT1H", "avg").Get(context.Background(), log)
+	sensors, err := ts.Query().Sensor("testsensor").Aggregate("PT1H", "avg").Get(context.Background())
 
 	is.NoErr(err)
 	is.Equal(len(sensors[0].Temperatures), 2) // should return 2 temperature averages
@@ -84,10 +83,10 @@ func TestAverageAggregationPT1H(t *testing.T) {
 
 func TestAverageAggregationPT24H(t *testing.T) {
 	from, _ := time.Parse(time.RFC3339, "2021-09-01T12:00:00Z")
-	is, log, svc := testSetup(t, http.StatusOK, generateTestData(from, 12*time.Hour, 1.0, 2.0, 3.0, 4.0, 5.0))
+	is, _, svc := testSetup(t, http.StatusOK, generateTestData(from, 12*time.Hour, 1.0, 2.0, 3.0, 4.0, 5.0))
 	ts := NewTempService(svc.URL())
 
-	sensors, err := ts.Query().Sensor("testsensor").Aggregate("PT24H", "avg").Get(context.Background(), log)
+	sensors, err := ts.Query().Sensor("testsensor").Aggregate("PT24H", "avg").Get(context.Background())
 
 	is.NoErr(err)
 	is.Equal(len(sensors[0].Temperatures), 3) // should return 3 temperature averages
@@ -98,10 +97,10 @@ func TestAverageAggregationPT24H(t *testing.T) {
 
 func TestAverageAggregationP1MFails(t *testing.T) {
 	from, _ := time.Parse(time.RFC3339, "2021-09-01T12:00:00Z")
-	is, log, svc := testSetup(t, http.StatusOK, generateTestData(from, time.Hour, 1.0, 2.0))
+	is, _, svc := testSetup(t, http.StatusOK, generateTestData(from, time.Hour, 1.0, 2.0))
 	ts := NewTempService(svc.URL())
 
-	sensors, err := ts.Query().Sensor("testsensor").Aggregate("P1M", "avg").Get(context.Background(), log)
+	sensors, err := ts.Query().Sensor("testsensor").Aggregate("P1M", "avg").Get(context.Background())
 
 	is.Equal(sensors, nil) // sensors should be nil
 	is.True(err != nil)    // an error should be returned
@@ -109,10 +108,10 @@ func TestAverageAggregationP1MFails(t *testing.T) {
 
 func TestMaxMinAggregationPT1H(t *testing.T) {
 	from, _ := time.Parse(time.RFC3339, "2021-09-01T12:00:00Z")
-	is, log, svc := testSetup(t, http.StatusOK, generateTestData(from, 20*time.Minute, 1.0, 2.0, 3.0, 4.0, 5.0))
+	is, _, svc := testSetup(t, http.StatusOK, generateTestData(from, 20*time.Minute, 1.0, 2.0, 3.0, 4.0, 5.0))
 	ts := NewTempService(svc.URL())
 
-	sensors, err := ts.Query().Sensor("testsensor").Aggregate("PT1H", "max,min").Get(context.Background(), log)
+	sensors, err := ts.Query().Sensor("testsensor").Aggregate("PT1H", "max,min").Get(context.Background())
 
 	is.NoErr(err)
 	is.Equal(len(sensors[0].Temperatures), 2)         // should return 2 temperature aggregates
@@ -140,9 +139,9 @@ var Expects = testutils.Expects
 var Returns = testutils.Returns
 var anyInput = expects.AnyInput
 
-func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, zerolog.Logger, testutils.MockService) {
+func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, context.Context, testutils.MockService) {
 	is := is.New(t)
-	log := zerolog.Logger{}
+	ctx := context.Background()
 
 	ms := testutils.NewMockServiceThat(
 		Expects(is, anyInput()),
@@ -153,5 +152,5 @@ func testSetup(t *testing.T, statusCode int, responseBody string) (*is.I, zerolo
 		),
 	)
 
-	return is, log, ms
+	return is, ctx, ms
 }

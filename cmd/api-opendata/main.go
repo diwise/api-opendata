@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 
@@ -19,7 +20,7 @@ func openFile(ctx context.Context, description, path string) *os.File {
 	file, err := os.Open(path)
 	if err != nil {
 		log := logging.GetFromContext(ctx)
-		log.Error().Err(err).Msgf("failed to open the %s file %s.", description, path)
+		log.Error("failed to open file", "description", description, "path", path, "error", err)
 		return nil
 	}
 	return file
@@ -63,7 +64,8 @@ func main() {
 	orgFile := openOrganisationsFile(ctx, organisationRegistryFile)
 
 	if datafile == nil {
-		log.Fatal().Msg("Unable to open dataset file. Exiting.")
+		log.Error("Unable to open dataset file. Exiting.")
+		os.Exit(1)
 	} else {
 		defer datafile.Close()
 
@@ -71,10 +73,11 @@ func main() {
 		written, err := io.Copy(datasetResponseBuffer, datafile)
 
 		if err != nil {
-			log.Fatal().Err(err).Msg("unable to copy datasets file into response buffer")
+			log.Error("unable to copy datasets file into response buffer", "error", err)
+			os.Exit(1)
 		}
 
-		log.Info().Msgf("copied %d bytes from %s into datasets response buffer.", written, datasetFileName)
+		log.Info(fmt.Sprintf("copied %d bytes from %s into datasets response buffer.", written, datasetFileName))
 
 		var oasResponseBuffer *bytes.Buffer
 		if oasfile != nil {
@@ -84,9 +87,9 @@ func main() {
 			written, err := io.Copy(oasResponseBuffer, oasfile)
 
 			if err != nil {
-				log.Error().Err(err).Msg("failed to copy OpenAPI specification into response buffer")
+				log.Error("failed to copy OpenAPI specification into response buffer", "error", err)
 			} else {
-				log.Info().Msgf("copied %d bytes from %s into openapi response buffer.", written, openApiSpecFileName)
+				log.Info(fmt.Sprintf("copied %d bytes from %s into openapi response buffer.", written, openApiSpecFileName))
 			}
 		}
 
@@ -99,10 +102,11 @@ func main() {
 
 		api := presentation.NewAPI(ctx, r, datasetResponseBuffer, oasResponseBuffer, reader)
 
-		port := env.GetVariableOrDefault(log, "SERVICE_PORT", "8080")
+		port := env.GetVariableOrDefault(ctx, "SERVICE_PORT", "8080")
 		err = api.Start(ctx, port)
 		if err != nil {
-			log.Fatal().Msgf("failed to start router: %s", err.Error())
+			log.Error("failed to start router: %s", err.Error())
+			os.Exit(1)
 		}
 	}
 }

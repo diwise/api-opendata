@@ -12,7 +12,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
 )
 
@@ -83,14 +82,14 @@ func (svc *roadAccidentSvc) GetByID(id string) ([]byte, error) {
 
 func (svc *roadAccidentSvc) Start(ctx context.Context) {
 	logger := logging.GetFromContext(ctx)
-	logger.Info().Msg("starting road accident service")
+	logger.Info("starting road accident service")
 	// TODO: Prevent multiple starts on the same service
 	go svc.run(ctx)
 }
 
 func (svc *roadAccidentSvc) Shutdown(ctx context.Context) {
 	logger := logging.GetFromContext(ctx)
-	logger.Info().Msg("shutting down road accident service")
+	logger.Info("shutting down road accident service")
 	svc.keepRunning = false
 }
 
@@ -100,15 +99,15 @@ func (svc *roadAccidentSvc) run(ctx context.Context) {
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			logger.Info().Msg("refreshing road accident info")
-			count, err := svc.refresh(ctx, logger)
+			logger.Info("refreshing road accident info")
+			count, err := svc.refresh(ctx)
 
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to refresh road accidents")
+				logger.Error("failed to refresh road accidents", "error", err)
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
-				logger.Info().Msgf("refreshed %d road accidents", count)
+				logger.Info("refreshed road accidents", "count", count)
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
 			}
@@ -118,10 +117,11 @@ func (svc *roadAccidentSvc) run(ctx context.Context) {
 		time.Sleep(1 * time.Second)
 	}
 
-	logger.Info().Msg("road accident service exiting")
+	logger.Info("road accident service exiting")
 }
 
-func (svc *roadAccidentSvc) refresh(ctx context.Context, log zerolog.Logger) (count int, err error) {
+func (svc *roadAccidentSvc) refresh(ctx context.Context) (count int, err error) {
+	log := logging.GetFromContext(ctx)
 
 	ctx, span := tracer.Start(ctx, "refresh-roadaccidents")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
