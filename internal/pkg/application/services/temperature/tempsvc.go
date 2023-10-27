@@ -2,19 +2,18 @@ package temperature
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"math"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
+	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
+//go:generate moq -rm -out tempsvc_mock.go . TempService
 type TempService interface {
 	Query() TempServiceQuery
 }
@@ -65,7 +64,8 @@ func NewTempService(contextBrokerURL string) TempService {
 }
 
 type ts struct {
-	contextBrokerURL string
+	contextBrokerURL    string
+	contextBrokerTenant string
 }
 
 type tsq struct {
@@ -131,159 +131,45 @@ func (q tsq) Sensor(sensor string) TempServiceQuery {
 }
 
 func (q tsq) Get(ctx context.Context) ([]domain.Sensor, error) {
-
 	if q.err == nil && q.sensor == "" {
 		q.err = fmt.Errorf("a specific sensor must be specified")
 	}
 
-	if q.err != nil {
+	headers := map[string][]string{
+		"Accept": {"application/ld+json"},
+		"Link":   {entities.LinkHeader},
+	}
+
+	// query all WeatherObserved for specified (refDevice) sensor
+	cbClient := contextbroker.NewContextBrokerClient(q.contextBrokerURL, contextbroker.Tenant(q.contextBrokerTenant))
+	result, err := cbClient.QueryEntities(ctx, []string{fiware.WeatherObservedTypeName}, nil, fmt.Sprintf("refDevice=%s", q.sensor), headers)
+	if err != nil {
 		return nil, fmt.Errorf("invalid temperature service query: %s", q.err.Error())
 	}
 
-	pageSize := uint64(1000)
-	maxResultSize := uint64(50000)
-	wos, err := requestData(ctx, q, 0, pageSize)
-	if err != nil {
-		return nil, err
-	}
+	sensors := make([]domain.Sensor, 0)
+	temperatures := make([]domain.Temperature, 0)
 
-	if len(wos) == int(pageSize) {
-		// We need to request more data page by page
-		for offset := pageSize; offset < maxResultSize; offset += pageSize {
-			page, err := requestData(ctx, q, offset, pageSize)
-			if err != nil {
-				return nil, err
-			}
-
-			wos = append(wos, page...)
-
-			if len(page) < int(pageSize) {
-				break
-			}
+	for e := range result.Found {
+		temporal, err := cbClient.RetrieveTemporalEvolutionOfEntity(ctx, e.ID(), nil, nil)
+		if err != nil {
+			return nil, fmt.Errorf("invalid temperature service query: %s", err.Error())
 		}
-	}
 
-	temps := []domain.Temperature{}
+		props := temporal.Property("temperature")
 
-	if len(wos) > 0 {
-
-		if len(q.aggregations) == 0 {
-			for _, wo := range wos {
-				dateObserved, _ := time.Parse(time.RFC3339, wo.DateObserved.Value.Value)
-
-				t := domain.Temperature{
-					Id:    wo.RefDevice.Object,
-					Value: &wo.Temperature.Value,
-					When:  &dateObserved,
-				}
-				temps = append(temps, t)
-			}
-		} else {
-			dateOfFirstObservation, _ := time.Parse(time.RFC3339, wos[0].DateObserved.Value.Value)
-			periodStart := dateOfFirstObservation
-			if !q.from.IsZero() {
-				periodStart = q.from
-			}
-
-			periodEnd := periodStart.Add(q.aggregationDuration).Add(-1 * time.Millisecond)
-			for periodEnd.Before(dateOfFirstObservation) {
-				periodStart = periodStart.Add(q.aggregationDuration)
-				periodEnd = periodEnd.Add(q.aggregationDuration)
-			}
-
-			aggregationStartIndex := 0
-
-			for idx := range wos {
-				dateObserved, _ := time.Parse(time.RFC3339, wos[idx].DateObserved.Value.Value)
-				if dateObserved.After(periodEnd) {
-					ps := periodStart
-					pe := periodEnd
-
-					aggr := domain.Temperature{
-						Id:   wos[0].RefDevice.Object,
-						From: &ps,
-						To:   &pe,
-					}
-					for _, aggrF := range q.aggregations {
-						aggr = aggrF(wos, aggregationStartIndex, idx, aggr)
-					}
-
-					temps = append(temps, aggr)
-
-					periodStart = periodStart.Add(q.aggregationDuration)
-					periodEnd = periodEnd.Add(q.aggregationDuration)
-
-					aggregationStartIndex = idx
-				}
-			}
-
-			aggr := domain.Temperature{
-				Id:   wos[0].RefDevice.Object,
-				From: &periodStart,
-				To:   &periodEnd,
-			}
-			for _, aggrF := range q.aggregations {
-				aggr = aggrF(wos, aggregationStartIndex, len(wos), aggr)
-			}
-
-			temps = append(temps, aggr)
+		for i, t := range props {
+			v := t.Value().(float64)
+			ts, _ := time.Parse(time.RFC3339, t.ObservedAt())
+			temperatures = append(temperatures, domain.Temperature{
+				Id:    fmt.Sprintf("%s:temperature:%d", q.sensor, i),
+				Value: &v,
+				When:  &ts,
+			})
 		}
-	}
 
-	sensors := []domain.Sensor{{Id: q.sensor, Temperatures: temps}}
+		sensors = append(sensors, domain.Sensor{Id: q.sensor, Temperatures: temperatures})
+	}
 
 	return sensors, nil
-}
-
-func requestData(ctx context.Context, q tsq, offset, limit uint64) ([]fiware.WeatherObserved, error) {
-	var err error
-
-	httpClient := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
-	url := fmt.Sprintf(
-		"%s/ngsi-ld/v1/entities?type=WeatherObserved&attrs=temperature&q=refDevice==\"%s\"",
-		q.ts.contextBrokerURL,
-		q.sensor,
-	)
-
-	if !q.from.IsZero() && !q.to.IsZero() {
-		timeAt := q.from.Format(time.RFC3339)
-		endTimeAt := q.to.Format(time.RFC3339)
-		url = url + fmt.Sprintf("&timerel=between&timeAt=%s&endTimeAt=%s", timeAt, endTimeAt)
-	}
-
-	if limit > 0 {
-		url = url + fmt.Sprintf("&limit=%d", limit)
-	}
-
-	if offset > 0 {
-		url = url + fmt.Sprintf("&offset=%d", offset)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create http request: %w", err)
-	}
-
-	response, err := httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request failed, status code not ok: %d", response.StatusCode)
-	}
-
-	wos := []fiware.WeatherObserved{}
-	b, _ := io.ReadAll(response.Body)
-
-	err = json.Unmarshal(b, &wos)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	return wos, nil
 }

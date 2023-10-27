@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.21.3
 
 require (
-	github.com/diwise/context-broker v0.0.0-20231025132842-d27c49f90ade
+	github.com/diwise/context-broker v0.0.0-20231026142133-ca64b9f86484
 	github.com/diwise/ngsi-ld-golang v0.0.0-20220518083256-2e7d28ad5f2e
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/matryer/is v1.4.1
