@@ -147,11 +147,10 @@ func (q tsq) Get(ctx context.Context) ([]domain.Sensor, error) {
 		return nil, fmt.Errorf("invalid temperature service query: %s", q.err.Error())
 	}
 
-	sensors := make([]domain.Sensor, 0)
 	temperatures := make([]domain.Temperature, 0)
 
 	for e := range result.Found {
-		temporal, err := cbClient.RetrieveTemporalEvolutionOfEntity(ctx, e.ID(), nil, nil)
+		temporal, err := cbClient.RetrieveTemporalEvolutionOfEntity(ctx, e.ID(), headers, contextbroker.Between(q.from, q.to))
 		if err != nil {
 			return nil, fmt.Errorf("invalid temperature service query: %s", err.Error())
 		}
@@ -167,9 +166,7 @@ func (q tsq) Get(ctx context.Context) ([]domain.Sensor, error) {
 				When:  &ts,
 			})
 		}
-
-		sensors = append(sensors, domain.Sensor{Id: q.sensor, Temperatures: temperatures})
 	}
 
-	return sensors, nil
+	return []domain.Sensor{{Id: q.sensor, Temperatures: temperatures}}, nil
 }
