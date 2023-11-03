@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/flate"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -18,8 +19,8 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/application/services/roadaccidents"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsfields"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsvenues"
-	"github.com/diwise/api-opendata/internal/pkg/application/services/temperature"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
+	"github.com/diwise/api-opendata/internal/pkg/application/services/weather"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
@@ -75,7 +76,7 @@ func newOpendataAPI(ctx context.Context, r chi.Router, dcatResponse *bytes.Buffe
 
 func (a *opendataAPI) Start(ctx context.Context, port string) error {
 	logger := logging.GetFromContext(ctx)
-	logger.Info("Starting api-opendata on port:%s", port)
+	logger.Info(fmt.Sprintf("Starting api-opendata on port:%s", port))
 
 	return http.ListenAndServe(":"+port, a.router)
 }
@@ -118,6 +119,8 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 
 	sportsvenuesSvc := sportsvenues.NewSportsVenueService(ctx, contextBrokerURL, contextBrokerTenant, organisationsRegistry)
 	sportsvenuesSvc.Start(ctx)
+
+	weatherSvc := weather.NewWeatherService(ctx, contextBrokerURL, contextBrokerTenant)
 
 	r.Get(
 		"/api/beaches",
@@ -167,14 +170,7 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 		"/api/sportsvenues/{id}",
 		handlers.NewRetrieveSportsVenueByIDHandler(ctx, sportsvenuesSvc),
 	)
-	r.Get(
-		"/api/temperature/air",
-		handlers.NewRetrieveTemperaturesHandler(ctx, temperature.NewTempService(contextBrokerURL)),
-	)
-	r.Get(
-		"/api/temperature/air/sensors",
-		handlers.NewRetrieveTemperatureSensorsHandler(ctx, contextBrokerURL),
-	)
+	
 	r.Get(
 		"/api/trafficflow",
 		handlers.NewRetrieveTrafficFlowsHandler(ctx, contextBrokerURL),
@@ -187,7 +183,14 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 		"/api/waterqualities/{id}",
 		handlers.NewRetrieveWaterQualityByIDHandler(ctx, waterqualitySvc),
 	)
-	
+	r.Get(
+		"/api/weather",
+		handlers.NewRetrieveWeatherHandler(ctx, weatherSvc),
+	)
+	r.Get(
+		"/api/weather/{id}",
+		handlers.NewRetrieveWeatherByIDHandler(ctx, weatherSvc),
+	)
 	stratsysEnabled := (env.GetVariableOrDefault(ctx, "STRATSYS_ENABLED", "true") != "false")
 
 	if stratsysEnabled {

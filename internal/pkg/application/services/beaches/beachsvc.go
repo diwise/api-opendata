@@ -173,7 +173,7 @@ func (svc *beachSvc) run(ctx context.Context) {
 		logger.Error("failed to refresh beaches")
 		refreshTimer = time.NewTimer(RefreshIntervalOnFail)
 	} else {
-		logger.Info("refreshed %d beaches", count)
+		logger.Info("refreshed beaches", slog.Int("count", count))
 		refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
 	}
 

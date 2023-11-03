@@ -72,11 +72,6 @@ type MultiPolygon struct {
 	Coordinates [][][][]float64 `json:"coordinates"`
 }
 
-type Sensor struct {
-	Id           string
-	Temperatures []Temperature
-}
-
 type SportsField struct {
 	ID                  string        `json:"id"`
 	Name                string        `json:"name"`
@@ -108,15 +103,23 @@ type SportsVenue struct {
 	Owner        *Organisation `json:"owner,omitempty"`
 }
 
+type Weather struct {
+	ID           string      `json:"id"`
+	Temperature  Temperature `json:"temperature"`
+	DateObserved time.Time   `json:"dateObserved"`
+	Source       *string     `json:"source,omitempty"`
+	Location     *Point      `json:"location,omitempty"`
+}
+
 type Temperature struct {
-	Id      string
-	Average *float64
-	Max     *float64
-	Min     *float64
-	Value   *float64
-	When    *time.Time
-	From    *time.Time
-	To      *time.Time
+	Average *float64       `json:"avg,omitempty"`
+	Max     *float64       `json:"max,omitempty"`
+	Min     *float64       `json:"min,omitempty"`
+	Value   *float64       `json:"value,omitempty"`
+	When    *time.Time     `json:"when,omitempty"`
+	From    *time.Time     `json:"from,omitempty"`
+	To      *time.Time     `json:"to,omitempty"`
+	Values  *[]Temperature `json:"values,omitempty"`
 }
 
 type Cityworks struct {
