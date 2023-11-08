@@ -88,7 +88,7 @@ func NewRetrieveWeatherHandler(ctx context.Context, svc services.WeatherService)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			err = fmt.Errorf("unable to get point (%w)", err)
-			log.Error("bad request", slog.String("error", err.Error()))
+			log.Error("bad request", slog.String("err", err.Error()))
 			return
 		}
 
@@ -99,7 +99,7 @@ func NewRetrieveWeatherHandler(ctx context.Context, svc services.WeatherService)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			err = fmt.Errorf("unable to get weather")
-			log.Error("internal error", slog.String("error", err.Error()))
+			log.Error("internal error", slog.String("err", err.Error()))
 			return
 		}
 
@@ -109,7 +109,7 @@ func NewRetrieveWeatherHandler(ctx context.Context, svc services.WeatherService)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			err = fmt.Errorf("unable to marshal results to json (%w)", err)
-			log.Error("internal error", slog.String("error", err.Error()))
+			log.Error("internal error", slog.String("err", err.Error()))
 			return
 		}
 
@@ -129,7 +129,7 @@ func NewRetrieveWeatherByIDHandler(ctx context.Context, svc services.WeatherServ
 		woID, err := url.QueryUnescape(chi.URLParam(r, "id"))
 		if woID == "" {
 			err = fmt.Errorf("no weather id is supplied in query")
-			log.Error("bad request", slog.String("error", err.Error()))
+			log.Error("bad request", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -138,7 +138,7 @@ func NewRetrieveWeatherByIDHandler(ctx context.Context, svc services.WeatherServ
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			err = fmt.Errorf("unable to get time range (%w)", err)
-			log.Error("bad request", slog.String("error", err.Error()))
+			log.Error("bad request", slog.String("err", err.Error()))
 			return
 		}
 
@@ -149,7 +149,7 @@ func NewRetrieveWeatherByIDHandler(ctx context.Context, svc services.WeatherServ
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			err = fmt.Errorf("unable to get weather")
-			log.Error("internal error", slog.String("error", err.Error()))
+			log.Error("internal error", slog.String("err", err.Error()))
 			return
 		}
 
@@ -159,7 +159,7 @@ func NewRetrieveWeatherByIDHandler(ctx context.Context, svc services.WeatherServ
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			err = fmt.Errorf("unable to marshal results to json (%w)", err)
-			log.Error("internal error", slog.String("error", err.Error()))
+			log.Error("internal error", slog.String("err", err.Error()))
 			return
 		}
 

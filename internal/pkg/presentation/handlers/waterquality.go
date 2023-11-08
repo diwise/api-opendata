@@ -40,7 +40,7 @@ func NewRetrieveWaterQualityHandler(ctx context.Context, svc waterquality.WaterQ
 		if maxDistance != "" {
 			distance, err = strconv.ParseInt(maxDistance, 0, 64)
 			if err != nil {
-				log.Error("failed to parse distance from query parameters", slog.String("error", err.Error()))
+				log.Error("failed to parse distance from query parameters", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -83,7 +83,7 @@ func NewRetrieveWaterQualityHandler(ctx context.Context, svc waterquality.WaterQ
 					newWQOMapper(fields, locationMapper),
 				))
 			if err != nil {
-				log.Error("failed to marshal beach list to GeoJson", slog.String("error", err.Error()))
+				log.Error("failed to marshal beach list to GeoJson", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -98,7 +98,7 @@ func NewRetrieveWaterQualityHandler(ctx context.Context, svc waterquality.WaterQ
 
 			wqosBytes, err := json.Marshal(wqos)
 			if err != nil {
-				log.Error("failed to marshal water quality into json", slog.String("error", err.Error()))
+				log.Error("failed to marshal water quality into json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -124,14 +124,14 @@ func NewRetrieveWaterQualityByIDHandler(ctx context.Context, svc waterquality.Wa
 		waterqualityID, err := url.QueryUnescape(chi.URLParam(r, "id"))
 		if waterqualityID == "" {
 			err = fmt.Errorf("no water quality id is supplied in query")
-			log.Error("bad request", slog.String("error", err.Error()))
+			log.Error("bad request", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		values, err := url.ParseQuery(r.URL.RawQuery)
 		if err != nil {
-			log.Error("failed to parse parameters from query", slog.String("error", err.Error()))
+			log.Error("failed to parse parameters from query", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -143,7 +143,7 @@ func NewRetrieveWaterQualityByIDHandler(ctx context.Context, svc waterquality.Wa
 			if values.Get("from") != "" {
 				from, err = time.Parse(time.RFC3339, values.Get("from"))
 				if err != nil {
-					log.Error("time parameter from is incorrect format", slog.String("error", err.Error()))
+					log.Error("time parameter from is incorrect format", slog.String("err", err.Error()))
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
@@ -151,7 +151,7 @@ func NewRetrieveWaterQualityByIDHandler(ctx context.Context, svc waterquality.Wa
 			if values.Get("to") != "" {
 				to, err = time.Parse(time.RFC3339, values.Get("to"))
 				if err != nil {
-					log.Error("time parameter to is incorrect format", slog.String("error", err.Error()))
+					log.Error("time parameter to is incorrect format", slog.String("err", err.Error()))
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
@@ -160,14 +160,14 @@ func NewRetrieveWaterQualityByIDHandler(ctx context.Context, svc waterquality.Wa
 
 		wqo, err := svc.GetByID(ctx, waterqualityID, from, to)
 		if err != nil {
-			log.Error("no water quality found", slog.String("error", err.Error()), "id", waterqualityID)
+			log.Error("no water quality found", slog.String("err", err.Error()), "id", waterqualityID)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
 		body, err := json.Marshal(wqo)
 		if err != nil {
-			log.Error("failed to marshal water quality", slog.String("error", err.Error()))
+			log.Error("failed to marshal water quality", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

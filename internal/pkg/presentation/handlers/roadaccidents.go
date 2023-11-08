@@ -26,7 +26,7 @@ func NewRetrieveRoadAccidentByIDHandler(ctx context.Context, roadAccidentSvc roa
 		roadAccidentID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if roadAccidentID == "" {
 			err = fmt.Errorf("no road accident id supplied in query")
-			log.Error("bad request", slog.String("error", err.Error()))
+			log.Error("bad request", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

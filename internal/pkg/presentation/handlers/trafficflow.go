@@ -34,7 +34,7 @@ func NewRetrieveTrafficFlowsHandler(ctx context.Context, contextBroker string) h
 		tfos, err := getTrafficFlowsFromContextBroker(ctx, contextBroker, from, to)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Error("failed to get traffic flow observations from context broker", slog.String("error", err.Error()), "contextBrokerUrl", contextBroker)
+			log.Error("failed to get traffic flow observations from context broker", slog.String("err", err.Error()), "contextBrokerUrl", contextBroker)
 			return
 		}
 

@@ -43,7 +43,7 @@ func NewRetrieveStratsysReportsHandler(ctx context.Context, companyCode, clientI
 
 		token, err := getTokenBearer(ctx, clientID, scope, loginUrl)
 		if err != nil {
-			log.Error("failed to retrieve token", slog.String("error", err.Error()))
+			log.Error("failed to retrieve token", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -53,7 +53,7 @@ func NewRetrieveStratsysReportsHandler(ctx context.Context, companyCode, clientI
 		if reportId != "" {
 			response, err := getReportById(ctx, reportId, defaultUrl, companyCode, token)
 			if err != nil {
-				log.Error("failed to get reports", slog.String("error", err.Error()))
+				log.Error("failed to get reports", slog.String("err", err.Error()))
 				w.WriteHeader(response.code)
 				return
 			}
@@ -64,7 +64,7 @@ func NewRetrieveStratsysReportsHandler(ctx context.Context, companyCode, clientI
 		} else {
 			response, err := getReports(ctx, defaultUrl, companyCode, token)
 			if err != nil {
-				log.Error("failed to get reports", slog.String("error", err.Error()))
+				log.Error("failed to get reports", slog.String("err", err.Error()))
 				w.WriteHeader(response.code)
 				return
 			}

@@ -127,7 +127,7 @@ func (svc *sportsvenueSvc) run(ctx context.Context) {
 			count, err := svc.refresh(ctx)
 
 			if err != nil {
-				logger.Error("failed to refresh sports venues", slog.String("error", err.Error()))
+				logger.Error("failed to refresh sports venues", slog.String("err", err.Error()))
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
@@ -169,14 +169,14 @@ func (svc *sportsvenueSvc) refresh(ctx context.Context) (count int, err error) {
 		if len(sv.ManagedBy) > 0 {
 			venue.ManagedBy, err = svc.orgRegistry.Get(sv.ManagedBy)
 			if err != nil {
-				logger.Error("failed to resolve organisation", slog.String("error", err.Error()))
+				logger.Error("failed to resolve organisation", slog.String("err", err.Error()))
 			}
 		}
 
 		if len(sv.Owner) > 0 {
 			venue.Owner, err = svc.orgRegistry.Get(sv.Owner)
 			if err != nil {
-				logger.Error("failed to resolve organisation", slog.String("error", err.Error()))
+				logger.Error("failed to resolve organisation", slog.String("err", err.Error()))
 			}
 		}
 

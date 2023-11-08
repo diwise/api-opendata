@@ -132,7 +132,7 @@ func (svc *exerciseTrailSvc) run(ctx context.Context) {
 			count, err := svc.refresh(ctx)
 
 			if err != nil {
-				logger.Error("failed to refresh exercise trails", slog.String("error", err.Error()))
+				logger.Error("failed to refresh exercise trails", slog.String("err", err.Error()))
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
@@ -182,14 +182,14 @@ func (svc *exerciseTrailSvc) refresh(ctx context.Context) (count int, err error)
 		if len(t.ManagedBy) > 0 {
 			trail.ManagedBy, err = svc.orgRegistry.Get(t.ManagedBy)
 			if err != nil {
-				logger.Error("failed to resolve organisation", slog.String("error", err.Error()))
+				logger.Error("failed to resolve organisation", slog.String("err", err.Error()))
 			}
 		}
 
 		if len(t.Owner) > 0 {
 			trail.Owner, err = svc.orgRegistry.Get(t.Owner)
 			if err != nil {
-				logger.Error("failed to resolve organisation", slog.String("error", err.Error()))
+				logger.Error("failed to resolve organisation", slog.String("err", err.Error()))
 			}
 		}
 

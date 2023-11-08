@@ -95,7 +95,7 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 
 	organisationsRegistry, err := organisations.NewRegistry(orgfile)
 	if err != nil {
-		logger.Error("failed to create organisations registry", slog.String("error", err.Error()))
+		logger.Error("failed to create organisations registry", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
 
@@ -170,7 +170,7 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 		"/api/sportsvenues/{id}",
 		handlers.NewRetrieveSportsVenueByIDHandler(ctx, sportsvenuesSvc),
 	)
-	
+
 	r.Get(
 		"/api/trafficflow",
 		handlers.NewRetrieveTrafficFlowsHandler(ctx, contextBrokerURL),

@@ -271,7 +271,7 @@ func (svc *wqsvc) run(ctx context.Context) {
 	count, err := svc.refresh(ctx)
 
 	if err != nil {
-		logger.Error("failed to refresh water qualities", slog.String("error", err.Error()))
+		logger.Error("failed to refresh water qualities", slog.String("err", err.Error()))
 		refreshTimer = time.NewTimer(RefreshIntervalOnFail)
 	} else {
 		logger.Info("refreshed water quality", slog.Int("count", count))
@@ -285,7 +285,7 @@ func (svc *wqsvc) run(ctx context.Context) {
 		case <-refreshTimer.C:
 			count, err := svc.refresh(ctx)
 			if err != nil {
-				logger.Error("failed to refresh water quality info", slog.String("error", err.Error()))
+				logger.Error("failed to refresh water quality info", slog.String("err", err.Error()))
 				refreshTimer = time.NewTimer(RefreshIntervalOnFail)
 			} else {
 				logger.Info("refreshed water quality entities", slog.Int("count", count))
@@ -383,7 +383,7 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 	if err != nil {
 		logger := logging.GetFromContext(ctx)
-		logger.Error("failed to create http request", slog.String("error", err.Error()))
+		logger.Error("failed to create http request", slog.String("err", err.Error()))
 		return nil, err
 	}
 
@@ -393,21 +393,21 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 	response, err := httpClient.Do(req)
 	if err != nil {
 		logger := logging.GetFromContext(ctx)
-		logger.Error("request failed", slog.String("error", err.Error()))
+		logger.Error("request failed", slog.String("err", err.Error()))
 		return nil, err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		logger := logging.GetFromContext(ctx)
-		logger.Error("request failed, status code not ok", slog.String("error", err.Error()))
+		logger.Error("request failed, status code not ok", slog.String("err", err.Error()))
 		return nil, err
 	}
 
 	b, err := io.ReadAll(response.Body)
 	if err != nil {
 		logger := logging.GetFromContext(ctx)
-		logger.Error("failed to read response body", slog.String("error", err.Error()))
+		logger.Error("failed to read response body", slog.String("err", err.Error()))
 		return nil, err
 	}
 

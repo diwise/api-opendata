@@ -38,7 +38,7 @@ func NewRetrieveCityworksByIDHandler(ctx context.Context, cityworkSvc citywork.C
 		cityworkID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if cityworkID == "" {
 			err = fmt.Errorf("no cityworks id supplied in query")
-			log.Error("bad request", slog.String("error", err.Error()))
+			log.Error("bad request", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

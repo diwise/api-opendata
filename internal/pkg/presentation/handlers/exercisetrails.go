@@ -31,7 +31,7 @@ func NewRetrieveExerciseTrailByIDHandler(ctx context.Context, trailService exerc
 		trailID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if trailID == "" {
 			err = fmt.Errorf("no exercise trail is supplied in query")
-			log.Error("bad request", slog.String("error", err.Error()))
+			log.Error("bad request", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -56,7 +56,7 @@ func NewRetrieveExerciseTrailByIDHandler(ctx context.Context, trailService exerc
 		if acceptedContentType == "application/json" {
 			responseBody, err = json.Marshal(trail)
 			if err != nil {
-				log.Error("failed to marshal trail to json", slog.String("error", err.Error()))
+				log.Error("failed to marshal trail to json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -65,7 +65,7 @@ func NewRetrieveExerciseTrailByIDHandler(ctx context.Context, trailService exerc
 		} else if acceptedContentType == gpxContentType {
 			responseBody, err = convertTrailToGPX(trail)
 			if err != nil {
-				log.Error("failed to create gpx file from trail", slog.String("error", err.Error()))
+				log.Error("failed to create gpx file from trail", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -123,7 +123,7 @@ func NewRetrieveExerciseTrailsHandler(ctx context.Context, trailService exercise
 					newTrailMapper(fields, locationMapper),
 				))
 			if err != nil {
-				log.Error("failed to marshal trail list to geo json", slog.String("error", err.Error()))
+				log.Error("failed to marshal trail list to geo json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -142,7 +142,7 @@ func NewRetrieveExerciseTrailsHandler(ctx context.Context, trailService exercise
 			trailsJSON, err := marshalTrailsToJSON(trails, newTrailMapper(fields, locationMapper))
 
 			if err != nil {
-				log.Error("failed to marshal trail list to json", slog.String("error", err.Error()))
+				log.Error("failed to marshal trail list to json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}

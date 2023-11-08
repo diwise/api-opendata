@@ -103,7 +103,7 @@ func (svc *cityworksSvc) run(ctx context.Context) {
 			count, err := svc.refresh(ctx)
 
 			if err != nil {
-				logger.Error("failed to refresh cityworks", slog.String("error", err.Error()))
+				logger.Error("failed to refresh cityworks", slog.String("err", err.Error()))
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {

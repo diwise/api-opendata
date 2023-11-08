@@ -184,7 +184,7 @@ func (svc *beachSvc) run(ctx context.Context) {
 		case <-refreshTimer.C:
 			count, err := svc.refresh(ctx)
 			if err != nil {
-				logger.Error("failed to refresh beaches", slog.String("error", err.Error()))
+				logger.Error("failed to refresh beaches", slog.String("err", err.Error()))
 				refreshTimer = time.NewTimer(RefreshIntervalOnFail)
 			} else {
 				logger.Info("refreshed beaches", slog.Int("count", count))
