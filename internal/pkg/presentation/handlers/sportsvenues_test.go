@@ -1,22 +1,22 @@
 package handlers
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"testing"
 
 	services "github.com/diwise/api-opendata/internal/pkg/application/services/sportsvenues"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
-	"github.com/rs/zerolog"
 )
 
 func TestInvokeSportsVenuesHandler(t *testing.T) {
-	is, log, rw := setup(t)
+	is, _, rw := setup(t)
 	svc := defaultSportsVenuesMock()
 	req, err := http.NewRequest("GET", "?fields=seealso", nil)
 	is.NoErr(err)
 
-	NewRetrieveSportsVenuesHandler(log, svc).ServeHTTP(rw, req)
+	NewRetrieveSportsVenuesHandler(context.Background(), svc).ServeHTTP(rw, req)
 
 	is.Equal(rw.Code, http.StatusOK)    // response status should be 200 OK
 	is.Equal(len(svc.GetAllCalls()), 1) // GetAll should have been called once
@@ -35,7 +35,7 @@ func TestInvokeSportsVenuesByIDHandler(t *testing.T) {
 		return oldfunc(id)
 	}
 
-	r.Get("/{id}", NewRetrieveSportsVenueByIDHandler(zerolog.Logger{}, svc))
+	r.Get("/{id}", NewRetrieveSportsVenueByIDHandler(context.Background(), svc))
 	response, _ := newGetRequest(is, ts, "application/ld+json", "/test0", nil)
 
 	is.Equal(response.StatusCode, http.StatusOK)
@@ -47,7 +47,7 @@ func TestGetSportsVenuesAsGeoJSON(t *testing.T) {
 
 	svc := defaultSportsVenuesMock()
 
-	r.Get("/sportsvenues", NewRetrieveSportsVenuesHandler(zerolog.Logger{}, svc))
+	r.Get("/sportsvenues", NewRetrieveSportsVenuesHandler(context.Background(), svc))
 	response, responseBody := newGetRequest(is, ts, "application/geo+json", "/sportsvenues?fields=description", nil)
 
 	is.Equal(response.StatusCode, http.StatusOK) // response status should be 200 OK

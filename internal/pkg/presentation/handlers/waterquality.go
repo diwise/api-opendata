@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,25 +11,27 @@ import (
 	"strings"
 	"time"
 
+	"log/slog"
+
 	"github.com/diwise/api-opendata/internal/pkg/application/services/waterquality"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
 )
 
 var tracer = otel.Tracer("api-opendata/api")
 
-func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.WaterQualityService) http.HandlerFunc {
+func NewRetrieveWaterQualityHandler(ctx context.Context, svc waterquality.WaterQualityService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 
 		ctx, span := tracer.Start(r.Context(), "retrieve-water-qualities")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		fields := urlValueAsSlice(r.URL.Query(), "fields")
 
@@ -37,7 +40,7 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 		if maxDistance != "" {
 			distance, err = strconv.ParseInt(maxDistance, 0, 64)
 			if err != nil {
-				log.Error().Err(err).Msg("failed to parse distance from query parameters")
+				log.Error("failed to parse distance from query parameters", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -80,7 +83,7 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 					newWQOMapper(fields, locationMapper),
 				))
 			if err != nil {
-				log.Error().Err(err).Msgf("failed to marshal beach list to geo json: %s", err.Error())
+				log.Error("failed to marshal beach list to GeoJson", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -95,7 +98,7 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 
 			wqosBytes, err := json.Marshal(wqos)
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal water quality into json")
+				log.Error("failed to marshal water quality into json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -109,26 +112,26 @@ func NewRetrieveWaterQualityHandler(logger zerolog.Logger, svc waterquality.Wate
 	})
 }
 
-func NewRetrieveWaterQualityByIDHandler(logger zerolog.Logger, svc waterquality.WaterQualityService) http.HandlerFunc {
+func NewRetrieveWaterQualityByIDHandler(ctx context.Context, svc waterquality.WaterQualityService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 
 		ctx, span := tracer.Start(r.Context(), "retrieve-water-qualities")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		waterqualityID, err := url.QueryUnescape(chi.URLParam(r, "id"))
 		if waterqualityID == "" {
 			err = fmt.Errorf("no water quality id is supplied in query")
-			log.Error().Err(err).Msg("bad request")
+			log.Error("bad request", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		values, err := url.ParseQuery(r.URL.RawQuery)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to parse parameters from query")
+			log.Error("failed to parse parameters from query", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -140,7 +143,7 @@ func NewRetrieveWaterQualityByIDHandler(logger zerolog.Logger, svc waterquality.
 			if values.Get("from") != "" {
 				from, err = time.Parse(time.RFC3339, values.Get("from"))
 				if err != nil {
-					log.Error().Err(err).Msg("time parameter from is incorrect format")
+					log.Error("time parameter from is incorrect format", slog.String("err", err.Error()))
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
@@ -148,7 +151,7 @@ func NewRetrieveWaterQualityByIDHandler(logger zerolog.Logger, svc waterquality.
 			if values.Get("to") != "" {
 				to, err = time.Parse(time.RFC3339, values.Get("to"))
 				if err != nil {
-					log.Error().Err(err).Msg("time parameter to is incorrect format")
+					log.Error("time parameter to is incorrect format", slog.String("err", err.Error()))
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
@@ -157,14 +160,14 @@ func NewRetrieveWaterQualityByIDHandler(logger zerolog.Logger, svc waterquality.
 
 		wqo, err := svc.GetByID(ctx, waterqualityID, from, to)
 		if err != nil {
-			log.Error().Err(err).Msgf("no water quality found with id %s", waterqualityID)
+			log.Error("no water quality found", slog.String("err", err.Error()), "id", waterqualityID)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
 		body, err := json.Marshal(wqo)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to marshal water quality")
+			log.Error("failed to marshal water quality", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

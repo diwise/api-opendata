@@ -2,32 +2,35 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 
+	"log/slog"
+
 	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsfields"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
 )
 
-func NewRetrieveSportsFieldByIDHandler(logger zerolog.Logger, sfsvc sportsfields.SportsFieldService) http.HandlerFunc {
+func NewRetrieveSportsFieldByIDHandler(ctx context.Context, sfsvc sportsfields.SportsFieldService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		ctx, span := tracer.Start(r.Context(), "retrieve-sportsfield-by-id")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		sportsfieldID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if sportsfieldID == "" {
 			err = fmt.Errorf("no sports field is supplied in query")
-			log.Error().Err(err).Msg("bad request")
+			log.Error("bad request", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -40,7 +43,7 @@ func NewRetrieveSportsFieldByIDHandler(logger zerolog.Logger, sfsvc sportsfields
 
 		responseBody, err := json.Marshal(sportsfield)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to marshal sports field to json")
+			log.Error("failed to marshal sports field to json", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -53,13 +56,13 @@ func NewRetrieveSportsFieldByIDHandler(logger zerolog.Logger, sfsvc sportsfields
 	})
 }
 
-func NewRetrieveSportsFieldsHandler(logger zerolog.Logger, sfsvc sportsfields.SportsFieldService) http.HandlerFunc {
+func NewRetrieveSportsFieldsHandler(ctx context.Context, sfsvc sportsfields.SportsFieldService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		ctx, span := tracer.Start(r.Context(), "retrieve-sportsfields")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		categories := urlValueAsSlice(r.URL.Query(), "categories")
 		fields := urlValueAsSlice(r.URL.Query(), "fields")
@@ -86,7 +89,7 @@ func NewRetrieveSportsFieldsHandler(logger zerolog.Logger, sfsvc sportsfields.Sp
 					newSportsFieldsMapper(fields, locationMapper),
 				))
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal sports fields list to geo json")
+				log.Error("failed to marshal sports fields list to geo json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -105,7 +108,7 @@ func NewRetrieveSportsFieldsHandler(logger zerolog.Logger, sfsvc sportsfields.Sp
 			sportsfieldsJSON, err := marshalSportsFieldsToJSON(sportsfields, newSportsFieldsMapper(fields, locationMapper))
 
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal sports fields list to json")
+				log.Error("failed to marshal sports fields list to json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,26 +10,28 @@ import (
 	"reflect"
 	"strings"
 
+	"log/slog"
+
 	"github.com/diwise/api-opendata/internal/pkg/application/services/sportsvenues"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
 )
 
-func NewRetrieveSportsVenueByIDHandler(logger zerolog.Logger, sfsvc sportsvenues.SportsVenueService) http.HandlerFunc {
+func NewRetrieveSportsVenueByIDHandler(ctx context.Context, sfsvc sportsvenues.SportsVenueService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		ctx, span := tracer.Start(r.Context(), "retrieve-sportsvenue-by-id")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		sportsvenueID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if sportsvenueID == "" {
 			err = fmt.Errorf("no sports venue is supplied in query")
-			log.Error().Err(err).Msg("bad request")
+			log.Error("bad request", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -41,7 +44,7 @@ func NewRetrieveSportsVenueByIDHandler(logger zerolog.Logger, sfsvc sportsvenues
 
 		responseBody, err := json.Marshal(venue)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to marshal sports venue to json")
+			log.Error("failed to marshal sports venue to json", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -54,13 +57,13 @@ func NewRetrieveSportsVenueByIDHandler(logger zerolog.Logger, sfsvc sportsvenues
 	})
 }
 
-func NewRetrieveSportsVenuesHandler(logger zerolog.Logger, sfsvc sportsvenues.SportsVenueService) http.HandlerFunc {
+func NewRetrieveSportsVenuesHandler(ctx context.Context, sfsvc sportsvenues.SportsVenueService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		ctx, span := tracer.Start(r.Context(), "retrieve-sportsvenues")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		categories := urlValueAsSlice(r.URL.Query(), "categories")
 		fields := urlValueAsSlice(r.URL.Query(), "fields")
@@ -87,7 +90,7 @@ func NewRetrieveSportsVenuesHandler(logger zerolog.Logger, sfsvc sportsvenues.Sp
 					newSportsVenuesMapper(fields, locationMapper),
 				))
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal sportsvenues list to geo json")
+				log.Error("failed to marshal sportsvenues list to geo json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -106,7 +109,7 @@ func NewRetrieveSportsVenuesHandler(logger zerolog.Logger, sfsvc sportsvenues.Sp
 			sportsvenuesJSON, err := marshalSportsVenuesToJSON(sportsvenues, newSportsVenuesMapper(fields, locationMapper))
 
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal sportsvenues list to json")
+				log.Error("failed to marshal sportsvenues list to json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
