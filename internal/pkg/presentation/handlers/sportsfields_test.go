@@ -1,22 +1,22 @@
 package handlers
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"testing"
 
 	services "github.com/diwise/api-opendata/internal/pkg/application/services/sportsfields"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
-	"github.com/rs/zerolog"
 )
 
 func TestInvokeSportsFieldsHandler(t *testing.T) {
-	is, log, rw := setup(t)
+	is, _, rw := setup(t)
 	svc := defaultSportsFieldsMock()
 	req, err := http.NewRequest("GET", "", nil)
 	is.NoErr(err)
 
-	NewRetrieveSportsFieldsHandler(log, svc).ServeHTTP(rw, req)
+	NewRetrieveSportsFieldsHandler(context.Background(), svc).ServeHTTP(rw, req)
 
 	is.Equal(rw.Code, http.StatusOK)    // response status should be 200 OK
 	is.Equal(len(svc.GetAllCalls()), 1) // GetAll should have been called once
@@ -27,12 +27,12 @@ func TestInvokeSportsFieldsHandler(t *testing.T) {
 }
 
 func TestInvokeSportsFieldsHandlerWithSomeFields(t *testing.T) {
-	is, log, rw := setup(t)
+	is, _, rw := setup(t)
 	svc := defaultSportsFieldsMock()
 	req, err := http.NewRequest("GET", "?fields=publicaccess", nil)
 	is.NoErr(err)
 
-	NewRetrieveSportsFieldsHandler(log, svc).ServeHTTP(rw, req)
+	NewRetrieveSportsFieldsHandler(context.Background(), svc).ServeHTTP(rw, req)
 
 	body, _ := io.ReadAll(rw.Body)
 	is.Equal(expectedOutputWithFields, string(body))
@@ -47,7 +47,7 @@ func TestInvokeSportsFieldsByIDHandler(t *testing.T) {
 		return oldfunc(id)
 	}
 
-	r.Get("/{id}", NewRetrieveSportsFieldByIDHandler(zerolog.Logger{}, svc))
+	r.Get("/{id}", NewRetrieveSportsFieldByIDHandler(context.Background(), svc))
 	response, _ := newGetRequest(is, ts, "application/ld+json", "/test0", nil)
 
 	is.Equal(response.StatusCode, http.StatusOK)
@@ -59,7 +59,7 @@ func TestGetSportsFieldsAsGeoJSON(t *testing.T) {
 
 	svc := defaultSportsFieldsMock()
 
-	r.Get("/sportsfields", NewRetrieveSportsFieldsHandler(zerolog.Logger{}, svc))
+	r.Get("/sportsfields", NewRetrieveSportsFieldsHandler(context.Background(), svc))
 	response, responseBody := newGetRequest(is, ts, "application/geo+json", "/sportsfields?fields=description", nil)
 
 	is.Equal(response.StatusCode, http.StatusOK) // response status should be 200 OK

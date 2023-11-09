@@ -1,13 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestGetCitywork(t *testing.T) {
@@ -23,6 +23,6 @@ func TestGetCitywork(t *testing.T) {
 		},
 	}
 
-	NewRetrieveCityworksHandler(zerolog.Logger{}, cityworkSvc).ServeHTTP(w, req)
+	NewRetrieveCityworksHandler(context.Background(), cityworkSvc).ServeHTTP(w, req)
 	is.Equal(w.Code, http.StatusOK) // Request failed, status code not OK
 }

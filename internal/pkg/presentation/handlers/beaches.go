@@ -2,19 +2,22 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 
+	"log/slog"
+
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/diwise/service-chassis/pkg/presentation/api/http/errors"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
 )
 
 const (
@@ -23,19 +26,19 @@ const (
 	YearMonthDayISO8601 string = "2006-01-02"
 )
 
-func NewRetrieveBeachByIDHandler(logger zerolog.Logger, beachService beaches.BeachService) http.HandlerFunc {
+func NewRetrieveBeachByIDHandler(ctx context.Context, beachService beaches.BeachService) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		ctx, span := tracer.Start(r.Context(), "retrieve-beach-by-id")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		beachID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if beachID == "" {
 			err = fmt.Errorf("no beach id supplied in query")
-			log.Error().Err(err).Msg("bad request")
+			log.Error("bad request", slog.String("err", err.Error()))
 			problem := errors.NewProblemReport(http.StatusBadRequest, "badrequest", errors.Detail(err.Error()), errors.TraceID(traceID))
 			problem.WriteResponse(w)
 			return
@@ -58,14 +61,14 @@ func NewRetrieveBeachByIDHandler(logger zerolog.Logger, beachService beaches.Bea
 	})
 }
 
-func NewRetrieveBeachesHandler(log zerolog.Logger, beachService beaches.BeachService) http.HandlerFunc {
+func NewRetrieveBeachesHandler(ctx context.Context, beachService beaches.BeachService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 
 		_, span := tracer.Start(r.Context(), "retrieve-beaches")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		traceID, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, log, r.Context())
+		traceID, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), r.Context())
 
 		fields := urlValueAsSlice(r.URL.Query(), "fields")
 
@@ -100,7 +103,7 @@ func NewRetrieveBeachesHandler(log zerolog.Logger, beachService beaches.BeachSer
 				))
 			if err != nil {
 				err := fmt.Errorf("failed to marshal beach list to geo json: %s", err.Error())
-				logger.Error().Err(err).Msgf("marshalling error")
+				logger.Error("marshalling error", slog.String("err", err.Error()))
 				problem := errors.NewProblemReport(http.StatusInternalServerError, "internalerror", errors.Detail(err.Error()), errors.TraceID(traceID))
 				problem.WriteResponse(w)
 				return
@@ -124,7 +127,7 @@ func NewRetrieveBeachesHandler(log zerolog.Logger, beachService beaches.BeachSer
 			)
 			if err != nil {
 				err := fmt.Errorf("failed to marshal beach list to json: %s", err.Error())
-				logger.Error().Err(err).Msgf("marshalling error")
+				logger.Error("marshalling error", slog.String("err", err.Error()))
 				problem := errors.NewProblemReport(http.StatusInternalServerError, "internalerror", errors.Detail(err.Error()), errors.TraceID(traceID))
 				problem.WriteResponse(w)
 				return

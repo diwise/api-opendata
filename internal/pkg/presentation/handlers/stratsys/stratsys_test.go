@@ -1,13 +1,13 @@
 package stratsys
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestThatWeGetATokenFromStratsysHandler(t *testing.T) {
@@ -21,7 +21,7 @@ func TestThatWeGetATokenFromStratsysHandler(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPost, loginUrl, nil)
 	is.NoErr(err)
 
-	NewRetrieveStratsysReportsHandler(zerolog.Logger{}, "companyCode", "clientId", "scope", loginUrl, defaultUrl).ServeHTTP(w, req)
+	NewRetrieveStratsysReportsHandler(context.Background(), "companyCode", "clientId", "scope", loginUrl, defaultUrl).ServeHTTP(w, req)
 
 	is.Equal(w.Code, http.StatusOK)
 }
@@ -37,7 +37,7 @@ func TestThatWeCanRetrieveASingleReportFromStratsysHandler(t *testing.T) {
 	req, err := http.NewRequest(http.MethodGet, server.URL+"/api/stratsys/1337", nil)
 	is.NoErr(err)
 
-	NewRetrieveStratsysReportsHandler(zerolog.Logger{}, "companyCode", "clientId", "scope", loginUrl, defaultUrl).ServeHTTP(w, req)
+	NewRetrieveStratsysReportsHandler(context.Background(), "companyCode", "clientId", "scope", loginUrl, defaultUrl).ServeHTTP(w, req)
 
 	is.Equal(w.Code, http.StatusOK)
 	is.Equal(w.Header().Get("Content-Type"), "application/json")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
 )
 
@@ -106,14 +106,14 @@ func (svc *sportsvenueSvc) GetByID(id string) (*domain.SportsVenue, error) {
 
 func (svc *sportsvenueSvc) Start(ctx context.Context) {
 	logger := logging.GetFromContext(ctx)
-	logger.Info().Msg("starting sports venues service")
+	logger.Info("starting sports venues service")
 	// TODO: Prevent multiple starts on the same service
 	go svc.run(ctx)
 }
 
 func (svc *sportsvenueSvc) Shutdown(ctx context.Context) {
 	logger := logging.GetFromContext(ctx)
-	logger.Info().Msg("shutting down sports venues service")
+	logger.Info("shutting down sports venues service")
 	svc.keepRunning = false
 }
 
@@ -123,15 +123,15 @@ func (svc *sportsvenueSvc) run(ctx context.Context) {
 
 	for svc.keepRunning {
 		if time.Now().After(nextRefreshTime) {
-			logger.Info().Msg("refreshing sports venue info")
-			count, err := svc.refresh(ctx, logger)
+			logger.Info("refreshing sports venue info")
+			count, err := svc.refresh(ctx)
 
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to refresh sports venues")
+				logger.Error("failed to refresh sports venues", slog.String("err", err.Error()))
 				// Retry every 10 seconds on error
 				nextRefreshTime = time.Now().Add(10 * time.Second)
 			} else {
-				logger.Info().Msgf("refreshed %d sports venues", count)
+				logger.Info("refreshed sports venues", slog.Int("count", count))
 				// Refresh every 5 minutes on success
 				nextRefreshTime = time.Now().Add(5 * time.Minute)
 			}
@@ -141,15 +141,15 @@ func (svc *sportsvenueSvc) run(ctx context.Context) {
 		time.Sleep(1 * time.Second)
 	}
 
-	logger.Info().Msg("sports venues service exiting")
+	logger.Info("sports venues service exiting")
 }
 
-func (svc *sportsvenueSvc) refresh(ctx context.Context, log zerolog.Logger) (count int, err error) {
+func (svc *sportsvenueSvc) refresh(ctx context.Context) (count int, err error) {
 
 	ctx, span := tracer.Start(ctx, "refresh-sports-venues")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, log, ctx)
+	_, ctx, logger := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 	sportsvenues := []domain.SportsVenue{}
 
@@ -169,14 +169,14 @@ func (svc *sportsvenueSvc) refresh(ctx context.Context, log zerolog.Logger) (cou
 		if len(sv.ManagedBy) > 0 {
 			venue.ManagedBy, err = svc.orgRegistry.Get(sv.ManagedBy)
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to resolve organisation")
+				logger.Error("failed to resolve organisation", slog.String("err", err.Error()))
 			}
 		}
 
 		if len(sv.Owner) > 0 {
 			venue.Owner, err = svc.orgRegistry.Get(sv.Owner)
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to resolve organisation")
+				logger.Error("failed to resolve organisation", slog.String("err", err.Error()))
 			}
 		}
 

@@ -1,18 +1,21 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 
+	"log/slog"
+
 	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
 )
 
-func NewRetrieveCityworksHandler(logger zerolog.Logger, cityworkSvc citywork.CityworksService) http.HandlerFunc {
+func NewRetrieveCityworksHandler(ctx context.Context, cityworkSvc citywork.CityworksService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body := cityworkSvc.GetAll()
 
@@ -24,18 +27,18 @@ func NewRetrieveCityworksHandler(logger zerolog.Logger, cityworkSvc citywork.Cit
 	})
 }
 
-func NewRetrieveCityworksByIDHandler(logger zerolog.Logger, cityworkSvc citywork.CityworksService) http.HandlerFunc {
+func NewRetrieveCityworksByIDHandler(ctx context.Context, cityworkSvc citywork.CityworksService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		ctx, span := tracer.Start(r.Context(), "retrieve-cityworks-by-id")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		cityworkID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if cityworkID == "" {
 			err = fmt.Errorf("no cityworks id supplied in query")
-			log.Error().Err(err).Msg("bad request")
+			log.Error("bad request", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

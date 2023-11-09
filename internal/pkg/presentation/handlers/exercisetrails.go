@@ -2,33 +2,36 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 
+	"log/slog"
+
 	"github.com/diwise/api-opendata/internal/pkg/application/services/exercisetrails"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
 )
 
-func NewRetrieveExerciseTrailByIDHandler(logger zerolog.Logger, trailService exercisetrails.ExerciseTrailService) http.HandlerFunc {
+func NewRetrieveExerciseTrailByIDHandler(ctx context.Context, trailService exercisetrails.ExerciseTrailService) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		ctx, span := tracer.Start(r.Context(), "retrieve-trail-by-id")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		trailID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if trailID == "" {
 			err = fmt.Errorf("no exercise trail is supplied in query")
-			log.Error().Err(err).Msg("bad request")
+			log.Error("bad request", slog.String("err", err.Error()))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -53,7 +56,7 @@ func NewRetrieveExerciseTrailByIDHandler(logger zerolog.Logger, trailService exe
 		if acceptedContentType == "application/json" {
 			responseBody, err = json.Marshal(trail)
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal trail to json")
+				log.Error("failed to marshal trail to json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -62,7 +65,7 @@ func NewRetrieveExerciseTrailByIDHandler(logger zerolog.Logger, trailService exe
 		} else if acceptedContentType == gpxContentType {
 			responseBody, err = convertTrailToGPX(trail)
 			if err != nil {
-				log.Error().Err(err).Msg("failed to create gpx file from trail")
+				log.Error("failed to create gpx file from trail", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -85,7 +88,7 @@ func urlValueAsSlice(query url.Values, param string) []string {
 	return strings.Split(value, ",")
 }
 
-func NewRetrieveExerciseTrailsHandler(logger zerolog.Logger, trailService exercisetrails.ExerciseTrailService) http.HandlerFunc {
+func NewRetrieveExerciseTrailsHandler(ctx context.Context, trailService exercisetrails.ExerciseTrailService) http.HandlerFunc {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -93,7 +96,7 @@ func NewRetrieveExerciseTrailsHandler(logger zerolog.Logger, trailService exerci
 		ctx, span := tracer.Start(r.Context(), "retrieve-trails")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		categories := urlValueAsSlice(r.URL.Query(), "categories")
 		fields := urlValueAsSlice(r.URL.Query(), "fields")
@@ -120,7 +123,7 @@ func NewRetrieveExerciseTrailsHandler(logger zerolog.Logger, trailService exerci
 					newTrailMapper(fields, locationMapper),
 				))
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal trail list to geo json")
+				log.Error("failed to marshal trail list to geo json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -139,7 +142,7 @@ func NewRetrieveExerciseTrailsHandler(logger zerolog.Logger, trailService exerci
 			trailsJSON, err := marshalTrailsToJSON(trails, newTrailMapper(fields, locationMapper))
 
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal trail list to json")
+				log.Error("failed to marshal trail list to json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}

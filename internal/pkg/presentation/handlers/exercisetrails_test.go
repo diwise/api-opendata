@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,28 +12,27 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestInvokeExerciseTrailsHandler(t *testing.T) {
-	is, log, rw := setup(t)
+	is, _, rw := setup(t)
 	svc := defaultTrailsMock()
 	req, err := http.NewRequest("GET", "", nil)
 	is.NoErr(err)
 
-	NewRetrieveExerciseTrailsHandler(log, svc).ServeHTTP(rw, req)
+	NewRetrieveExerciseTrailsHandler(context.Background(), svc).ServeHTTP(rw, req)
 
 	is.Equal(rw.Code, http.StatusOK)    // response status should be 200 OK
 	is.Equal(len(svc.GetAllCalls()), 1) // Get should have been called once
 }
 
 func TestGetExerciseTrailsDoesNotContainDescriptionByDefault(t *testing.T) {
-	is, log, rw := setup(t)
+	is, _, rw := setup(t)
 	svc := defaultTrailsMock()
 	req, err := http.NewRequest("GET", "", nil)
 	is.NoErr(err)
 
-	NewRetrieveExerciseTrailsHandler(log, svc).ServeHTTP(rw, req)
+	NewRetrieveExerciseTrailsHandler(context.Background(), svc).ServeHTTP(rw, req)
 
 	is.Equal(rw.Code, http.StatusOK)    // response status should be 200 OK
 	is.Equal(len(svc.GetAllCalls()), 1) // Get should have been called once
@@ -44,12 +44,12 @@ func TestGetExerciseTrailsDoesNotContainDescriptionByDefault(t *testing.T) {
 }
 
 func TestGetExerciseTrailsWithDescription(t *testing.T) {
-	is, log, rw := setup(t)
+	is, _, rw := setup(t)
 	svc := defaultTrailsMock()
 	req, err := http.NewRequest("GET", "?fields=description", nil)
 	is.NoErr(err)
 
-	NewRetrieveExerciseTrailsHandler(log, svc).ServeHTTP(rw, req)
+	NewRetrieveExerciseTrailsHandler(context.Background(), svc).ServeHTTP(rw, req)
 
 	is.Equal(rw.Code, http.StatusOK)    // response status should be 200 OK
 	is.Equal(len(svc.GetAllCalls()), 1) // Get should have been called once
@@ -62,11 +62,11 @@ func TestGetExerciseTrailsWithDescription(t *testing.T) {
 }
 
 func TestGetExerciseTrailsWithPublicAccess(t *testing.T) {
-	is, log, rw := setup(t)
+	is, _, rw := setup(t)
 	svc := defaultTrailsMock()
 	req, _ := http.NewRequest("GET", "?fields=publicaccess", nil)
 
-	NewRetrieveExerciseTrailsHandler(log, svc).ServeHTTP(rw, req)
+	NewRetrieveExerciseTrailsHandler(context.Background(), svc).ServeHTTP(rw, req)
 	response, _ := io.ReadAll(rw.Body)
 
 	const expectedResponse string = `{"data":[{"categories":["bike-track"],"id":"trail0","length":7,"name":"test0","publicAccess":"no"}]}`
@@ -74,11 +74,11 @@ func TestGetExerciseTrailsWithPublicAccess(t *testing.T) {
 }
 
 func TestGetExerciseTrailsWithManageBy(t *testing.T) {
-	is, log, rw := setup(t)
+	is, _, rw := setup(t)
 	svc := defaultTrailsMock()
 	req, _ := http.NewRequest("GET", "?fields=managedby", nil)
 
-	NewRetrieveExerciseTrailsHandler(log, svc).ServeHTTP(rw, req)
+	NewRetrieveExerciseTrailsHandler(context.Background(), svc).ServeHTTP(rw, req)
 	response, _ := io.ReadAll(rw.Body)
 
 	const expectedResponse string = `{"data":[{"categories":["bike-track"],"id":"trail0","length":7,"managedBy":{"name":"a very ominous organisation"},"name":"test0"}]}`
@@ -86,7 +86,7 @@ func TestGetExerciseTrailsWithManageBy(t *testing.T) {
 }
 
 func TestGetExerciseTrailsWithNoSpecificCategories(t *testing.T) {
-	is, log, rw := setup(t)
+	is, _, rw := setup(t)
 	svc := defaultTrailsMock()
 	req, err := http.NewRequest("GET", "", nil)
 	is.NoErr(err)
@@ -97,14 +97,14 @@ func TestGetExerciseTrailsWithNoSpecificCategories(t *testing.T) {
 		return defaultGetAll(c)
 	}
 
-	NewRetrieveExerciseTrailsHandler(log, svc).ServeHTTP(rw, req)
+	NewRetrieveExerciseTrailsHandler(context.Background(), svc).ServeHTTP(rw, req)
 
 	is.Equal(rw.Code, http.StatusOK)    // response status should be 200 OK
 	is.Equal(len(svc.GetAllCalls()), 1) // Get should have been called once
 }
 
 func TestGetExerciseTrailsWithCertainCategories(t *testing.T) {
-	is, log, rw := setup(t)
+	is, _, rw := setup(t)
 	svc := defaultTrailsMock()
 	req, err := http.NewRequest("GET", "?categories=bike-track,floodlit", nil)
 	is.NoErr(err)
@@ -115,7 +115,7 @@ func TestGetExerciseTrailsWithCertainCategories(t *testing.T) {
 		return defaultGetAll(c)
 	}
 
-	NewRetrieveExerciseTrailsHandler(log, svc).ServeHTTP(rw, req)
+	NewRetrieveExerciseTrailsHandler(context.Background(), svc).ServeHTTP(rw, req)
 
 	is.Equal(rw.Code, http.StatusOK)    // response status should be 200 OK
 	is.Equal(len(svc.GetAllCalls()), 1) // Get should have been called once
@@ -149,7 +149,7 @@ func TestGetExerciseTrailAsGPX(t *testing.T) {
 		return oldfunc(id)
 	}
 
-	r.Get("/{id}", NewRetrieveExerciseTrailByIDHandler(zerolog.Logger{}, svc))
+	r.Get("/{id}", NewRetrieveExerciseTrailByIDHandler(context.Background(), svc))
 	response, responseBody := newGetRequest(is, ts, "application/gpx+xml", "/expected-id", nil)
 
 	is.Equal(response.StatusCode, http.StatusOK) // response status should be 200 OK
@@ -165,7 +165,7 @@ func TestGetExerciseTrailAsGeoJSON(t *testing.T) {
 
 	svc := defaultTrailsMock()
 
-	r.Get("/exercisetrails", NewRetrieveExerciseTrailsHandler(zerolog.Logger{}, svc))
+	r.Get("/exercisetrails", NewRetrieveExerciseTrailsHandler(context.Background(), svc))
 	response, responseBody := newGetRequest(is, ts, "application/geo+json", "/exercisetrails", nil)
 
 	is.Equal(response.StatusCode, http.StatusOK) // response status should be 200 OK

@@ -8,31 +8,33 @@ import (
 	"net/http"
 	"strings"
 
+	"log/slog"
+
 	"github.com/diwise/ngsi-ld-golang/pkg/datamodels/fiware"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
-	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-func NewRetrieveTrafficFlowsHandler(logger zerolog.Logger, contextBroker string) http.HandlerFunc {
+func NewRetrieveTrafficFlowsHandler(ctx context.Context, contextBroker string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 
 		ctx, span := tracer.Start(r.Context(), "retrieve-traffic-flows")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		tfosCsv := bytes.NewBufferString("date_observed;road_segment;L0_CNT;L0_AVG;L1_CNT;L1_AVG;L2_CNT;L2_AVG;L3_CNT;L3_AVG;R0_CNT;R0_AVG;R1_CNT;R1_AVG;R2_CNT;R2_AVG;R3_CNT;R3_AVG")
 
 		from := r.URL.Query().Get("from")
 		to := r.URL.Query().Get("to")
 
-		tfos, err := getTrafficFlowsFromContextBroker(ctx, log, contextBroker, from, to)
+		tfos, err := getTrafficFlowsFromContextBroker(ctx, contextBroker, from, to)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			log.Error().Err(err).Msgf("failed to get traffic flow observations from %s", contextBroker)
+			log.Error("failed to get traffic flow observations from context broker", slog.String("err", err.Error()), "contextBrokerUrl", contextBroker)
 			return
 		}
 
@@ -90,7 +92,7 @@ func NewRetrieveTrafficFlowsHandler(logger zerolog.Logger, contextBroker string)
 	})
 }
 
-func getTrafficFlowsFromContextBroker(ctx context.Context, log zerolog.Logger, host, from, to string) ([]*fiware.TrafficFlowObserved, error) {
+func getTrafficFlowsFromContextBroker(ctx context.Context, host, from, to string) ([]*fiware.TrafficFlowObserved, error) {
 	var err error
 
 	httpClient := http.Client{
