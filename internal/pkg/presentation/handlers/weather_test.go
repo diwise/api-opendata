@@ -46,7 +46,7 @@ func TestThatTimeSpanIsExtractedFromGetParameters(t *testing.T) {
 	to, _ := time.Parse(time.RFC3339, "2010-01-01T22:23:24Z")
 	url := fmt.Sprintf("/{id}?timeAt=%s&endTimeAt=%s", from.Format(time.RFC3339), to.Format(time.RFC3339))
 	req, _ := http.NewRequest("GET", url, nil)
-	
+
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", "thatone")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
@@ -108,6 +108,10 @@ func defaultWeatherServiceMock() (*services.WeatherServiceMock, *services.Weathe
 	}
 
 	tsqm.IDFunc = func(id string) services.WeatherServiceQuery {
+		return tsqm
+	}
+
+	tsqm.AggrFunc = func(aggr string) services.WeatherServiceQuery {
 		return tsqm
 	}
 

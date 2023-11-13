@@ -2508,6 +2508,22 @@
               "type": "string",
               "format": "date-time"
             }
+          },
+          {
+            "name" :"aggr",
+            "in": "query",
+            "description": "Aggregate temperatures by hour, day, month or year",
+            "example": "hour",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "hour",
+                "day",
+                "month",
+                "year"
+              ]
+            },
+            "required": false
           }
         ],
         "responses": {

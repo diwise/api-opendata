@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
@@ -26,6 +27,7 @@ type WeatherServiceQuery interface {
 	BetweenTimes(from, to time.Time) WeatherServiceQuery
 	NearPoint(distance int64, lat, lon float64) WeatherServiceQuery
 	ID(id string) WeatherServiceQuery
+	Aggr(res string) WeatherServiceQuery
 	Get(ctx context.Context) ([]domain.Weather, error)
 	GetByID(ctx context.Context) (domain.Weather, error)
 }
@@ -51,6 +53,7 @@ type wsq struct {
 	from     time.Time
 	to       time.Time
 	err      error
+	aggr     string
 }
 
 func (svc *ws) Query() WeatherServiceQuery {
@@ -75,6 +78,16 @@ func (q wsq) ID(id string) WeatherServiceQuery {
 	return q
 }
 
+func (q wsq) Aggr(aggr string) WeatherServiceQuery {
+	if aggr != "hour" && aggr != "day" && aggr != "month" && aggr != "year" {
+		q.aggr = ""
+		return q
+	}
+
+	q.aggr = aggr
+	return q
+}
+
 type WeatherDTO struct {
 	ID           string
 	DateObserved *string
@@ -87,8 +100,12 @@ type WeatherDTO struct {
 }
 
 type TemperatureDTO struct {
-	DateObserved *string
+	DateObserved *time.Time
 	Temperature  *float64
+	Max          *float64
+	Min          *float64
+	From         *time.Time
+	To           *time.Time
 }
 
 func NewDTO(id string) WeatherDTO {
@@ -128,7 +145,7 @@ func (q wsq) Get(ctx context.Context) ([]domain.Weather, error) {
 			break
 		}
 
-		weather = append(weather, toDTO(entity))
+		weather = append(weather, weatherObservedToWeatherDto(entity))
 	}
 
 	return toWeatherSlice(weather), nil
@@ -156,22 +173,87 @@ func (q wsq) GetByID(ctx context.Context) (domain.Weather, error) {
 		return domain.Weather{}, fmt.Errorf("invalid temperature service query: %s", err.Error())
 	}
 
-	dto := toDTO(entity)
-	props := temporal.Property("temperature")
+	dto := weatherObservedToWeatherDto(entity)
+	dto.Temperatures = temporalPropertiesToTemperatureDto(temporal.Property("temperature"))
 
-	for _, t := range props {
-		v, ok := t.Value().(float64)
-		if !ok {
-			continue
-		}
-		ts := t.ObservedAt()
-		dto.Temperatures = append(dto.Temperatures, TemperatureDTO{
-			DateObserved: &ts,
-			Temperature:  &v,
-		})
+	if q.aggr != "" && q.aggr == "hour" || q.aggr == "day" || q.aggr == "month" || q.aggr == "year" {
+		dto.Temperatures = groupByTime(dto.Temperatures, q.aggr)
 	}
 
 	return toWeather(dto), nil
+}
+
+func groupByTime(tempDto []TemperatureDTO, res string) []TemperatureDTO {
+	grouped := make(map[string][]TemperatureDTO)
+
+	for _, t := range tempDto {
+		dateObserved := t.DateObserved.Format(time.RFC3339)
+		switch res {
+		case "hour":
+			grouped[dateObserved[0:13]] = append(grouped[dateObserved[0:13]], t)
+		case "day":
+			grouped[dateObserved[0:10]] = append(grouped[dateObserved[0:10]], t)
+		case "month":
+			grouped[dateObserved[0:7]] = append(grouped[dateObserved[0:7]], t)
+		case "year":
+			grouped[dateObserved[0:4]] = append(grouped[dateObserved[0:4]], t)
+		}
+	}
+
+	aggregated := make([]TemperatureDTO, 0)
+
+	for _, t := range grouped {
+		slices.SortFunc[[]TemperatureDTO](t, func(a, b TemperatureDTO) int {
+			if a.DateObserved.Before(*b.DateObserved) {
+				return -1
+			}
+			if a.DateObserved.After(*b.DateObserved) {
+				return 1
+			}
+			return 0
+		})
+		aggregated = append(aggregated, aggregate(t))
+	}
+
+	return aggregated
+}
+
+func aggregate(temperatures []TemperatureDTO) TemperatureDTO {
+	var min, max *float64
+	var avg, total float64
+
+	rnd := func(val float64) float64 {
+		ratio := math.Pow(10, float64(2))
+		return math.Round(val*ratio) / ratio
+	}
+
+	for _, t := range temperatures {
+		if min == nil && t.Temperature != nil {
+			min = t.Temperature
+		} else if t.Temperature != nil && *t.Temperature < *min {
+			min = t.Temperature
+		}
+
+		if max == nil && t.Temperature != nil {
+			max = t.Temperature
+		} else if t.Temperature != nil && *t.Temperature > *max {
+			max = t.Temperature
+		}
+
+		if t.Temperature != nil {
+			total = total + *t.Temperature
+		}
+	}
+
+	avg = rnd(total / float64(len(temperatures)))
+	return TemperatureDTO{
+		DateObserved: temperatures[0].DateObserved,
+		Temperature:  &avg,
+		Max:          max,
+		Min:          min,
+		From:         temperatures[0].DateObserved,
+		To:           temperatures[len(temperatures)-1].DateObserved,
+	}
 }
 
 func calc(w *domain.Weather) domain.Weather {
@@ -217,7 +299,30 @@ func calc(w *domain.Weather) domain.Weather {
 	return *w
 }
 
-func toDTO(e types.Entity) WeatherDTO {
+func temporalPropertiesToTemperatureDto(props []types.TemporalProperty) []TemperatureDTO {
+	temperatures := make([]TemperatureDTO, 0)
+
+	for _, p := range props {
+		v, ok := p.Value().(float64)
+		if !ok {
+			continue
+		}
+
+		tss := p.ObservedAt()
+		ts, err := time.Parse(time.RFC3339, tss)
+		if err != nil {
+			continue
+		}
+		temperatures = append(temperatures, TemperatureDTO{
+			DateObserved: &ts,
+			Temperature:  &v,
+		})
+	}
+
+	return temperatures
+}
+
+func weatherObservedToWeatherDto(e types.Entity) WeatherDTO {
 	w := NewDTO(e.ID())
 
 	e.ForEachAttribute(func(_, attributeName string, contents any) {
@@ -240,6 +345,7 @@ func toDTO(e types.Entity) WeatherDTO {
 			}
 		}
 	})
+
 	return w
 }
 
@@ -260,10 +366,9 @@ func toWeather(d WeatherDTO) domain.Weather {
 		temperatures := make([]domain.Temperature, 0)
 
 		for _, t := range d.Temperatures {
-			dateObserved, _ := time.Parse(time.RFC3339, *t.DateObserved)
 			temperatures = append(temperatures, domain.Temperature{
 				Value: t.Temperature,
-				When:  &dateObserved,
+				When:  t.DateObserved,
 			})
 		}
 
