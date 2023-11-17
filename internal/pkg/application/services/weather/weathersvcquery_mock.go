@@ -20,6 +20,9 @@ var _ WeatherServiceQuery = &WeatherServiceQueryMock{}
 //
 //		// make and configure a mocked WeatherServiceQuery
 //		mockedWeatherServiceQuery := &WeatherServiceQueryMock{
+//			AggrFunc: func(res string) WeatherServiceQuery {
+//				panic("mock out the Aggr method")
+//			},
 //			BetweenTimesFunc: func(from time.Time, to time.Time) WeatherServiceQuery {
 //				panic("mock out the BetweenTimes method")
 //			},
@@ -42,6 +45,9 @@ var _ WeatherServiceQuery = &WeatherServiceQueryMock{}
 //
 //	}
 type WeatherServiceQueryMock struct {
+	// AggrFunc mocks the Aggr method.
+	AggrFunc func(res string) WeatherServiceQuery
+
 	// BetweenTimesFunc mocks the BetweenTimes method.
 	BetweenTimesFunc func(from time.Time, to time.Time) WeatherServiceQuery
 
@@ -59,6 +65,11 @@ type WeatherServiceQueryMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// Aggr holds details about calls to the Aggr method.
+		Aggr []struct {
+			// Res is the res argument value.
+			Res string
+		}
 		// BetweenTimes holds details about calls to the BetweenTimes method.
 		BetweenTimes []struct {
 			// From is the from argument value.
@@ -91,11 +102,44 @@ type WeatherServiceQueryMock struct {
 			Lon float64
 		}
 	}
+	lockAggr         sync.RWMutex
 	lockBetweenTimes sync.RWMutex
 	lockGet          sync.RWMutex
 	lockGetByID      sync.RWMutex
 	lockID           sync.RWMutex
 	lockNearPoint    sync.RWMutex
+}
+
+// Aggr calls AggrFunc.
+func (mock *WeatherServiceQueryMock) Aggr(res string) WeatherServiceQuery {
+	if mock.AggrFunc == nil {
+		panic("WeatherServiceQueryMock.AggrFunc: method is nil but WeatherServiceQuery.Aggr was just called")
+	}
+	callInfo := struct {
+		Res string
+	}{
+		Res: res,
+	}
+	mock.lockAggr.Lock()
+	mock.calls.Aggr = append(mock.calls.Aggr, callInfo)
+	mock.lockAggr.Unlock()
+	return mock.AggrFunc(res)
+}
+
+// AggrCalls gets all the calls that were made to Aggr.
+// Check the length with:
+//
+//	len(mockedWeatherServiceQuery.AggrCalls())
+func (mock *WeatherServiceQueryMock) AggrCalls() []struct {
+	Res string
+} {
+	var calls []struct {
+		Res string
+	}
+	mock.lockAggr.RLock()
+	calls = mock.calls.Aggr
+	mock.lockAggr.RUnlock()
+	return calls
 }
 
 // BetweenTimes calls BetweenTimesFunc.

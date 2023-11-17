@@ -142,10 +142,12 @@ func NewRetrieveWeatherByIDHandler(ctx context.Context, svc services.WeatherServ
 			return
 		}
 
+		resolution := r.URL.Query().Get("aggr")
+
 		timeout, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 
-		weather, err := svc.Query().ID(woID).BetweenTimes(from, to).GetByID(timeout)
+		weather, err := svc.Query().ID(woID).BetweenTimes(from, to).Aggr(resolution).GetByID(timeout)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			err = fmt.Errorf("unable to get weather")
