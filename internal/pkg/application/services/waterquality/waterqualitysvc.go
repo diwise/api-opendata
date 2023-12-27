@@ -331,9 +331,13 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 
 		dto := WaterQualityTemporalDTO{}
 
-		b, _ := svc.requestTemporalDataForSingleEntity(ctx, svc.contextBrokerURL, w.ID, time.Time{}, time.Time{})
+		b, err := svc.requestTemporalDataForSingleEntity(ctx, svc.contextBrokerURL, w.ID, time.Time{}, time.Time{})
+		if err != nil {
+			logger.Info("no temporal data found for water quality", "id", wq.ID)
+			return
+		}
 
-		err = json.Unmarshal(b, &dto)
+		json.Unmarshal(b, &dto)
 
 		temps := []domain.Value{}
 
