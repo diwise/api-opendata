@@ -404,7 +404,7 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 
 	if response.StatusCode != http.StatusOK {
 		logger := logging.GetFromContext(ctx)
-		logger.Error("request failed, status code not ok", slog.String("err", err.Error()))
+		logger.Error("request failed, status code not ok", slog.Int64("response", int64(response.StatusCode)))
 		return nil, err
 	}
 
