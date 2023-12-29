@@ -35,7 +35,7 @@ func TestRetrieveAirQualityByID(t *testing.T) {
 	is.Equal(responseBody, expectedAirQualityOutput)
 }
 
-const expectedAirQualityOutput string = `{"data": {"id":"aq1","location":{"type":"Point","coordinates":[17.1,62.1]},"dateObserved":{"@type":"Property","@value":"2022-10-20T13:10:00Z"},"PM1":{"type":"Property","value":0.6,"unitCode":"GQ"}}}`
+const expectedAirQualityOutput string = `{"data": {"id":"aq1","location":{"type":"Point","coordinates":[17.1,62.1]},"dateObserved":{"@type":"Property","@value":"2022-10-20T13:10:00Z"},"PM1":0.6}}`
 
 func defaultAirQualityMock() *services.AirQualityServiceMock {
 	mock := &services.AirQualityServiceMock{

@@ -200,13 +200,57 @@ func (svc *aqsvc) refresh(ctx context.Context) (count int, err error) {
 		details := domain.AirQualityDetails{
 			ID: a.ID,
 		}
-
+		
 		if a.Location != nil {
 			details.Location = *a.Location
 		}
-
 		if a.DateObserved != nil {
 			details.DateObserved = *a.DateObserved
+		}
+		if a.AtmosphericPressure != nil {
+			details.AtmosphericPressure = *a.AtmosphericPressure
+		}
+		if a.Temperature != nil {
+			details.Temperature = *a.Temperature
+		}
+		if a.RelativeHumidity != nil {
+			details.RelativeHumidity = *a.RelativeHumidity
+		}
+		if a.ParticleCount != nil {
+			details.ParticleCount = *a.ParticleCount
+		}
+		if a.PM1 != nil {
+			details.PM1 = *a.PM1
+		}
+		if a.PM4 != nil {
+			details.PM4 = *a.PM4
+		}
+		if a.PM10 != nil {
+			details.PM10 = *a.PM10
+		}
+		if a.PM25 != nil {
+			details.PM25 = *a.PM25
+		}
+		if a.TotalSuspendedParticulate != nil {
+			details.TotalSuspendedParticulate = *a.TotalSuspendedParticulate
+		}
+		if a.CO2 != nil {
+			details.CO2 = *a.CO2
+		}
+		if a.NO != nil {
+			details.NO = *a.NO
+		}
+		if a.NO2 != nil {
+			details.NO2 = *a.NO2
+		}
+		if a.NOx != nil {
+			details.NOx = *a.NOx
+		}
+		if a.WindDirection != nil {
+			details.WindDirection = *a.WindDirection
+		}
+		if a.WindSpeed != nil {
+			details.WindSpeed = *a.WindSpeed
 		}
 
 		svc.airQualityByID[details.ID] = details

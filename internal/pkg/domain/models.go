@@ -77,7 +77,8 @@ type AirQualityDetails struct {
 	NO                        float64  `json:"NO,omitempty"`
 	NO2                       float64  `json:"NO2,omitempty"`
 	NOx                       float64  `json:"NOx,omitempty"`
-	Voltage                   float64  `json:"voltage,omitempty"`
+	WindDirection             float64  `json:"windDirection,omitempty"`
+	WindSpeed                 float64  `json:"windSpeed,omitempty"`
 }
 
 type Beach struct {
