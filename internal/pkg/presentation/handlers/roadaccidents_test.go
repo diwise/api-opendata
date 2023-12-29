@@ -1,13 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/roadaccidents"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestGetRoadAccidents(t *testing.T) {
@@ -21,7 +21,7 @@ func TestGetRoadAccidents(t *testing.T) {
 		GetAllFunc: func() []byte { return nil },
 	}
 
-	NewRetrieveRoadAccidentsHandler(zerolog.Logger{}, roadAccidentSvc).ServeHTTP(w, req)
+	NewRetrieveRoadAccidentsHandler(context.Background(), roadAccidentSvc).ServeHTTP(w, req)
 
 	is.Equal(w.Code, http.StatusOK)                 // Request failed, status code not OK
 	is.Equal(len(roadAccidentSvc.GetAllCalls()), 1) // should have been called once

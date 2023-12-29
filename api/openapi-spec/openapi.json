@@ -33,7 +33,9 @@
       "get": {
         "description": "Returns this OpenAPI specification",
         "operationId": "getOpenAPI",
-        "security": [{}],
+        "security": [
+          {}
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -45,20 +47,27 @@
       "get": {
         "operationId": "getBeaches",
         "description": "Get information about public beaches.",
-        "parameters": [{
-          "in": "query",
-          "name": "fields",
-          "explode": false,
-          "schema": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": ["description", "waterquality", "seealso", "source"]
-            }
-          },
-          "required": false,
-          "description": "Filter the returned properties per entry"
-        }],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "fields",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "description",
+                  "waterquality",
+                  "seealso",
+                  "source"
+                ]
+              }
+            },
+            "required": false,
+            "description": "Filter the returned properties per entry"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -87,7 +96,9 @@
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["Point"]
+                                "enum": [
+                                  "Point"
+                                ]
                               },
                               "coordinates": {
                                 "type": "array",
@@ -97,7 +108,10 @@
                                 "items": {
                                   "type": "number"
                                 },
-                                "example": [17.454723, 62.266598]
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
                               }
                             }
                           },
@@ -137,7 +151,9 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "enum": ["FeatureCollection"]
+                      "enum": [
+                        "FeatureCollection"
+                      ]
                     },
                     "features": {
                       "type": "array",
@@ -150,14 +166,18 @@
                           },
                           "type": {
                             "type": "string",
-                            "enum": ["Feature"]
+                            "enum": [
+                              "Feature"
+                            ]
                           },
                           "geometry": {
                             "type": "object",
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["MultiPolygon"]
+                                "enum": [
+                                  "MultiPolygon"
+                                ]
                               },
                               "coordinates": {
                                 "type": "array",
@@ -177,7 +197,44 @@
                                     }
                                   }
                                 },
-                                "example": [[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]
+                                "example": [
+                                  [
+                                    [
+                                      [
+                                        17.428771593881844,
+                                        62.42103804538807
+                                      ],
+                                      [
+                                        17.428785133659883,
+                                        62.421037809376244
+                                      ],
+                                      [
+                                        17.428821575900738,
+                                        62.42048396661722
+                                      ],
+                                      [
+                                        17.428101436027845,
+                                        62.42046508568337
+                                      ],
+                                      [
+                                        17.428025378913084,
+                                        62.42103219129709
+                                      ],
+                                      [
+                                        17.428365400350206,
+                                        62.421045125144
+                                      ],
+                                      [
+                                        17.428690864217362,
+                                        62.421045739009976
+                                      ],
+                                      [
+                                        17.428771593881844,
+                                        62.42103804538807
+                                      ]
+                                    ]
+                                  ]
+                                ]
                               }
                             }
                           },
@@ -186,7 +243,9 @@
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["Beach"]
+                                "enum": [
+                                  "Beach"
+                                ]
                               },
                               "name": {
                                 "type": "string",
@@ -249,15 +308,17 @@
       "get": {
         "operationId": "getBeachByID",
         "description": "Get information about a single beach.",
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "schema": {
-            "type": "string"
-          },
-          "required": true,
-          "description": "ID of the Beach to retrieve"
-        }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "ID of the Beach to retrieve"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -289,7 +350,9 @@
                           "properties": {
                             "type": {
                               "type": "string",
-                              "enum": ["Point"]
+                              "enum": [
+                                "Point"
+                              ]
                             },
                             "coordinates": {
                               "type": "array",
@@ -299,7 +362,10 @@
                               "items": {
                                 "type": "number"
                               },
-                              "example": [17.454723, 62.266598]
+                              "example": [
+                                17.454723,
+                                62.266598
+                              ]
                             }
                           }
                         },
@@ -409,7 +475,9 @@
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["Point"]
+                                "enum": [
+                                  "Point"
+                                ]
                               },
                               "coordinates": {
                                 "type": "array",
@@ -419,7 +487,10 @@
                                 "items": {
                                   "type": "number"
                                 },
-                                "example": [17.454723, 62.266598]
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
                               }
                             }
                           },
@@ -446,15 +517,17 @@
       "get": {
         "operationId": "getCityWorksByID",
         "description": "Get information about a specific citywork instance",
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "schema": {
-            "type": "string"
-          },
-          "required": true,
-          "description": "ID of the citywork to retrieve"
-        }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "ID of the citywork to retrieve"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -481,7 +554,9 @@
                           "properties": {
                             "type": {
                               "type": "string",
-                              "enum": ["Point"]
+                              "enum": [
+                                "Point"
+                              ]
                             },
                             "coordinates": {
                               "type": "array",
@@ -491,7 +566,10 @@
                               "items": {
                                 "type": "number"
                               },
-                              "example": [17.454723, 62.266598]
+                              "example": [
+                                17.454723,
+                                62.266598
+                              ]
                             }
                           }
                         },
@@ -521,33 +599,54 @@
       "get": {
         "operationId": "getExerciseTrails",
         "description": "Get information about published exercise trails",
-        "parameters": [{
-          "in": "query",
-          "name": "categories",
-          "explode": false,
-          "schema": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": ["bike-track", "floodlit", "ice-skating", "ski-classic", "ski-skate"]
-            }
+        "parameters": [
+          {
+            "in": "query",
+            "name": "categories",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "bike-track",
+                  "floodlit",
+                  "ice-skating",
+                  "ski-classic",
+                  "ski-skate"
+                ]
+              }
+            },
+            "required": false,
+            "description": "Filter the returned trails by category"
           },
-          "required": false,
-          "description": "Filter the returned trails by category"
-        },{
-          "in": "query",
-          "name": "fields",
-          "explode": false,
-          "schema": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": ["areaserved", "datelastpreparation", "description", "difficulty", "location", "managedby", "owner", "paymentrequired", "publicaccess", "source", "status"]
-            }
-          },
-          "required": false,
-          "description": "Filter the returned properties per entry"
-        }],
+          {
+            "in": "query",
+            "name": "fields",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "areaserved",
+                  "datelastpreparation",
+                  "description",
+                  "difficulty",
+                  "location",
+                  "managedby",
+                  "owner",
+                  "paymentrequired",
+                  "publicaccess",
+                  "source",
+                  "status"
+                ]
+              }
+            },
+            "required": false,
+            "description": "Filter the returned properties per entry"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -596,7 +695,9 @@
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["Point"]
+                                "enum": [
+                                  "Point"
+                                ]
                               },
                               "coordinates": {
                                 "type": "array",
@@ -606,7 +707,10 @@
                                 "items": {
                                   "type": "number"
                                 },
-                                "example": [17.454723, 62.266598]
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
                               }
                             }
                           },
@@ -615,9 +719,18 @@
                             "description": "List of exercise trail categories",
                             "items": {
                               "type": "string",
-                              "enum": ["bike-track", "floodlit", "ice-skating", "ski-classic", "ski-skate"]
+                              "enum": [
+                                "bike-track",
+                                "floodlit",
+                                "ice-skating",
+                                "ski-classic",
+                                "ski-skate"
+                              ]
                             },
-                            "example":  ["floodlit", "ski-classic"]
+                            "example": [
+                              "floodlit",
+                              "ski-classic"
+                            ]
                           },
                           "length": {
                             "type": "number",
@@ -638,13 +751,21 @@
                           "publicAccess": {
                             "type": "string",
                             "description": "Information about when/if this trail is open for the public",
-                            "enum": ["always", "no", "opening-hours", "after-school"],
+                            "enum": [
+                              "always",
+                              "no",
+                              "opening-hours",
+                              "after-school"
+                            ],
                             "example": "opening-hours"
                           },
                           "status": {
                             "type": "string",
                             "description": "The status of this exercise trail",
-                            "enum": ["open", "closed"]
+                            "enum": [
+                              "open",
+                              "closed"
+                            ]
                           },
                           "dateLastPreparation": {
                             "type": "string",
@@ -663,7 +784,9 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "enum": ["FeatureCollection"]
+                      "enum": [
+                        "FeatureCollection"
+                      ]
                     },
                     "features": {
                       "type": "array",
@@ -676,14 +799,18 @@
                           },
                           "type": {
                             "type": "string",
-                            "enum": ["Feature"]
+                            "enum": [
+                              "Feature"
+                            ]
                           },
                           "geometry": {
                             "type": "object",
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["LineString"]
+                                "enum": [
+                                  "LineString"
+                                ]
                               },
                               "coordinates": {
                                 "type": "array",
@@ -696,7 +823,16 @@
                                     "description": "WGS84 longitude and latitude"
                                   }
                                 },
-                                "example": [[17.454723, 62.266598], [17.454727, 62.266612]]
+                                "example": [
+                                  [
+                                    17.454723,
+                                    62.266598
+                                  ],
+                                  [
+                                    17.454727,
+                                    62.266612
+                                  ]
+                                ]
                               }
                             }
                           },
@@ -705,7 +841,9 @@
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["ExerciseTrail"]
+                                "enum": [
+                                  "ExerciseTrail"
+                                ]
                               },
                               "name": {
                                 "type": "string",
@@ -736,9 +874,18 @@
                                 "description": "List of exercise trail categories",
                                 "items": {
                                   "type": "string",
-                                  "enum": ["bike-track", "floodlit", "ice-skating", "ski-classic", "ski-skate"]
+                                  "enum": [
+                                    "bike-track",
+                                    "floodlit",
+                                    "ice-skating",
+                                    "ski-classic",
+                                    "ski-skate"
+                                  ]
                                 },
-                                "example":  ["floodlit", "ski-classic"]
+                                "example": [
+                                  "floodlit",
+                                  "ski-classic"
+                                ]
                               },
                               "length": {
                                 "type": "number",
@@ -759,13 +906,21 @@
                               "publicAccess": {
                                 "type": "string",
                                 "description": "Information about when/if this trail is open for the public",
-                                "enum": ["always", "no", "opening-hours", "after-school"],
+                                "enum": [
+                                  "always",
+                                  "no",
+                                  "opening-hours",
+                                  "after-school"
+                                ],
                                 "example": "after-school"
                               },
                               "status": {
                                 "type": "string",
                                 "description": "The status of this exercise trail",
-                                "enum": ["open", "closed"]
+                                "enum": [
+                                  "open",
+                                  "closed"
+                                ]
                               },
                               "dateLastPreparation": {
                                 "type": "string",
@@ -789,15 +944,17 @@
       "get": {
         "operationId": "getExerciseTrailsByID",
         "description": "Get information on a single published exercise trail",
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "schema": {
-            "type": "string"
-          },
-          "required": true,
-          "description": "ID of the exercise trail to be retrieved"
-        }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "ID of the exercise trail to be retrieved"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -912,7 +1069,9 @@
                           "properties": {
                             "type": {
                               "type": "string",
-                              "enum": ["LineString"]
+                              "enum": [
+                                "LineString"
+                              ]
                             },
                             "coordinates": {
                               "items": {
@@ -925,7 +1084,20 @@
                                 }
                               },
                               "minItems": 2,
-                              "example": [[17.308707,62.366359],[17.308765,62.366428],[17.308771,62.366531]]
+                              "example": [
+                                [
+                                  17.308707,
+                                  62.366359
+                                ],
+                                [
+                                  17.308765,
+                                  62.366428
+                                ],
+                                [
+                                  17.308771,
+                                  62.366531
+                                ]
+                              ]
                             }
                           }
                         },
@@ -934,14 +1106,27 @@
                           "description": "List of exercise trail categories",
                           "items": {
                             "type": "string",
-                            "enum": ["bike-track", "floodlit", "ice-skating", "ski-classic", "ski-skate"]
+                            "enum": [
+                              "bike-track",
+                              "floodlit",
+                              "ice-skating",
+                              "ski-classic",
+                              "ski-skate"
+                            ]
                           },
-                          "example": ["floodlit", "ski-classic", "ski-skate"]
+                          "example": [
+                            "floodlit",
+                            "ski-classic",
+                            "ski-skate"
+                          ]
                         },
                         "status": {
                           "type": "string",
                           "description": "The status of this exercise trail",
-                          "enum": ["closed", "open"]
+                          "enum": [
+                            "closed",
+                            "open"
+                          ]
                         },
                         "length": {
                           "type": "number",
@@ -961,7 +1146,12 @@
                         "publicAccess": {
                           "type": "string",
                           "description": "Information about when/if this trail is open for the public",
-                          "enum": ["always", "no", "opening-hours", "after-school"],
+                          "enum": [
+                            "always",
+                            "no",
+                            "opening-hours",
+                            "after-school"
+                          ],
                           "example": "no"
                         },
                         "source": {
@@ -1016,7 +1206,9 @@
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["Point"]
+                                "enum": [
+                                  "Point"
+                                ]
                               },
                               "coordinates": {
                                 "type": "array",
@@ -1026,7 +1218,10 @@
                                 "items": {
                                   "type": "number"
                                 },
-                                "example": [17.454723, 62.266598]
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
                               }
                             }
                           },
@@ -1049,15 +1244,17 @@
       "get": {
         "operationId": "getRoadAccidentsByID",
         "description": "Get single published road accident from Trafikverket",
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "schema": {
-            "type": "string"
-          },
-          "required": true,
-          "description": "ID of the road accident to retrieve"
-        }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "ID of the road accident to retrieve"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1084,7 +1281,9 @@
                           "properties": {
                             "type": {
                               "type": "string",
-                              "enum": ["Point"]
+                              "enum": [
+                                "Point"
+                              ]
                             },
                             "coordinates": {
                               "type": "array",
@@ -1094,7 +1293,10 @@
                               "items": {
                                 "type": "number"
                               },
-                              "example": [17.454723, 62.266598]
+                              "example": [
+                                17.454723,
+                                62.266598
+                              ]
                             }
                           }
                         },
@@ -1129,33 +1331,50 @@
       "get": {
         "operationId": "getSportsFields",
         "description": "Get information about published sports fields",
-        "parameters": [{
-          "in": "query",
-          "name": "categories",
-          "explode": false,
-          "schema": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": ["bandy", "hockey", "ice-rink", "skating", "floodlit"]
-            }
+        "parameters": [
+          {
+            "in": "query",
+            "name": "categories",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "bandy",
+                  "hockey",
+                  "ice-rink",
+                  "skating",
+                  "floodlit"
+                ]
+              }
+            },
+            "required": false,
+            "description": "Filter the returned sports fields by category"
           },
-          "required": false,
-          "description": "Filter the returned sports fields by category"
-        },{
-          "in": "query",
-          "name": "fields",
-          "explode": false,
-          "schema": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": ["datelastpreparation", "description", "location", "managedby", "owner", "publicaccess", "source"]
-            }
-          },
-          "required": false,
-          "description": "Filter the returned properties per entry"
-        }],
+          {
+            "in": "query",
+            "name": "fields",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "datelastpreparation",
+                  "description",
+                  "location",
+                  "managedby",
+                  "owner",
+                  "publicaccess",
+                  "source"
+                ]
+              }
+            },
+            "required": false,
+            "description": "Filter the returned properties per entry"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1204,7 +1423,9 @@
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["Point"]
+                                "enum": [
+                                  "Point"
+                                ]
                               },
                               "coordinates": {
                                 "type": "array",
@@ -1214,7 +1435,10 @@
                                 "items": {
                                   "type": "number"
                                 },
-                                "example": [17.454723, 62.266598]
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
                               }
                             }
                           },
@@ -1223,14 +1447,28 @@
                             "description": "List of sports field categories",
                             "items": {
                               "type": "string",
-                              "enum": ["bandy", "hockey", "ice-rink", "skating", "floodlit"]
+                              "enum": [
+                                "bandy",
+                                "hockey",
+                                "ice-rink",
+                                "skating",
+                                "floodlit"
+                              ]
                             },
-                            "example":  ["floodlit", "hockey"]
+                            "example": [
+                              "floodlit",
+                              "hockey"
+                            ]
                           },
                           "publicAccess": {
                             "type": "string",
                             "description": "Information about when/if this sports field is open for the public",
-                            "enum": ["always", "no", "opening-hours", "after-school"],
+                            "enum": [
+                              "always",
+                              "no",
+                              "opening-hours",
+                              "after-school"
+                            ],
                             "example": "always"
                           },
                           "description": {
@@ -1255,7 +1493,9 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "enum": ["FeatureCollection"]
+                      "enum": [
+                        "FeatureCollection"
+                      ]
                     },
                     "features": {
                       "type": "array",
@@ -1268,14 +1508,18 @@
                           },
                           "type": {
                             "type": "string",
-                            "enum": ["Feature"]
+                            "enum": [
+                              "Feature"
+                            ]
                           },
                           "geometry": {
                             "type": "object",
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["MultiPolygon"]
+                                "enum": [
+                                  "MultiPolygon"
+                                ]
                               },
                               "coordinates": {
                                 "type": "array",
@@ -1295,7 +1539,44 @@
                                     }
                                   }
                                 },
-                                "example": [[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]
+                                "example": [
+                                  [
+                                    [
+                                      [
+                                        17.428771593881844,
+                                        62.42103804538807
+                                      ],
+                                      [
+                                        17.428785133659883,
+                                        62.421037809376244
+                                      ],
+                                      [
+                                        17.428821575900738,
+                                        62.42048396661722
+                                      ],
+                                      [
+                                        17.428101436027845,
+                                        62.42046508568337
+                                      ],
+                                      [
+                                        17.428025378913084,
+                                        62.42103219129709
+                                      ],
+                                      [
+                                        17.428365400350206,
+                                        62.421045125144
+                                      ],
+                                      [
+                                        17.428690864217362,
+                                        62.421045739009976
+                                      ],
+                                      [
+                                        17.428771593881844,
+                                        62.42103804538807
+                                      ]
+                                    ]
+                                  ]
+                                ]
                               }
                             }
                           },
@@ -1304,7 +1585,9 @@
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["SportsField"]
+                                "enum": [
+                                  "SportsField"
+                                ]
                               },
                               "name": {
                                 "type": "string",
@@ -1340,14 +1623,28 @@
                                 "description": "List of sports field categories",
                                 "items": {
                                   "type": "string",
-                                  "enum": ["bandy", "hockey", "ice-rink", "skating", "floodlit"]
+                                  "enum": [
+                                    "bandy",
+                                    "hockey",
+                                    "ice-rink",
+                                    "skating",
+                                    "floodlit"
+                                  ]
                                 },
-                                "example":  ["floodlit", "skating"]
+                                "example": [
+                                  "floodlit",
+                                  "skating"
+                                ]
                               },
                               "publicAccess": {
                                 "type": "string",
                                 "description": "Information about when/if this sports field is open for the public",
-                                "enum": ["always", "no", "opening-hours", "after-school"],
+                                "enum": [
+                                  "always",
+                                  "no",
+                                  "opening-hours",
+                                  "after-school"
+                                ],
                                 "example": "opening-hours"
                               },
                               "dateLastPreparation": {
@@ -1372,18 +1669,20 @@
       "get": {
         "operationId": "getSportsFieldByID",
         "description": "Get information about a single published sports field",
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "schema": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "required": true,
-          "description": "ID of the sports field to be retrieved"
-        }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "required": true,
+            "description": "ID of the sports field to be retrieved"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1427,7 +1726,9 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": ["MultiPolygon"]
+                          "enum": [
+                            "MultiPolygon"
+                          ]
                         },
                         "coordinates": {
                           "type": "array",
@@ -1447,7 +1748,44 @@
                               }
                             }
                           },
-                          "example": [[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]
+                          "example": [
+                            [
+                              [
+                                [
+                                  17.428771593881844,
+                                  62.42103804538807
+                                ],
+                                [
+                                  17.428785133659883,
+                                  62.421037809376244
+                                ],
+                                [
+                                  17.428821575900738,
+                                  62.42048396661722
+                                ],
+                                [
+                                  17.428101436027845,
+                                  62.42046508568337
+                                ],
+                                [
+                                  17.428025378913084,
+                                  62.42103219129709
+                                ],
+                                [
+                                  17.428365400350206,
+                                  62.421045125144
+                                ],
+                                [
+                                  17.428690864217362,
+                                  62.421045739009976
+                                ],
+                                [
+                                  17.428771593881844,
+                                  62.42103804538807
+                                ]
+                              ]
+                            ]
+                          ]
                         }
                       }
                     },
@@ -1456,14 +1794,28 @@
                       "description": "List of sports field categories",
                       "items": {
                         "type": "string",
-                        "enum": ["bandy", "hockey", "ice-rink", "skating", "floodlit"]
+                        "enum": [
+                          "bandy",
+                          "hockey",
+                          "ice-rink",
+                          "skating",
+                          "floodlit"
+                        ]
                       },
-                      "example":  ["floodlit", "hockey"]
+                      "example": [
+                        "floodlit",
+                        "hockey"
+                      ]
                     },
                     "publicAccess": {
                       "type": "string",
                       "description": "Information about when/if this sports field is open for the public",
-                      "enum": ["always", "no", "opening-hours", "after-school"],
+                      "enum": [
+                        "always",
+                        "no",
+                        "opening-hours",
+                        "after-school"
+                      ],
                       "example": "always"
                     },
                     "description": {
@@ -1503,33 +1855,47 @@
       "get": {
         "operationId": "getSportsVenues",
         "description": "Get information about published sports venues",
-        "parameters": [{
-          "in": "query",
-          "name": "categories",
-          "explode": false,
-          "schema": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": ["ice-rink", "sports-hall", "swimming-pool"]
-            }
+        "parameters": [
+          {
+            "in": "query",
+            "name": "categories",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "ice-rink",
+                  "sports-hall",
+                  "swimming-pool"
+                ]
+              }
+            },
+            "required": false,
+            "description": "Filter the returned sports venues by category"
           },
-          "required": false,
-          "description": "Filter the returned sports venues by category"
-        },{
-          "in": "query",
-          "name": "fields",
-          "explode": false,
-          "schema": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": ["description", "location", "managedby", "owner", "seealso", "source"]
-            }
-          },
-          "required": false,
-          "description": "Filter the returned properties per entry"
-        }],
+          {
+            "in": "query",
+            "name": "fields",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "description",
+                  "location",
+                  "managedby",
+                  "owner",
+                  "seealso",
+                  "source"
+                ]
+              }
+            },
+            "required": false,
+            "description": "Filter the returned properties per entry"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1578,7 +1944,9 @@
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["Point"]
+                                "enum": [
+                                  "Point"
+                                ]
                               },
                               "coordinates": {
                                 "type": "array",
@@ -1588,7 +1956,10 @@
                                 "items": {
                                   "type": "number"
                                 },
-                                "example": [17.454723, 62.266598]
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
                               }
                             }
                           },
@@ -1597,9 +1968,15 @@
                             "description": "List of sports venue categories",
                             "items": {
                               "type": "string",
-                              "enum": ["ice-rink", "sports-hall", "swimming-pool"]
+                              "enum": [
+                                "ice-rink",
+                                "sports-hall",
+                                "swimming-pool"
+                              ]
                             },
-                            "example":  ["sports-hall"]
+                            "example": [
+                              "sports-hall"
+                            ]
                           },
                           "description": {
                             "type": "string",
@@ -1628,7 +2005,9 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "enum": ["FeatureCollection"]
+                      "enum": [
+                        "FeatureCollection"
+                      ]
                     },
                     "features": {
                       "type": "array",
@@ -1641,14 +2020,18 @@
                           },
                           "type": {
                             "type": "string",
-                            "enum": ["Feature"]
+                            "enum": [
+                              "Feature"
+                            ]
                           },
                           "geometry": {
                             "type": "object",
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["MultiPolygon"]
+                                "enum": [
+                                  "MultiPolygon"
+                                ]
                               },
                               "coordinates": {
                                 "type": "array",
@@ -1668,7 +2051,44 @@
                                     }
                                   }
                                 },
-                                "example": [[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]
+                                "example": [
+                                  [
+                                    [
+                                      [
+                                        17.428771593881844,
+                                        62.42103804538807
+                                      ],
+                                      [
+                                        17.428785133659883,
+                                        62.421037809376244
+                                      ],
+                                      [
+                                        17.428821575900738,
+                                        62.42048396661722
+                                      ],
+                                      [
+                                        17.428101436027845,
+                                        62.42046508568337
+                                      ],
+                                      [
+                                        17.428025378913084,
+                                        62.42103219129709
+                                      ],
+                                      [
+                                        17.428365400350206,
+                                        62.421045125144
+                                      ],
+                                      [
+                                        17.428690864217362,
+                                        62.421045739009976
+                                      ],
+                                      [
+                                        17.428771593881844,
+                                        62.42103804538807
+                                      ]
+                                    ]
+                                  ]
+                                ]
                               }
                             }
                           },
@@ -1677,7 +2097,9 @@
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["SportsVenue"]
+                                "enum": [
+                                  "SportsVenue"
+                                ]
                               },
                               "name": {
                                 "type": "string",
@@ -1713,9 +2135,15 @@
                                 "description": "List of sports venue categories",
                                 "items": {
                                   "type": "string",
-                                  "enum": ["ice-rink", "sports-hall", "swimming-pool"]
+                                  "enum": [
+                                    "ice-rink",
+                                    "sports-hall",
+                                    "swimming-pool"
+                                  ]
                                 },
-                                "example":  ["sports-hall"]
+                                "example": [
+                                  "sports-hall"
+                                ]
                               },
                               "seeAlso": {
                                 "type": "array",
@@ -1744,18 +2172,20 @@
       "get": {
         "operationId": "getSportsVenueByID",
         "description": "Get information about a single published sports venue",
-        "parameters": [{
-          "in": "path",
-          "name": "id",
-          "schema": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "required": true,
-          "description": "ID of the sports venue to be retrieved"
-        }],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "required": true,
+            "description": "ID of the sports venue to be retrieved"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1799,7 +2229,9 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "enum": ["MultiPolygon"]
+                          "enum": [
+                            "MultiPolygon"
+                          ]
                         },
                         "coordinates": {
                           "type": "array",
@@ -1819,7 +2251,44 @@
                               }
                             }
                           },
-                          "example": [[[[17.428771593881844,62.42103804538807],[17.428785133659883,62.421037809376244],[17.428821575900738,62.42048396661722],[17.428101436027845,62.42046508568337],[17.428025378913084,62.42103219129709],[17.428365400350206,62.421045125144],[17.428690864217362,62.421045739009976],[17.428771593881844,62.42103804538807]]]]
+                          "example": [
+                            [
+                              [
+                                [
+                                  17.428771593881844,
+                                  62.42103804538807
+                                ],
+                                [
+                                  17.428785133659883,
+                                  62.421037809376244
+                                ],
+                                [
+                                  17.428821575900738,
+                                  62.42048396661722
+                                ],
+                                [
+                                  17.428101436027845,
+                                  62.42046508568337
+                                ],
+                                [
+                                  17.428025378913084,
+                                  62.42103219129709
+                                ],
+                                [
+                                  17.428365400350206,
+                                  62.421045125144
+                                ],
+                                [
+                                  17.428690864217362,
+                                  62.421045739009976
+                                ],
+                                [
+                                  17.428771593881844,
+                                  62.42103804538807
+                                ]
+                              ]
+                            ]
+                          ]
                         }
                       }
                     },
@@ -1828,9 +2297,15 @@
                       "description": "List of sports venue categories",
                       "items": {
                         "type": "string",
-                        "enum": ["ice-rink", "sports-hall", "swimming-pool"]
+                        "enum": [
+                          "ice-rink",
+                          "sports-hall",
+                          "swimming-pool"
+                        ]
                       },
-                      "example":  ["sports-hall"]
+                      "example": [
+                        "sports-hall"
+                      ]
                     },
                     "description": {
                       "type": "string",
@@ -1903,15 +2378,112 @@
         }
       }
     },
-    "/temperature/air": {
+    "/weather": {
       "get": {
-        "operationId": "getAirTemperatures",
-        "description": "Get temperature values from a given sensor.<p>Available sensors are returned from the /temperature/air/sensors endpoint.",
-        "parameters":[
+        "operationId": "getWeather",
+        "description": "Get weather observations.",
+        "parameters": [
           {
-            "name": "sensor",
             "in": "query",
-            "description": "ID of the temperature sensor to query.",
+            "name": "coordinates",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "required": true,
+            "description": "Filter the returned properties per entry",
+            "example": [
+              "17.454723,62.266598"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "The ID of this weather observation",
+                            "example": "urn:ngsi-ld:WeatherObserved:123"
+                          },
+                          "dateObserved": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Time of the weather observation",
+                            "example": "2021-06-01T00:00:00Z"
+                          },
+                          "location": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "Point"
+                                ]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "description": "WGS84 longitude and latitude",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number"
+                                },
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
+                              }
+                            }
+                          },
+                          "temperature": {
+                            "type": "object",
+                            "properties": {
+                              "value": {
+                                "type": "number",
+                                "description": "The temperature in degrees Celsius",
+                                "example": 11.7
+                              },
+                              "when": {
+                                "type": "string",
+                                "format": "date-time",
+                                "description": "Time of the weather observation",
+                                "example": "2021-06-01T00:00:00Z"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/weather/{id}": {
+      "get": {
+        "operationId": "getWeatherByID",
+        "description": "Get weather observations by ID.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the weather observation to be retrieved",
             "required": true,
             "schema": {
               "type": "string"
@@ -1938,46 +2510,93 @@
             }
           },
           {
-            "name": "options",
+            "name" :"aggr",
             "in": "query",
+            "description": "Aggregate temperatures by hour, day, month or year",
+            "example": "hour",
             "schema": {
               "type": "string",
-              "enum": ["aggregatedValues"]
-            }
-          },
-          {
-            "name": "aggrMethods",
-            "in": "query",
-            "description": "Select aggregation methods. (options MUST be set to aggregatedValues)",
-            "schema": {
-              "type": "string",
-              "enum": ["avg", "max,min", "avg,max,min"]
-            }
-          },
-          {
-            "name": "aggrPeriodDuration",
-            "in": "query",
-            "description": "Select aggregation period. (options MUST be set to aggregatedValues)",
-            "schema": {
-              "type": "string",
-              "enum": ["PT1H", "PT24H", "P7D"]
-            }
+              "enum": [
+                "hour",
+                "day",
+                "month",
+                "year"
+              ]
+            },
+            "required": false
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/temperature/air/sensors": {
-      "get": {
-        "operationId": "getAirTemperatureSensors",
-        "description": "Get available temperature sensors.",
-        "responses": {
-          "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "The ID of this weather observation",
+                          "example": "urn:ngsi-ld:WeatherObserved:123"
+                        },
+                        "dateObserved": {
+                          "type": "string",
+                          "format": "date-time",
+                          "description": "Time of the weather observation",
+                          "example": "2021-06-01T00:00:00Z"
+                        },
+                        "location": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "Point"
+                              ]
+                            },
+                            "coordinates": {
+                              "type": "array",
+                              "description": "WGS84 longitude and latitude",
+                              "minItems": 2,
+                              "maxItems": 3,
+                              "items": {
+                                "type": "number"
+                              },
+                              "example": [
+                                17.454723,
+                                62.266598
+                              ]
+                            }
+                          }
+                        },
+                        "temperature": {
+                          "type": "array",
+                          "description": "list of historical readings of temperatures",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "value": {
+                                "type": "number",
+                                "format": "float",
+                                "example": 11.7
+                              },
+                              "when": {
+                                "type": "string",
+                                "format": "date-time",
+                                "example": "2021-06-01T00:00:00Z"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -1997,29 +2616,31 @@
       "get": {
         "operationId": "getWaterQuality",
         "description": "Get information about water quality.",
-        "parameters": [{
-          "in": "query",
-          "name": "maxDistance",
-          "explode": false,
-          "schema": {
-            "type": "string"
-          },
-          "required": false,
-          "description": "Filter the returned properties per entry"
-        },
-        { 
-          "in": "query",
-          "name": "coordinates",
-          "explode": false,
-          "schema": {
-            "type": "array",
-            "items": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "maxDistance",
+            "explode": false,
+            "schema": {
               "type": "string"
-            }
+            },
+            "required": false,
+            "description": "Filter the returned properties per entry"
           },
-          "required": false,
-          "description": "Filter the returned properties per entry"
-        }],
+          {
+            "in": "query",
+            "name": "coordinates",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "required": false,
+            "description": "Filter the returned properties per entry"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -2043,7 +2664,9 @@
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["Point"]
+                                "enum": [
+                                  "Point"
+                                ]
                               },
                               "coordinates": {
                                 "type": "array",
@@ -2053,7 +2676,10 @@
                                 "items": {
                                   "type": "number"
                                 },
-                                "example": [17.454723, 62.266598]
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
                               }
                             }
                           },
@@ -2085,26 +2711,37 @@
       "get": {
         "operationId": "getWaterQualityByID",
         "description": "Get information about water quality readings",
-        "parameters": [{
-          "name": "timeAt",
-          "in": "query",
-          "description": "Select water qualities from time",
-          "example": "2021-06-01T00:00:00Z",
-          "schema": {
-            "type": "string",
-            "format": "date-time"
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the water quality to be retrieved",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "timeAt",
+            "in": "query",
+            "description": "Select water qualities from time",
+            "example": "2021-06-01T00:00:00Z",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endTimeAt",
+            "in": "query",
+            "description": "Select water qualities up to time",
+            "example": "2021-07-01T00:00:00Z",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
           }
-        },
-        {
-          "name": "endTimeAt",
-          "in": "query",
-          "description": "Select water qualities up to time",
-          "example": "2021-07-01T00:00:00Z",
-          "schema": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }],
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -2128,7 +2765,9 @@
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["Point"]
+                                "enum": [
+                                  "Point"
+                                ]
                               },
                               "coordinates": {
                                 "type": "array",
@@ -2138,7 +2777,10 @@
                                 "items": {
                                   "type": "number"
                                 },
-                                "example": [17.454723, 62.266598]
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
                               }
                             }
                           },

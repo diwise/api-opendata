@@ -12,14 +12,13 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/go-chi/chi/v5"
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 func TestGetWaterQualities(t *testing.T) {
 	is, router, testServer := testSetup(t)
 	wqSvc := mockWaterQualitySvc(is)
 
-	router.Get("/api/waterqualities", NewRetrieveWaterQualityHandler(zerolog.Logger{}, wqSvc))
+	router.Get("/api/waterqualities", NewRetrieveWaterQualityHandler(context.Background(), wqSvc))
 	resp, responseBody := newGetRequest(is, testServer, "application/json", "/api/waterqualities", nil)
 
 	const expectation string = `{"data":[{"id":"urn:ngsi-ld:WaterQualityObserved:testID","temperature":10.8,"dateObserved":"2021-05-18T19:23:09Z","location":{"type":"Point","coordinates":[17.39364,62.297684]}}]}`
@@ -31,7 +30,7 @@ func TestGetWaterQualitiesAsGeoJSON(t *testing.T) {
 	is, router, testServer := testSetup(t)
 	wqSvc := mockWaterQualitySvc(is)
 
-	router.Get("/waterqualities", NewRetrieveWaterQualityHandler(zerolog.Logger{}, wqSvc))
+	router.Get("/waterqualities", NewRetrieveWaterQualityHandler(context.Background(), wqSvc))
 	resp, responseBody := newGetRequest(is, testServer, "application/geo+json", "/waterqualities", nil)
 
 	const expectation string = `{"type":"FeatureCollection", "features": [{"type":"Feature","id":"urn:ngsi-ld:WaterQualityObserved:testID","geometry":{"type":"Point","coordinates":[17.39364,62.297684]},"properties":{"dateObserved":"2021-05-18T19:23:09Z","location":{"coordinates":[17.39364,62.297684],"type":"Point"},"temperature":10.8,"type":"WaterQualityObserved"}}]}`
@@ -43,7 +42,7 @@ func TestGetWaterQualityByID(t *testing.T) {
 	is, router, testServer := testSetup(t)
 	wqSvc := mockWaterQualitySvc(is)
 
-	router.Get("/{id}", NewRetrieveWaterQualityByIDHandler(zerolog.Logger{}, wqSvc))
+	router.Get("/{id}", NewRetrieveWaterQualityByIDHandler(context.Background(), wqSvc))
 	resp, _ := newGetRequest(is, testServer, "application/ld+json", "/urn:ngsi-ld:WaterQualityObserved:testID", nil)
 
 	is.Equal(resp.StatusCode, http.StatusOK) // Request failed, status code not OK
@@ -55,7 +54,7 @@ func TestGetWaterQualityByIDWithTimespan(t *testing.T) {
 
 	wqSvc := mockWaterQualitySvc(is)
 
-	router.Get("/{id}", NewRetrieveWaterQualityByIDHandler(zerolog.Logger{}, wqSvc))
+	router.Get("/{id}", NewRetrieveWaterQualityByIDHandler(context.Background(), wqSvc))
 	resp, _ := newGetRequest(is, testServer, "application/ld+json", "/urn:ngsi-ld:WaterQualityObserved:testID?from=2023-03-16T11:10:00Z&to=2023-03-20T13:10:00Z", nil)
 
 	is.Equal(resp.StatusCode, http.StatusOK) // Request failed, status code not OK

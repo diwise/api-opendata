@@ -14,37 +14,37 @@ var _ BeachService = &BeachServiceMock{}
 
 // BeachServiceMock is a mock implementation of BeachService.
 //
-// 	func TestSomethingThatUsesBeachService(t *testing.T) {
+//	func TestSomethingThatUsesBeachService(t *testing.T) {
 //
-// 		// make and configure a mocked BeachService
-// 		mockedBeachService := &BeachServiceMock{
-// 			BrokerFunc: func() string {
-// 				panic("mock out the Broker method")
-// 			},
-// 			GetAllFunc: func(ctx context.Context) []Beach {
-// 				panic("mock out the GetAll method")
-// 			},
-// 			GetByIDFunc: func(ctx context.Context, id string) (*Beach, error) {
-// 				panic("mock out the GetByID method")
-// 			},
-// 			RefreshFunc: func(contextMoqParam context.Context) (int, error) {
-// 				panic("mock out the Refresh method")
-// 			},
-// 			ShutdownFunc: func(contextMoqParam context.Context)  {
-// 				panic("mock out the Shutdown method")
-// 			},
-// 			StartFunc: func(contextMoqParam context.Context)  {
-// 				panic("mock out the Start method")
-// 			},
-// 			TenantFunc: func() string {
-// 				panic("mock out the Tenant method")
-// 			},
-// 		}
+//		// make and configure a mocked BeachService
+//		mockedBeachService := &BeachServiceMock{
+//			BrokerFunc: func() string {
+//				panic("mock out the Broker method")
+//			},
+//			GetAllFunc: func(ctx context.Context) []Beach {
+//				panic("mock out the GetAll method")
+//			},
+//			GetByIDFunc: func(ctx context.Context, id string) (*Beach, error) {
+//				panic("mock out the GetByID method")
+//			},
+//			RefreshFunc: func(contextMoqParam context.Context) (int, error) {
+//				panic("mock out the Refresh method")
+//			},
+//			ShutdownFunc: func(contextMoqParam context.Context)  {
+//				panic("mock out the Shutdown method")
+//			},
+//			StartFunc: func(contextMoqParam context.Context)  {
+//				panic("mock out the Start method")
+//			},
+//			TenantFunc: func() string {
+//				panic("mock out the Tenant method")
+//			},
+//		}
 //
-// 		// use mockedBeachService in code that requires BeachService
-// 		// and then make assertions.
+//		// use mockedBeachService in code that requires BeachService
+//		// and then make assertions.
 //
-// 	}
+//	}
 type BeachServiceMock struct {
 	// BrokerFunc mocks the Broker method.
 	BrokerFunc func() string
@@ -127,7 +127,8 @@ func (mock *BeachServiceMock) Broker() string {
 
 // BrokerCalls gets all the calls that were made to Broker.
 // Check the length with:
-//     len(mockedBeachService.BrokerCalls())
+//
+//	len(mockedBeachService.BrokerCalls())
 func (mock *BeachServiceMock) BrokerCalls() []struct {
 } {
 	var calls []struct {
@@ -156,7 +157,8 @@ func (mock *BeachServiceMock) GetAll(ctx context.Context) []Beach {
 
 // GetAllCalls gets all the calls that were made to GetAll.
 // Check the length with:
-//     len(mockedBeachService.GetAllCalls())
+//
+//	len(mockedBeachService.GetAllCalls())
 func (mock *BeachServiceMock) GetAllCalls() []struct {
 	Ctx context.Context
 } {
@@ -189,7 +191,8 @@ func (mock *BeachServiceMock) GetByID(ctx context.Context, id string) (*Beach, e
 
 // GetByIDCalls gets all the calls that were made to GetByID.
 // Check the length with:
-//     len(mockedBeachService.GetByIDCalls())
+//
+//	len(mockedBeachService.GetByIDCalls())
 func (mock *BeachServiceMock) GetByIDCalls() []struct {
 	Ctx context.Context
 	ID  string
@@ -222,7 +225,8 @@ func (mock *BeachServiceMock) Refresh(contextMoqParam context.Context) (int, err
 
 // RefreshCalls gets all the calls that were made to Refresh.
 // Check the length with:
-//     len(mockedBeachService.RefreshCalls())
+//
+//	len(mockedBeachService.RefreshCalls())
 func (mock *BeachServiceMock) RefreshCalls() []struct {
 	ContextMoqParam context.Context
 } {
@@ -253,7 +257,8 @@ func (mock *BeachServiceMock) Shutdown(contextMoqParam context.Context) {
 
 // ShutdownCalls gets all the calls that were made to Shutdown.
 // Check the length with:
-//     len(mockedBeachService.ShutdownCalls())
+//
+//	len(mockedBeachService.ShutdownCalls())
 func (mock *BeachServiceMock) ShutdownCalls() []struct {
 	ContextMoqParam context.Context
 } {
@@ -284,7 +289,8 @@ func (mock *BeachServiceMock) Start(contextMoqParam context.Context) {
 
 // StartCalls gets all the calls that were made to Start.
 // Check the length with:
-//     len(mockedBeachService.StartCalls())
+//
+//	len(mockedBeachService.StartCalls())
 func (mock *BeachServiceMock) StartCalls() []struct {
 	ContextMoqParam context.Context
 } {
@@ -312,7 +318,8 @@ func (mock *BeachServiceMock) Tenant() string {
 
 // TenantCalls gets all the calls that were made to Tenant.
 // Check the length with:
-//     len(mockedBeachService.TenantCalls())
+//
+//	len(mockedBeachService.TenantCalls())
 func (mock *BeachServiceMock) TenantCalls() []struct {
 } {
 	var calls []struct {

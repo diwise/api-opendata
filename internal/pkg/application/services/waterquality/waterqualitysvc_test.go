@@ -145,6 +145,30 @@ func TestGetByIDWithTimespan(t *testing.T) {
 	is.Equal(string(wqoJson), expectation)
 }
 
+func TestGetTemporalWithEmptyTempResult(t *testing.T) {
+	is, ms := testSetup(t, http.StatusOK, emptyTemporalJSON)
+	ctx := context.Background()
+	defer ms.Close()
+
+	wq := NewWaterQualityService(ctx, ms.URL, "default")
+	wq.Start(ctx)
+	defer wq.Shutdown(ctx)
+
+	_, err := wq.Refresh(ctx)
+	is.NoErr(err)
+
+	from, _ := time.Parse(time.RFC3339, "2021-05-18T19:23:09Z")
+	to, _ := time.Parse(time.RFC3339, "2021-05-18T19:23:09Z")
+
+	wqo, err := wq.GetByID(ctx, "urn:ngsi-ld:WaterQualityObserved:testID", from, to)
+	is.NoErr(err)
+
+	wqoJson, err := json.Marshal(wqo)
+	is.NoErr(err)
+	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:testID","temperature":null,"location":{"type":"Point","coordinates":[17.57263982458684,62.53515242132986]}}`
+	is.Equal(string(wqoJson), expectation)
+}
+
 func testSetup(t *testing.T, statusCode int, temporalJSON string) (*is.I, *httptest.Server) {
 	is := is.New(t)
 
@@ -160,6 +184,23 @@ func testSetup(t *testing.T, statusCode int, temporalJSON string) (*is.I, *httpt
 
 	return is, server
 }
+
+const emptyTemporalJSON string = `{
+	"@context": [
+	  "https://schema.lab.fiware.org/ld/context",
+	  "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"
+	],
+	"dateObserved": {
+	  "type": "Property",
+	  "value": {
+		"@type": "DateTime",
+		"@value": "2021-05-18T19:23:09Z"
+	  }
+	},
+	"id": "urn:ngsi-ld:WaterQualityObserved:testID",
+	"temperature": [],
+	"type": "WaterQualityObserved"
+  }`
 
 const singleTemporalJSON string = `{
 	"@context": [

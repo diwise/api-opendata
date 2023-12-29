@@ -15,6 +15,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"log/slog"
+
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
@@ -71,7 +73,7 @@ func (svc *wqsvc) Start(ctx context.Context) {
 	alreadyStarted := svc.keepRunning.Swap(true)
 	if alreadyStarted {
 		logger := logging.GetFromContext(ctx)
-		logger.Error().Msg("attempt to start the water quality service multiple times")
+		logger.Error("attempt to start the water quality service multiple times")
 		return
 	}
 
@@ -260,7 +262,7 @@ func (svc *wqsvc) run(ctx context.Context) {
 	defer svc.wg.Done()
 
 	logger := logging.GetFromContext(ctx)
-	logger.Info().Msg("starting water quality service")
+	logger.Info("starting water quality service")
 
 	const RefreshIntervalOnFail time.Duration = 5 * time.Second
 	const RefreshIntervalOnSuccess time.Duration = 30 * time.Second
@@ -269,10 +271,10 @@ func (svc *wqsvc) run(ctx context.Context) {
 	count, err := svc.refresh(ctx)
 
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to refresh water qualities")
+		logger.Error("failed to refresh water qualities", slog.String("err", err.Error()))
 		refreshTimer = time.NewTimer(RefreshIntervalOnFail)
 	} else {
-		logger.Info().Msgf("refreshed %d water quality instances", count)
+		logger.Info("refreshed water quality", slog.Int("count", count))
 		refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
 	}
 
@@ -283,16 +285,16 @@ func (svc *wqsvc) run(ctx context.Context) {
 		case <-refreshTimer.C:
 			count, err := svc.refresh(ctx)
 			if err != nil {
-				logger.Error().Err(err).Msg("failed to refresh water quality info")
+				logger.Error("failed to refresh water quality info", slog.String("err", err.Error()))
 				refreshTimer = time.NewTimer(RefreshIntervalOnFail)
 			} else {
-				logger.Info().Msgf("refreshed %d water quality entities", count)
+				logger.Info("refreshed water quality entities", slog.Int("count", count))
 				refreshTimer = time.NewTimer(RefreshIntervalOnSuccess)
 			}
 		}
 	}
 
-	logger.Info().Msg("water quality service exiting")
+	logger.Info("water quality service exiting")
 }
 
 func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
@@ -303,7 +305,7 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 	logger := logging.GetFromContext(ctx)
 	_, ctx, logger = o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
 
-	logger.Info().Msg("refreshing water quality info")
+	logger.Info("refreshing water quality info")
 
 	_, err = contextbroker.QueryEntities(ctx, svc.Broker(), svc.Tenant(), "WaterQualityObserved", nil, func(w WaterQualityDTO) {
 		wq := WaterQuality{
@@ -329,16 +331,20 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 
 		dto := WaterQualityTemporalDTO{}
 
-		b, _ := svc.requestTemporalDataForSingleEntity(ctx, svc.contextBrokerURL, w.ID, time.Time{}, time.Time{})
+		b, err := svc.requestTemporalDataForSingleEntity(ctx, svc.contextBrokerURL, w.ID, time.Time{}, time.Time{})
+		if err != nil {
+			logger.Info("no temporal data found for water quality", "id", wq.ID)
+			return
+		}
 
-		err = json.Unmarshal(b, &dto)
+		json.Unmarshal(b, &dto)
 
 		temps := []domain.Value{}
 
 		if len(dto.Temperature) != 0 {
 			temps = append(temps, dto.Temperature...)
 		} else {
-			logger.Info().Msgf("no temporal data found for water quality %s", wq.ID)
+			logger.Info("no temporal data found for water quality", "id", wq.ID)
 		}
 
 		wq.History = &temps
@@ -381,7 +387,7 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 	if err != nil {
 		logger := logging.GetFromContext(ctx)
-		logger.Error().Err(err).Msg("failed to create http request")
+		logger.Error("failed to create http request", slog.String("err", err.Error()))
 		return nil, err
 	}
 
@@ -391,21 +397,21 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 	response, err := httpClient.Do(req)
 	if err != nil {
 		logger := logging.GetFromContext(ctx)
-		logger.Error().Err(err).Msg("request failed")
+		logger.Error("request failed", slog.String("err", err.Error()))
 		return nil, err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		logger := logging.GetFromContext(ctx)
-		logger.Error().Err(err).Msg("request failed, status code not ok")
+		logger.Error("request failed, status code not ok", slog.Int64("response", int64(response.StatusCode)))
 		return nil, err
 	}
 
 	b, err := io.ReadAll(response.Body)
 	if err != nil {
 		logger := logging.GetFromContext(ctx)
-		logger.Error().Err(err).Msg("failed to read response body")
+		logger.Error("failed to read response body", slog.String("err", err.Error()))
 		return nil, err
 	}
 

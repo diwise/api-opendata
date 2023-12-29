@@ -11,7 +11,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/test/http/response"
 
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 var Expects = testutils.Expects
@@ -32,7 +31,7 @@ func TestSomething(t *testing.T) {
 	svc, ok := svci.(*exerciseTrailSvc)
 	is.True(ok)
 
-	count, err := svc.refresh(ctx, zerolog.Logger{})
+	count, err := svc.refresh(ctx)
 	is.NoErr(err)
 	is.Equal(count, 2)
 
@@ -57,7 +56,7 @@ func TestGetByCategory(t *testing.T) {
 	svc, ok := svci.(*exerciseTrailSvc)
 	is.True(ok)
 
-	count, err := svc.refresh(context.Background(), zerolog.Logger{})
+	count, err := svc.refresh(context.Background())
 	is.NoErr(err)
 	is.Equal(count, 2)
 

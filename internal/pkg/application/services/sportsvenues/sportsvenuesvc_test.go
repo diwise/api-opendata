@@ -11,7 +11,6 @@ import (
 	"github.com/diwise/service-chassis/pkg/test/http/response"
 
 	"github.com/matryer/is"
-	"github.com/rs/zerolog"
 )
 
 var Expects = testutils.Expects
@@ -31,7 +30,7 @@ func TestExpectedOutputOfGetByID(t *testing.T) {
 	svc, ok := svci.(*sportsvenueSvc)
 	is.True(ok)
 
-	_, err := svc.refresh(context.Background(), zerolog.Logger{})
+	_, err := svc.refresh(context.Background())
 	is.NoErr(err)
 
 	sportsvenue, err := svc.GetByID("urn:ngsi-ld:SportsVenue:se:sundsvall:facilities:641")
@@ -55,7 +54,7 @@ func TestExpectedOutputOfGetAll(t *testing.T) {
 	svc, ok := svci.(*sportsvenueSvc)
 	is.True(ok)
 
-	_, err := svc.refresh(context.Background(), zerolog.Logger{})
+	_, err := svc.refresh(context.Background())
 	is.NoErr(err)
 
 	sportsfields := svc.GetAll([]string{})
