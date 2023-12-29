@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -11,19 +13,19 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/application/services/airquality"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog"
 )
 
-func NewRetrieveAirQualitiesHandler(logger zerolog.Logger, aqsvc airquality.AirQualityService) http.HandlerFunc {
+func NewRetrieveAirQualitiesHandler(ctx context.Context, aqsvc airquality.AirQualityService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var err error
 
 		ctx, span := tracer.Start(r.Context(), "retrieve-air-qualities")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		fields := urlValueAsSlice(r.URL.Query(), "fields")
 
@@ -49,7 +51,7 @@ func NewRetrieveAirQualitiesHandler(logger zerolog.Logger, aqsvc airquality.AirQ
 					newAQOMapper(fields, locationMapper),
 				))
 			if err != nil {
-				log.Error().Err(err).Msgf("failed to marshal air quality list to geo json: %s", err.Error())
+				log.Error("failed to marshal air quality list to geo json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -64,7 +66,7 @@ func NewRetrieveAirQualitiesHandler(logger zerolog.Logger, aqsvc airquality.AirQ
 
 			aqosBytes, err := json.Marshal(aqos)
 			if err != nil {
-				log.Error().Err(err).Msg("failed to marshal air quality into json")
+				log.Error("failed to marshal air quality list to json", slog.String("err", err.Error()))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -78,19 +80,19 @@ func NewRetrieveAirQualitiesHandler(logger zerolog.Logger, aqsvc airquality.AirQ
 	})
 }
 
-func NewRetrieveAirQualityByIDHandler(logger zerolog.Logger, aqsvc airquality.AirQualityService) http.HandlerFunc {
+func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQualityService) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		var err error
 		ctx, span := tracer.Start(r.Context(), "retrieve-air-quality-by-id")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logger, ctx)
+		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		airQualityID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if airQualityID == "" {
 			err = fmt.Errorf("no air quality id supplied in query")
-			log.Error().Err(err).Msg("bad request")
+			log.Error("bad request", "err", err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

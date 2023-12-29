@@ -8,7 +8,6 @@ import (
 
 	services "github.com/diwise/api-opendata/internal/pkg/application/services/airquality"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
-	"github.com/rs/zerolog"
 )
 
 func TestRetrieveAirQuality(t *testing.T) {
@@ -27,7 +26,7 @@ func TestRetrieveAirQualityByID(t *testing.T) {
 	is, r, ts := setupTest(t)
 	svc := defaultAirQualityMock()
 
-	r.Get("/{id}", NewRetrieveAirQualityByIDHandler(zerolog.Logger{}, svc))
+	r.Get("/{id}", NewRetrieveAirQualityByIDHandler(context.Background(), svc))
 	response, responseBody := newGetRequest(is, ts, "application/ld+json", "/aq1", nil)
 
 	is.Equal(response.StatusCode, http.StatusOK)
