@@ -87,6 +87,5 @@ var aqDetails = map[string]domain.AirQualityDetails{
 			Type:  "Property",
 			Value: "2022-10-20T13:10:00Z",
 		},
-		PM1: 0.6,
 	},
 }

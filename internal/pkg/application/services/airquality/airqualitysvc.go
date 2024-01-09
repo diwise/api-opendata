@@ -2,15 +2,15 @@ package airquality
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
+	"github.com/diwise/context-broker/pkg/ngsild/types"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
@@ -192,65 +192,79 @@ func (svc *aqsvc) refresh(ctx context.Context) (count int, err error) {
 
 	airqualities := []domain.AirQuality{}
 
+	c := contextbroker.NewContextBrokerClient(svc.contextBrokerURL, contextbroker.Tenant(svc.tenant))
+
+	headers := map[string][]string{
+		"Accept": {"application/ld+json"},
+		"Link":   {entities.LinkHeader},
+	}
+
 	_, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "AirQualityObserved", nil, func(a airqualityDTO) {
-
-		aBytes, _ := json.Marshal(a)
-		fmt.Printf("air quality dto: %s\n", aBytes)
-
 		details := domain.AirQualityDetails{
-			ID: a.ID,
+			ID:         a.ID,
+			Pollutants: make([]domain.Pollutant, 0),
 		}
-		
+
+		dateObserved := time.Now().UTC().Format(time.RFC3339)
+
 		if a.Location != nil {
 			details.Location = *a.Location
 		}
 		if a.DateObserved != nil {
 			details.DateObserved = *a.DateObserved
+			dateObserved = details.DateObserved.Value
 		}
+
+		t, err := c.RetrieveTemporalEvolutionOfEntity(ctx, a.ID, headers, contextbroker.Between(time.Now().Add(-24*time.Hour), time.Now()))
+		if err != nil {
+			logger.Error("failed to retrieve temporal evolution of entity", "err", err.Error())
+			return
+		}
+
 		if a.AtmosphericPressure != nil {
-			details.AtmosphericPressure = *a.AtmosphericPressure
+			details.Pollutants = append(details.Pollutants, addPollutant("AtmosphericPressure", *a.AtmosphericPressure, dateObserved, t.Property("atmosphericpressure")))
 		}
 		if a.Temperature != nil {
-			details.Temperature = *a.Temperature
+			details.Pollutants = append(details.Pollutants, addPollutant("Temperature", *a.Temperature, dateObserved, t.Property("temperature")))
 		}
 		if a.RelativeHumidity != nil {
-			details.RelativeHumidity = *a.RelativeHumidity
+			details.Pollutants = append(details.Pollutants, addPollutant("RelativeHumidity", *a.RelativeHumidity, dateObserved, t.Property("relativehumidity")))
 		}
 		if a.ParticleCount != nil {
-			details.ParticleCount = *a.ParticleCount
+			details.Pollutants = append(details.Pollutants, addPollutant("ParticleCount", *a.ParticleCount, dateObserved, t.Property("particlecount")))
 		}
 		if a.PM1 != nil {
-			details.PM1 = *a.PM1
+			details.Pollutants = append(details.Pollutants, addPollutant("PM1", *a.PM1, dateObserved, t.Property("pm1")))
 		}
 		if a.PM4 != nil {
-			details.PM4 = *a.PM4
+			details.Pollutants = append(details.Pollutants, addPollutant("PM4", *a.PM4, dateObserved, t.Property("pm4")))
 		}
 		if a.PM10 != nil {
-			details.PM10 = *a.PM10
+			details.Pollutants = append(details.Pollutants, addPollutant("PM10", *a.PM10, dateObserved, t.Property("pm10")))
 		}
 		if a.PM25 != nil {
-			details.PM25 = *a.PM25
+			details.Pollutants = append(details.Pollutants, addPollutant("PM25", *a.PM25, dateObserved, t.Property("pm25")))
 		}
 		if a.TotalSuspendedParticulate != nil {
-			details.TotalSuspendedParticulate = *a.TotalSuspendedParticulate
+			details.Pollutants = append(details.Pollutants, addPollutant("TotalSuspendedParticulate", *a.TotalSuspendedParticulate, dateObserved, t.Property("totalsuspendedparticulate")))
 		}
 		if a.CO2 != nil {
-			details.CO2 = *a.CO2
+			details.Pollutants = append(details.Pollutants, addPollutant("CO2", *a.CO2, dateObserved, t.Property("co2")))
 		}
 		if a.NO != nil {
-			details.NO = *a.NO
+			details.Pollutants = append(details.Pollutants, addPollutant("NO", *a.NO, dateObserved, t.Property("no")))
 		}
 		if a.NO2 != nil {
-			details.NO2 = *a.NO2
+			details.Pollutants = append(details.Pollutants, addPollutant("NO2", *a.NO2, dateObserved, t.Property("no2")))
 		}
 		if a.NOx != nil {
-			details.NOx = *a.NOx
+			details.Pollutants = append(details.Pollutants, addPollutant("NOx", *a.NOx, dateObserved, t.Property("nox")))
 		}
 		if a.WindDirection != nil {
-			details.WindDirection = *a.WindDirection
+			details.Pollutants = append(details.Pollutants, addPollutant("WindDirection", *a.WindDirection, dateObserved, t.Property("winddirection")))
 		}
 		if a.WindSpeed != nil {
-			details.WindSpeed = *a.WindSpeed
+			details.Pollutants = append(details.Pollutants, addPollutant("WindSpeed", *a.WindSpeed, dateObserved, t.Property("windspeed")))
 		}
 
 		svc.airQualityByID[details.ID] = details
@@ -294,4 +308,27 @@ type airqualityDTO struct {
 	Voltage                   *float64         `json:"voltage,omitempty"`
 	WindDirection             *float64         `json:"windDirection"`
 	WindSpeed                 *float64         `json:"windSpeed"`
+}
+
+func addPollutant(n string, v float64, t string, temporal []types.TemporalProperty) domain.Pollutant {
+	aqi := domain.Pollutant{
+		Name: n,
+	}
+
+	if len(temporal) > 0 {
+		for _, v := range temporal {
+			aqi.Values = append(aqi.Values, domain.Value{
+				Value:      v.Value().(float64),
+				ObservedAt: v.ObservedAt(),
+			})
+		}
+		return aqi
+	}
+
+	aqi.Values = append(aqi.Values, domain.Value{
+		Value:      v,
+		ObservedAt: t,
+	})
+
+	return aqi
 }
