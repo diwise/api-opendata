@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
+	"github.com/diwise/service-chassis/pkg/presentation/api/http/errors"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -25,7 +25,7 @@ func NewRetrieveAirQualitiesHandler(ctx context.Context, aqsvc airquality.AirQua
 		ctx, span := tracer.Start(r.Context(), "retrieve-air-qualities")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
+		traceID, ctx, _ := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		fields := urlValueAsSlice(r.URL.Query(), "fields")
 
@@ -51,8 +51,8 @@ func NewRetrieveAirQualitiesHandler(ctx context.Context, aqsvc airquality.AirQua
 					newAQOMapper(fields, locationMapper),
 				))
 			if err != nil {
-				log.Error("failed to marshal air quality list to geo json", slog.String("err", err.Error()))
-				w.WriteHeader(http.StatusInternalServerError)
+				problem := errors.NewProblemReport(http.StatusInternalServerError, "internalservererror", errors.Detail("failed to marshal air quality list to geo json"), errors.TraceID(traceID))
+				problem.WriteResponse(w)
 				return
 			}
 
@@ -63,11 +63,10 @@ func NewRetrieveAirQualitiesHandler(ctx context.Context, aqsvc airquality.AirQua
 			w.Write([]byte(body))
 
 		} else {
-
 			aqosBytes, err := json.Marshal(aqos)
 			if err != nil {
-				log.Error("failed to marshal air quality list to json", slog.String("err", err.Error()))
-				w.WriteHeader(http.StatusInternalServerError)
+				problem := errors.NewProblemReport(http.StatusInternalServerError, "internalservererror", errors.Detail("failed to marshal air quality list to json"), errors.TraceID(traceID))
+				problem.WriteResponse(w)
 				return
 			}
 
@@ -87,13 +86,13 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 		ctx, span := tracer.Start(r.Context(), "retrieve-air-quality-by-id")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, _, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
+		traceID, _, _ := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		airQualityID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if airQualityID == "" {
-			err = fmt.Errorf("no air quality id supplied in query")
-			log.Error("bad request", "err", err.Error())
-			w.WriteHeader(http.StatusBadRequest)
+
+			problem := errors.NewProblemReport(http.StatusBadRequest, "badrequest", errors.Detail("no air quality id supplied in query"), errors.TraceID(traceID))
+			problem.WriteResponse(w)
 			return
 		}
 
