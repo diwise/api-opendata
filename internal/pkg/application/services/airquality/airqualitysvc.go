@@ -215,12 +215,8 @@ func (svc *aqsvc) refresh(ctx context.Context) (count int, err error) {
 			dateObserved = details.DateObserved.Value
 		}
 
-		t, err := c.RetrieveTemporalEvolutionOfEntity(ctx, a.ID, headers, contextbroker.Between(time.Now().Add(-24*time.Hour), time.Now()))
-		if err != nil {
-			logger.Error("failed to retrieve temporal evolution of entity", "err", err.Error())
-			return
-		}
-
+		t, _ := c.RetrieveTemporalEvolutionOfEntity(ctx, a.ID, headers, contextbroker.Between(time.Now().Add(-24*time.Hour), time.Now()))
+		
 		if a.AtmosphericPressure != nil {
 			details.Pollutants = append(details.Pollutants, addPollutant("AtmosphericPressure", *a.AtmosphericPressure, dateObserved, t.Property("atmosphericpressure")))
 		}

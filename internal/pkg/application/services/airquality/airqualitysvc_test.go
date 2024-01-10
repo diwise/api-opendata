@@ -30,7 +30,7 @@ func TestGetByID(t *testing.T) {
 	aqBytes, err := json.Marshal(aq)
 	is.NoErr(err)
 
-	is.Equal(string(aqBytes), `{"id":"urn:ngsi-ld:AirQualityObserved:test1","location":{"type":"Point","coordinates":[17.472639,62.435152]},"dateObserved":{"@type":"DateTime","@value":"2023-03-12T06:23:09Z"}}`)
+	is.Equal(string(aqBytes), `{"id":"urn:ngsi-ld:AirQualityObserved:test1","location":{"type":"Point","coordinates":[17.472639,62.435152]},"dateObserved":{"@type":"DateTime","@value":"2023-03-12T06:23:09Z"},"pollutants":[{"name":"Temperature","values":[{"value":12.2,"observedAt":"2023-03-12T06:23:09Z"}]},{"name":"RelativeHumidity","values":[{"value":0.54,"observedAt":"2023-03-12T06:23:09Z"}]},{"name":"NO","values":[{"value":45,"observedAt":"2023-03-12T06:23:09Z"}]},{"name":"NO2","values":[{"value":69,"observedAt":"2023-03-12T06:23:09Z"}]},{"name":"NOx","values":[{"value":139,"observedAt":"2023-03-12T06:23:09Z"}]},{"name":"WindDirection","values":[{"value":186,"observedAt":"2023-03-12T06:23:09Z"}]},{"name":"WindSpeed","values":[{"value":0.64,"observedAt":"2023-03-12T06:23:09Z"}]}]}`)
 }
 
 func TestGetAll(t *testing.T) {

@@ -2937,28 +2937,35 @@
                               }
                             }
                           },
-                          "temperature": {
+                          "pollutants": {
                             "type": "array",
-                            "description": "list of historical readings of temperatures",
+                            "description": "list of historical readings of pollutants",
                             "items": {
                               "type": "object",
                               "properties": {
-                                "value": {
-                                  "type": "number",
-                                  "format": "float",
-                                  "example": 11.7
-                                },
-                                "observedAt": {
+                                "name": {
                                   "type": "string",
-                                  "format": "date-time"
+                                  "example": "PM10"
+                                },
+                                "values": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "value": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 11.7
+                                      },
+                                      "observedAt": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      }
+                                    }
+                                  }
                                 }
                               }
                             }
-                          },
-                          "source": {
-                            "type": "string",
-                            "format": "uri",
-                            "example": "https://badplatsen.havochvatten.se/"
                           }
                         }
                       }

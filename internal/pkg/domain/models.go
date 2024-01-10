@@ -64,7 +64,7 @@ type AirQualityDetails struct {
 	ID           string      `json:"id"`
 	Location     Point       `json:"location"`
 	DateObserved DateTime    `json:"dateObserved"`
-	Pollutants   []Pollutant `json:"pollutants"`
+	Pollutants   []Pollutant `json:"pollutants,omitempty"`
 }
 
 type Beach struct {
