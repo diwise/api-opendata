@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/diwise/api-opendata/internal/pkg/application/services/airquality"
 	"log/slog"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
@@ -98,6 +99,8 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 		logger.Error("failed to create organisations registry", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
+	airQualitySvc := airquality.NewAirQualityService(context.Background(), contextBrokerURL, contextBrokerTenant)
+	airQualitySvc.Start(ctx)
 
 	waterqualitySvc := waterquality.NewWaterQualityService(ctx, contextBrokerURL, contextBrokerTenant)
 	waterqualitySvc.Start(ctx)
@@ -122,6 +125,14 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 
 	weatherSvc := weather.NewWeatherService(ctx, contextBrokerURL, contextBrokerTenant)
 
+	r.Get(
+		"/api/airqualities",
+		handlers.NewRetrieveAirQualitiesHandler(ctx, airQualitySvc),
+	)
+	r.Get(
+		"/api/airqualities/{id}",
+		handlers.NewRetrieveAirQualityByIDHandler(ctx, airQualitySvc),
+	)
 	r.Get(
 		"/api/beaches",
 		handlers.NewRetrieveBeachesHandler(ctx, beachService),

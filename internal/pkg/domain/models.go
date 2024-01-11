@@ -48,6 +48,41 @@ type Organisation struct {
 	Name string `json:"name"`
 }
 
+type Organization struct {
+	About    string
+	Fn       string
+	HasEmail string
+}
+
+type AirQuality struct {
+	ID           string   `json:"id"`
+	Location     Point    `json:"location"`
+	DateObserved DateTime `json:"dateObserved"`
+}
+
+type AirQualityDetails struct {
+	ID           string      `json:"id"`
+	Location     Point       `json:"location"`
+	DateObserved DateTime    `json:"dateObserved"`
+	Pollutants   []Pollutant `json:"pollutants,omitempty"`
+}
+
+type Beach struct {
+	ID           string        `json:"id"`
+	Name         string        `json:"name"`
+	Location     Point         `json:"location"`
+	WaterQuality *WaterQuality `json:"waterquality,omitempty"`
+}
+
+type BeachDetails struct {
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Description  *string         `json:"description,omitempty"`
+	Location     Point           `json:"location"`
+	WaterQuality *[]WaterQuality `json:"waterquality,omitempty"`
+	SeeAlso      *[]string       `json:"seeAlso,omitempty"`
+}
+
 type ExerciseTrail struct {
 	ID                  string        `json:"id"`
 	Name                string        `json:"name"`
@@ -190,6 +225,11 @@ type WaterQualityTemporal struct {
 	Temperature []Value `json:"temperature"`
 	Source      string  `json:"source,omitempty"`
 	Location    *Point  `json:"location,omitempty"`
+}
+
+type Pollutant struct {
+	Name   string  `json:"name,omitempty"`
+	Values []Value `json:"values"`
 }
 
 type Value struct {

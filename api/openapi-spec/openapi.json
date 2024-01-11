@@ -2510,7 +2510,7 @@
             }
           },
           {
-            "name" :"aggr",
+            "name": "aggr",
             "in": "query",
             "description": "Aggregate temperatures by hour, day, month or year",
             "example": "hour",
@@ -2806,6 +2806,166 @@
                             "type": "string",
                             "format": "uri",
                             "example": "https://badplatsen.havochvatten.se/"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/airqualities": {
+      "get": {
+        "operationId": "getAirQuality",
+        "description": "Get information about air airqualities.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "The ID of this air quality",
+                            "example": "urn:ngsi-ld:AirQualityObserved:example"
+                          },
+                          "location": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "Point"
+                                ]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "description": "WGS84 longitude and latitude",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number"
+                                },
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
+                              }
+                            }
+                          },
+                          "dateObserved": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/airqualities/{id}": {
+      "get": {
+        "operationId": "getAirQualityByID",
+        "description": "Get information about air quality readings",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the air quality to be retrieved",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "The ID of this air quality",
+                            "example": "urn:ngsi-ld:AirQualityObserved:example"
+                          },
+                          "location": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "Point"
+                                ]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "description": "WGS84 longitude and latitude",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number"
+                                },
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
+                              }
+                            }
+                          },
+                          "pollutants": {
+                            "type": "array",
+                            "description": "list of historical readings of pollutants",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "example": "PM10"
+                                },
+                                "values": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "value": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 11.7
+                                      },
+                                      "observedAt": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
                           }
                         }
                       }
