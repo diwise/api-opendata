@@ -90,7 +90,6 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 
 		airQualityID, _ := url.QueryUnescape(chi.URLParam(r, "id"))
 		if airQualityID == "" {
-
 			problem := errors.NewProblemReport(http.StatusBadRequest, "badrequest", errors.Detail("no air quality id supplied in query"), errors.TraceID(traceID))
 			problem.WriteResponse(w)
 			return

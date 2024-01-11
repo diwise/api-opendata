@@ -126,11 +126,11 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 	weatherSvc := weather.NewWeatherService(ctx, contextBrokerURL, contextBrokerTenant)
 
 	r.Get(
-		"/api/airquality",
+		"/api/airqualities",
 		handlers.NewRetrieveAirQualitiesHandler(ctx, airQualitySvc),
 	)
 	r.Get(
-		"/api/airquality/{id}",
+		"/api/airqualities/{id}",
 		handlers.NewRetrieveAirQualityByIDHandler(ctx, airQualitySvc),
 	)
 	r.Get(

@@ -2818,10 +2818,10 @@
         }
       }
     },
-    "/airquality": {
+    "/airqualities": {
       "get": {
         "operationId": "getAirQuality",
-        "description": "Get information about air quality.",
+        "description": "Get information about air airqualities.",
         "parameters": [],
         "responses": {
           "200": {
@@ -2880,7 +2880,7 @@
         }
       }
     },
-    "/airquality/{id}": {
+    "/airqualities/{id}": {
       "get": {
         "operationId": "getAirQualityByID",
         "description": "Get information about air quality readings",
