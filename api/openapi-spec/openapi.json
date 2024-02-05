@@ -613,7 +613,11 @@
                   "floodlit",
                   "ice-skating",
                   "ski-classic",
-                  "ski-skate"
+                  "ski-lift",
+                  "anchor-lift",
+                  "button-lift",
+                  "ski-skate",
+                  "ski-slope"
                 ]
               }
             },
