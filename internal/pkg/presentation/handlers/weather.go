@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -16,10 +17,13 @@ import (
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
+	errs "github.com/diwise/service-chassis/pkg/presentation/api/http/errors"
 	"github.com/go-chi/chi/v5"
 )
 
-func getPointFromURL(r *http.Request) (int64, float64, float64, error) {
+var ErrNoCoordsInQuery error = errors.New("no coordinates specified")
+
+func getPointFromURL(ctx context.Context, r *http.Request) (int64, float64, float64, error) {
 	var distance int64 = 1000
 	var lon, lat float64
 	var err error
@@ -44,7 +48,7 @@ func getPointFromURL(r *http.Request) (int64, float64, float64, error) {
 			return 0, 0, 0, fmt.Errorf("invalid coordinates specified")
 		}
 	} else {
-		return 0, 0, 0, fmt.Errorf("no coordinates specified")
+		return 0, 0, 0, ErrNoCoordsInQuery
 	}
 
 	return distance, lat, lon, nil
@@ -82,13 +86,14 @@ func NewRetrieveWeatherHandler(ctx context.Context, svc services.WeatherService)
 		ctx, span := tracer.Start(r.Context(), "retrieve-weather")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
-		dist, lat, lon, err := getPointFromURL(r)
+		dist, lat, lon, err := getPointFromURL(ctx, r)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
 			err = fmt.Errorf("unable to get point (%w)", err)
 			log.Error("bad request", slog.String("err", err.Error()))
+			problem := errs.NewProblemReport(http.StatusBadRequest, "badrequest", errs.Detail(err.Error()), errs.TraceID(traceID))
+			problem.WriteResponse(w)
 			return
 		}
 
@@ -97,9 +102,10 @@ func NewRetrieveWeatherHandler(ctx context.Context, svc services.WeatherService)
 
 		weather, err := svc.Query().NearPoint(dist, lat, lon).Get(timeout)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
 			err = fmt.Errorf("unable to get weather")
 			log.Error("internal error", slog.String("err", err.Error()))
+			problem := errs.NewProblemReport(http.StatusInternalServerError, "internalerror", errs.Detail(err.Error()), errs.TraceID(traceID))
+			problem.WriteResponse(w)
 			return
 		}
 
@@ -107,9 +113,10 @@ func NewRetrieveWeatherHandler(ctx context.Context, svc services.WeatherService)
 
 		bytes, err := json.MarshalIndent(weather, " ", "  ")
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
 			err = fmt.Errorf("unable to marshal results to json (%w)", err)
 			log.Error("internal error", slog.String("err", err.Error()))
+			problem := errs.NewProblemReport(http.StatusInternalServerError, "internalerror", errs.Detail(err.Error()), errs.TraceID(traceID))
+			problem.WriteResponse(w)
 			return
 		}
 
@@ -124,21 +131,23 @@ func NewRetrieveWeatherByIDHandler(ctx context.Context, svc services.WeatherServ
 		ctx, span := tracer.Start(r.Context(), "retrieve-weather-byid")
 		defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-		_, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
+		traceID, ctx, log := o11y.AddTraceIDToLoggerAndStoreInContext(span, logging.GetFromContext(ctx), ctx)
 
 		woID, err := url.QueryUnescape(chi.URLParam(r, "id"))
 		if woID == "" {
 			err = fmt.Errorf("no weather id is supplied in query")
 			log.Error("bad request", slog.String("err", err.Error()))
-			w.WriteHeader(http.StatusBadRequest)
+			problem := errs.NewProblemReport(http.StatusBadRequest, "badrequest", errs.Detail(err.Error()), errs.TraceID(traceID))
+			problem.WriteResponse(w)
 			return
 		}
 
 		from, to, err := getTimeParamsFromURL(r)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
 			err = fmt.Errorf("unable to get time range (%w)", err)
 			log.Error("bad request", slog.String("err", err.Error()))
+			problem := errs.NewProblemReport(http.StatusBadRequest, "badrequest", errs.Detail(err.Error()), errs.TraceID(traceID))
+			problem.WriteResponse(w)
 			return
 		}
 
@@ -149,9 +158,10 @@ func NewRetrieveWeatherByIDHandler(ctx context.Context, svc services.WeatherServ
 
 		weather, err := svc.Query().ID(woID).BetweenTimes(from, to).Aggr(resolution).GetByID(timeout)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
 			err = fmt.Errorf("unable to get weather")
 			log.Error("internal error", slog.String("err", err.Error()))
+			problem := errs.NewProblemReport(http.StatusInternalServerError, "internalerror", errs.Detail(err.Error()), errs.TraceID(traceID))
+			problem.WriteResponse(w)
 			return
 		}
 
@@ -159,9 +169,10 @@ func NewRetrieveWeatherByIDHandler(ctx context.Context, svc services.WeatherServ
 
 		bytes, err := json.MarshalIndent(weather, " ", "  ")
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
 			err = fmt.Errorf("unable to marshal results to json (%w)", err)
 			log.Error("internal error", slog.String("err", err.Error()))
+			problem := errs.NewProblemReport(http.StatusInternalServerError, "internalerror", errs.Detail(err.Error()), errs.TraceID(traceID))
+			problem.WriteResponse(w)
 			return
 		}
 
