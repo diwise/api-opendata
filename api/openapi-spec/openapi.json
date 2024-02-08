@@ -613,7 +613,11 @@
                   "floodlit",
                   "ice-skating",
                   "ski-classic",
-                  "ski-skate"
+                  "ski-lift",
+                  "anchor-lift",
+                  "button-lift",
+                  "ski-skate",
+                  "ski-slope"
                 ]
               }
             },
@@ -2386,18 +2390,35 @@
           {
             "in": "query",
             "name": "coordinates",
-            "explode": false,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                }
               }
             },
-            "required": true,
-            "description": "Filter the returned properties per entry",
+            "description": "Retrieve observations in proximity to point [longitude, latitude] (specified in WGS84).",
             "example": [
-              "17.454723,62.266598"
+              17.454723,
+              62.266598
             ]
+          },
+          {
+            "in": "query",
+            "name": "maxDistance",
+            "explode": false,
+            "schema": {
+              "type": "number"
+            },
+            "required": false,
+            "description": "Maximum distance in meters from point specified in coordinates.",
+            "example": 1000
           }
         ],
         "responses": {
