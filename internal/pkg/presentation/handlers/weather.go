@@ -22,9 +22,10 @@ import (
 )
 
 var ErrNoCoordsInQuery error = errors.New("no coordinates specified")
+var ErrInvalidCoordinates error = errors.New("invalid coordinates specified")
 
 func getPointFromURL(ctx context.Context, r *http.Request) (int64, float64, float64, error) {
-	var distance int64 = 1000
+	var distance int64 = 5000
 	var lon, lat float64
 	var err error
 
@@ -37,18 +38,18 @@ func getPointFromURL(ctx context.Context, r *http.Request) (int64, float64, floa
 	if coordinates != "" {
 		coords := strings.Split(coordinates, ",")
 		if len(coords) != 2 {
-			return 0, 0, 0, fmt.Errorf("invalid coordinates specified")
+			return 0, 0, 0, ErrInvalidCoordinates
 		}
 		lon, err = strconv.ParseFloat(strings.Replace(coords[0], "[", "", 1), 64)
 		if err != nil {
-			return 0, 0, 0, fmt.Errorf("invalid coordinates specified")
+			return 0, 0, 0, ErrInvalidCoordinates
 		}
 		lat, err = strconv.ParseFloat(strings.Replace(coords[1], "]", "", 1), 64)
 		if err != nil {
-			return 0, 0, 0, fmt.Errorf("invalid coordinates specified")
+			return 0, 0, 0, ErrInvalidCoordinates
 		}
 	} else {
-		return 0, 0, 0, ErrNoCoordsInQuery
+		return distance, 62.390802, 17.306982, nil
 	}
 
 	return distance, lat, lon, nil
