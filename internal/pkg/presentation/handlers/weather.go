@@ -111,7 +111,7 @@ func NewRetrieveWeatherHandler(ctx context.Context, svc services.WeatherService)
 
 		w.Header().Add("Content-Type", "application/json")
 
-		bytes, err := json.MarshalIndent(weather, " ", "  ")
+		bytes, err := json.Marshal(weather)
 		if err != nil {
 			err = fmt.Errorf("unable to marshal results to json (%w)", err)
 			log.Error("internal error", slog.String("err", err.Error()))
