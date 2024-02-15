@@ -85,6 +85,7 @@ type SportsField struct {
 	Source              string        `json:"source"`
 	ManagedBy           *Organisation `json:"managedBy,omitempty"`
 	Owner               *Organisation `json:"owner,omitempty"`
+	SeeAlso             []string      `json:"seeAlso,omitempty"`
 	Status              string        `json:"status,omitempty"`
 }
 

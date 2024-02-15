@@ -182,12 +182,19 @@ func marshalSportsFieldsToJSON(sportsfields []domain.SportsField, mapper SportsF
 
 func newSportsFieldsMapper(fields []string, location func(*domain.SportsField) any) SportsFieldsMapperFunc {
 
-	omitempty := func(s *string) any {
-		if s == nil || *s == "" {
-			return nil
+	omitempty := func(v any) any {
+		switch value := v.(type) {
+		case []string:
+			if len(value) == 0 || (len(value) == 1 && len(value[0]) == 0) {
+				return nil
+			}
+		case string:
+			if len(value) == 0 {
+				return nil
+			}
 		}
 
-		return *s
+		return v
 	}
 
 	mappers := map[string]func(*domain.SportsField) (string, any){
@@ -202,11 +209,12 @@ func newSportsFieldsMapper(fields []string, location func(*domain.SportsField) a
 			return "dateLastPreparation", omitempty(sf.DateLastPreparation)
 		},
 		"datemodified": func(sf *domain.SportsField) (string, any) { return "dateModified", *sf.DateModified },
-		"publicaccess": func(sf *domain.SportsField) (string, any) { return "publicAccess", omitempty(&sf.PublicAccess) },
+		"publicaccess": func(sf *domain.SportsField) (string, any) { return "publicAccess", omitempty(sf.PublicAccess) },
 		"source":       func(sf *domain.SportsField) (string, any) { return "source", sf.Source },
 		"managedby":    func(sf *domain.SportsField) (string, any) { return "managedBy", sf.ManagedBy },
 		"owner":        func(sf *domain.SportsField) (string, any) { return "owner", sf.Owner },
-		"status":       func(sf *domain.SportsField) (string, any) { return "status", omitempty(&sf.Status) },
+		"status":       func(sf *domain.SportsField) (string, any) { return "status", omitempty(sf.Status) },
+		"seealso":      func(sf *domain.SportsField) (string, any) { return "seeAlso", omitempty(sf.SeeAlso) },
 	}
 
 	return func(t *domain.SportsField) ([]byte, error) {
