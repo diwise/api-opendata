@@ -226,6 +226,7 @@ func newTrailMapper(fields []string, location func(*domain.ExerciseTrail) any) T
 		"type":            func(t *domain.ExerciseTrail) (string, any) { return "type", "ExerciseTrail" },
 		"name":            func(t *domain.ExerciseTrail) (string, any) { return "name", t.Name },
 		"description":     func(t *domain.ExerciseTrail) (string, any) { return "description", t.Description },
+		"annotations":     func(t *domain.ExerciseTrail) (string, any) { return "annotations", omitempty(t.Annotations) },
 		"location":        func(t *domain.ExerciseTrail) (string, any) { return "location", location(t) },
 		"categories":      func(t *domain.ExerciseTrail) (string, any) { return "categories", t.Categories },
 		"length":          func(t *domain.ExerciseTrail) (string, any) { return "length", t.Length },
