@@ -165,6 +165,7 @@ func (svc *sportsfieldSvc) refresh(ctx context.Context) (count int, err error) {
 			Location:     sf.Location,
 			Source:       sf.Source,
 			Status:       sf.Status,
+			SeeAlso:      sf.SeeAlso(),
 		}
 
 		if len(sf.ManagedBy) > 0 {
@@ -227,6 +228,7 @@ type sportsFieldDTO struct {
 	DateModified        *domain.DateTime    `json:"dateModified,omitempty"`
 	DateLastPreparation *domain.DateTime    `json:"dateLastPreparation,omitempty"`
 	Source              string              `json:"source"`
+	See                 json.RawMessage     `json:"seeAlso"`
 	ManagedBy           string              `json:"managedBy"`
 	Owner               string              `json:"owner"`
 	Status              string              `json:"status"`
@@ -242,6 +244,30 @@ func (f *sportsFieldDTO) Categories() []string {
 			var valueAsString string
 
 			if err = json.Unmarshal(f.Category, &valueAsString); err != nil {
+				return []string{err.Error()}
+			}
+
+			return []string{valueAsString}
+		}
+	}
+
+	return valueAsArray
+}
+
+// SeeAlso extracts the sports field reference links as a string array, regardless
+// of the format string vs []string of the response property
+func (f *sportsFieldDTO) SeeAlso() []string {
+	return rawJSONToSliceOfStrings(f.See)
+}
+
+func rawJSONToSliceOfStrings(rm json.RawMessage) []string {
+	valueAsArray := []string{}
+
+	if len(rm) > 0 {
+		if err := json.Unmarshal(rm, &valueAsArray); err != nil {
+			var valueAsString string
+
+			if err = json.Unmarshal(rm, &valueAsString); err != nil {
 				return []string{err.Error()}
 			}
 

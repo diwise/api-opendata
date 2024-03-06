@@ -36,6 +36,8 @@ func NewRetrieveExerciseTrailByIDHandler(ctx context.Context, trailService exerc
 			return
 		}
 
+		fields := urlValueAsSlice(r.URL.Query(), "fields")
+
 		trail, err := trailService.GetByID(trailID)
 
 		if err != nil {
@@ -43,12 +45,17 @@ func NewRetrieveExerciseTrailByIDHandler(ctx context.Context, trailService exerc
 			return
 		}
 
+		const geoJSONContentType string = "application/geo+json"
 		const gpxContentType string = "application/gpx+xml"
 
 		acceptedContentType := "application/json"
 		acceptHeader := r.Header["Accept"][0]
-		if acceptHeader != "" && strings.HasPrefix(acceptHeader, gpxContentType) {
-			acceptedContentType = gpxContentType
+		if acceptHeader != "" {
+			if strings.HasPrefix(acceptHeader, geoJSONContentType) {
+				acceptedContentType = geoJSONContentType
+			} else if strings.HasPrefix(acceptHeader, gpxContentType) {
+				acceptedContentType = gpxContentType
+			}
 		}
 
 		responseBody := []byte{}
@@ -62,6 +69,22 @@ func NewRetrieveExerciseTrailByIDHandler(ctx context.Context, trailService exerc
 			}
 
 			responseBody = []byte("{\"data\":" + string(responseBody) + "}")
+		} else if acceptedContentType == geoJSONContentType {
+			locationMapper := func(t *domain.ExerciseTrail) any { return t.Location }
+			fields := append([]string{"type", "name", "categories", "length"}, fields...)
+
+			mapToGeoJSON := newGeoJSONMapper(newTrailMapper(fields, locationMapper))
+			geoJsonBytes, err := mapToGeoJSON(trail)
+
+			if err != nil {
+				log.Error("failed to marshal trail to geo json", slog.String("err", err.Error()))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Add("Content-Type", acceptedContentType)
+			w.Header().Add("Cache-Control", "max-age=600")
+			w.Write(geoJsonBytes)
 		} else if acceptedContentType == gpxContentType {
 			responseBody, err = convertTrailToGPX(trail)
 			if err != nil {
@@ -203,6 +226,7 @@ func newTrailMapper(fields []string, location func(*domain.ExerciseTrail) any) T
 		"type":            func(t *domain.ExerciseTrail) (string, any) { return "type", "ExerciseTrail" },
 		"name":            func(t *domain.ExerciseTrail) (string, any) { return "name", t.Name },
 		"description":     func(t *domain.ExerciseTrail) (string, any) { return "description", t.Description },
+		"annotations":     func(t *domain.ExerciseTrail) (string, any) { return "annotations", omitempty(t.Annotations) },
 		"location":        func(t *domain.ExerciseTrail) (string, any) { return "location", location(t) },
 		"categories":      func(t *domain.ExerciseTrail) (string, any) { return "categories", t.Categories },
 		"length":          func(t *domain.ExerciseTrail) (string, any) { return "length", t.Length },
