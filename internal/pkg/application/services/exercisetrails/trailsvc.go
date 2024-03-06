@@ -166,6 +166,7 @@ func (svc *exerciseTrailSvc) refresh(ctx context.Context) (count int, err error)
 			ID:                  t.ID,
 			Name:                t.Name,
 			Description:         t.Description,
+			Annotations:         t.Annotations,
 			Categories:          t.Categories(),
 			PublicAccess:        t.PublicAccess,
 			Location:            *domain.NewLineString(t.Location.Coordinates),
@@ -221,6 +222,7 @@ type trailDTO struct {
 	ID           string          `json:"id"`
 	Name         string          `json:"name"`
 	Description  string          `json:"description"`
+	Annotations  string          `json:"annotations"`
 	Category     json.RawMessage `json:"category"`
 	PublicAccess string          `json:"publicAccess"`
 	Location     struct {

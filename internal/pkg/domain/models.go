@@ -52,6 +52,7 @@ type ExerciseTrail struct {
 	ID                  string        `json:"id"`
 	Name                string        `json:"name"`
 	Description         string        `json:"description"`
+	Annotations         string        `json:"annotations"`
 	Location            LineString    `json:"location"`
 	Categories          []string      `json:"categories"`
 	PublicAccess        string        `json:"publicAccess"`
