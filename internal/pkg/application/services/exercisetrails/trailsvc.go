@@ -171,6 +171,8 @@ func (svc *exerciseTrailSvc) refresh(ctx context.Context) (count int, err error)
 			PublicAccess:        t.PublicAccess,
 			Location:            *domain.NewLineString(t.Location.Coordinates),
 			Length:              math.Round(t.Length*10) / 10,
+			Width:               math.Round(t.Width*10) / 10,
+			ElevationGain:       math.Round(t.ElevationGain*10) / 10,
 			Difficulty:          math.Round(t.Difficulty*100) / 100,
 			PaymentRequired:     t.PaymentRequired == "yes",
 			Status:              t.Status,
@@ -230,6 +232,8 @@ type trailDTO struct {
 		Coordinates [][]float64 `json:"coordinates"`
 	} `json:"location"`
 	Length              float64         `json:"length"`
+	Width               float64         `json:"width"`
+	ElevationGain       float64         `json:"elevationgain"`
 	Difficulty          float64         `json:"difficulty"`
 	PaymentRequired     string          `json:"paymentRequired"`
 	Source              string          `json:"source"`

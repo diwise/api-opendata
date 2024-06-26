@@ -230,6 +230,8 @@ func newTrailMapper(fields []string, location func(*domain.ExerciseTrail) any) T
 		"location":        func(t *domain.ExerciseTrail) (string, any) { return "location", location(t) },
 		"categories":      func(t *domain.ExerciseTrail) (string, any) { return "categories", t.Categories },
 		"length":          func(t *domain.ExerciseTrail) (string, any) { return "length", t.Length },
+		"width":           func(t *domain.ExerciseTrail) (string, any) { return "width", t.Width },
+		"elevationgain":   func(t *domain.ExerciseTrail) (string, any) { return "elevationGain", t.ElevationGain },
 		"difficulty":      func(t *domain.ExerciseTrail) (string, any) { return "difficulty", t.Difficulty },
 		"paymentrequired": func(t *domain.ExerciseTrail) (string, any) { return "paymentRequired", t.PaymentRequired },
 		"publicaccess":    func(t *domain.ExerciseTrail) (string, any) { return "publicAccess", omitempty(t.PublicAccess) },
