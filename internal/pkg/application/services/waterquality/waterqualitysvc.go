@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"sort"
 	"strings"
@@ -333,7 +334,7 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 
 		b, err := svc.requestTemporalDataForSingleEntity(ctx, svc.contextBrokerURL, w.ID, time.Time{}, time.Time{})
 		if err != nil {
-			logger.Info("no temporal data found for water quality", "id", wq.ID)
+			logger.Error("no temporal data found for water quality", "id", wq.ID, "err", err.Error())
 			return
 		}
 
@@ -386,9 +387,7 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 	if err != nil {
-		logger := logging.GetFromContext(ctx)
-		logger.Error("failed to create http request", slog.String("err", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("failed to create http request: %s", err.Error())
 	}
 
 	req.Header.Add("Accept", "application/ld+json")
@@ -396,23 +395,19 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 
 	response, err := httpClient.Do(req)
 	if err != nil {
-		logger := logging.GetFromContext(ctx)
-		logger.Error("request failed", slog.String("err", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("request failed: %s", err.Error())
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		logger := logging.GetFromContext(ctx)
-		logger.Error("request failed, status code not ok", slog.Int64("response", int64(response.StatusCode)))
-		return nil, err
+		rb, _ := httputil.DumpResponse(response, true)
+		logging.GetFromContext(ctx).Debug("bad response", "response", string(rb))
+		return nil, fmt.Errorf("request failed, status code %d not ok", response.StatusCode)
 	}
 
 	b, err := io.ReadAll(response.Body)
 	if err != nil {
-		logger := logging.GetFromContext(ctx)
-		logger.Error("failed to read response body", slog.String("err", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("failed to read response body: %s", err.Error())
 	}
 
 	return b, nil
