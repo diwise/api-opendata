@@ -15,7 +15,6 @@
   },
   "security": [
     {
-      "ApiKeyAuth": []
     }
   ],
   "servers": [
@@ -610,6 +609,9 @@
                 "type": "string",
                 "enum": [
                   "bike-track",
+                  "bike-track-enduro",
+                  "bike-track-flow",
+                  "bike-track-xc",
                   "floodlit",
                   "ice-skating",
                   "ski-classic",
@@ -637,13 +639,15 @@
                   "datelastpreparation",
                   "description",
                   "difficulty",
+                  "elevationgain",
                   "location",
                   "managedby",
                   "owner",
                   "paymentrequired",
                   "publicaccess",
                   "source",
-                  "status"
+                  "status",
+                  "width"
                 ]
               }
             },
@@ -741,6 +745,18 @@
                             "description": "The length of this trail in kilometers",
                             "format": "float",
                             "example": 5
+                          },
+                          "width": {
+                            "type": "number",
+                            "description": "The minimum width of this trail in centimeters",
+                            "format": "float",
+                            "example": 150
+                          },
+                          "elevationGain": {
+                            "type": "number",
+                            "description": "The elevation gain of this trail in meters",
+                            "format": "float",
+                            "example": 72
                           },
                           "difficulty": {
                             "type": "number",
@@ -896,6 +912,18 @@
                                 "description": "The length of this trail in kilometers",
                                 "format": "float",
                                 "example": 5
+                              },
+                              "width": {
+                                "type": "number",
+                                "description": "The minimum width of this trail in centimeters",
+                                "format": "float",
+                                "example": 150
+                              },
+                              "elevationGain": {
+                                "type": "number",
+                                "description": "The elevation gain of this trail in meters",
+                                "format": "float",
+                                "example": 72
                               },
                               "difficulty": {
                                 "type": "number",
@@ -1136,6 +1164,18 @@
                           "type": "number",
                           "format": "float",
                           "example": 5.0
+                        },
+                        "width": {
+                          "type": "number",
+                          "description": "The minimum width of this trail in centimeters",
+                          "format": "float",
+                          "example": 150
+                        },
+                        "elevationGain": {
+                          "type": "number",
+                          "description": "The elevation gain of this trail in meters",
+                          "format": "float",
+                          "example": 72
                         },
                         "difficulty": {
                           "type": "number",
