@@ -635,6 +635,7 @@
               "items": {
                 "type": "string",
                 "enum": [
+                  "annotations",
                   "areaserved",
                   "datelastpreparation",
                   "description",
@@ -677,6 +678,16 @@
                             "type": "string",
                             "description": "The name of this exercise trail",
                             "example": "Hotellslingan 5K"
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "A description of this exercise trail",
+                            "example": "After a rather steep climb you are rewarded with a lovely view over the city"
+                          },
+                          "annotations": {
+                            "type": "string",
+                            "description": "A field reserved for annotations (incidences, remarks, etc.).",
+                            "example": "Some areas currently covered by storm debris. Clearing up is in progress."
                           },
                           "owner": {
                             "type": "object",
@@ -729,11 +740,18 @@
                               "type": "string",
                               "enum": [
                                 "bike-track",
+                                "bike-track-enduro",
+                                "bike-track-flow",
+                                "bike-track-xc",
                                 "floodlit",
                                 "ice-skating",
                                 "ski-classic",
-                                "ski-skate"
-                              ]
+                                "ski-lift",
+                                "anchor-lift",
+                                "button-lift",
+                                "ski-skate",
+                                "ski-slope"
+                                ]
                             },
                             "example": [
                               "floodlit",
@@ -869,6 +887,16 @@
                                 "type": "string",
                                 "example": "Hotellslingan 5K"
                               },
+                              "description": {
+                                "type": "string",
+                                "description": "A description of this exercise trail",
+                                "example": "After a rather steep climb you are rewarded with a lovely view over the city"
+                              },
+                              "annotations": {
+                                "type": "string",
+                                "description": "A field reserved for annotations (incidences, remarks, etc.).",
+                                "example": "Some areas currently covered by storm debris. Clearing up is in progress."
+                              },
                               "owner": {
                                 "type": "object",
                                 "properties": {
@@ -896,10 +924,17 @@
                                   "type": "string",
                                   "enum": [
                                     "bike-track",
+                                    "bike-track-enduro",
+                                    "bike-track-flow",
+                                    "bike-track-xc",
                                     "floodlit",
                                     "ice-skating",
                                     "ski-classic",
-                                    "ski-skate"
+                                    "ski-lift",
+                                    "anchor-lift",
+                                    "button-lift",
+                                    "ski-skate",
+                                    "ski-slope"
                                   ]
                                 },
                                 "example": [
@@ -1076,6 +1111,16 @@
                           "description": "The name of this exercise trail",
                           "example": "Hotellslingan 5K"
                         },
+                        "description": {
+                          "type": "string",
+                          "description": "A description of this exercise trail",
+                          "example": "After a rather steep climb you are rewarded with a lovely view over the city"
+                        },
+                        "annotations": {
+                          "type": "string",
+                          "description": "A field reserved for annotations (incidences, remarks, etc.).",
+                          "example": "Some areas currently covered by storm debris. Clearing up is in progress."
+                        },
                         "owner": {
                           "type": "object",
                           "properties": {
@@ -1140,10 +1185,17 @@
                             "type": "string",
                             "enum": [
                               "bike-track",
+                              "bike-track-enduro",
+                              "bike-track-flow",
+                              "bike-track-xc",
                               "floodlit",
                               "ice-skating",
                               "ski-classic",
-                              "ski-skate"
+                              "ski-lift",
+                              "anchor-lift",
+                              "button-lift",
+                              "ski-skate",
+                              "ski-slope"
                             ]
                           },
                           "example": [
@@ -1207,6 +1259,166 @@
                           "type": "string",
                           "description": "Grouping of related exercise trails",
                           "example": "Motionsspår Södra spårområdet"
+                        },
+                        "dateLastPreparation": {
+                          "type": "string",
+                          "description": "Time of last preparation",
+                          "example": "2022-10-02T03:27:18Z"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "application/geo+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "example": "urn:ngsi-ld:ExerciseTrail:se:sundsvall:facilities:123"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "Feature"
+                      ]
+                    },
+                    "geometry": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "LineString"
+                          ]
+                        },
+                        "coordinates": {
+                          "type": "array",
+                          "items": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 3,
+                            "items": {
+                              "type": "number",
+                              "description": "WGS84 longitude and latitude"
+                            }
+                          },
+                          "example": [
+                            [
+                              17.454723,
+                              62.266598
+                            ],
+                            [
+                              17.454727,
+                              62.266612
+                            ]
+                          ]
+                        }
+                      }
+                    },
+                    "properties": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "ExerciseTrail"
+                          ]
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "Hotellslingan 5K"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "A description of this exercise trail",
+                          "example": "After a rather steep climb you are rewarded with a lovely view over the city"
+                        },
+                        "annotations": {
+                          "type": "string",
+                          "description": "A field reserved for annotations (incidences, remarks, etc.).",
+                          "example": "Some areas currently covered by storm debris. Clearing up is in progress."
+                        },
+                        "owner": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "description": "The name of the owner of this exercise trail",
+                              "example": "Sundsvalls kommun Friluftsenheten"
+                            }
+                          }
+                        },
+                        "managedBy": {
+                          "type": "object",
+                          "properties": {
+                            "name": {
+                              "type": "string",
+                              "description": "The name of the manager of this exercise trail",
+                              "example": "Sundsvalls kommun Friluftsenheten"
+                            }
+                          }
+                        },
+                        "categories": {
+                          "type": "array",
+                          "description": "List of exercise trail categories",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "bike-track",
+                              "bike-track-enduro",
+                              "bike-track-flow",
+                              "bike-track-xc",
+                              "floodlit",
+                              "ice-skating",
+                              "ski-classic",
+                              "ski-lift",
+                              "anchor-lift",
+                              "button-lift",
+                              "ski-skate",
+                              "ski-slope"
+                            ]
+                          },
+                          "example": [
+                            "floodlit",
+                            "ski-classic"
+                          ]
+                        },
+                        "length": {
+                          "type": "number",
+                          "description": "The length of this trail in kilometers",
+                          "format": "float",
+                          "example": 5
+                        },
+                        "difficulty": {
+                          "type": "number",
+                          "description": "A difficulty rating in the range [0.0 1.0] where 0 is easy and 1 is very hard",
+                          "format": "float",
+                          "example": 0.5
+                        },
+                        "paymentRequired": {
+                          "type": "boolean",
+                          "description": "A value determining if payment is required to use the trail"
+                        },
+                        "publicAccess": {
+                          "type": "string",
+                          "description": "Information about when/if this trail is open for the public",
+                          "enum": [
+                            "always",
+                            "no",
+                            "opening-hours",
+                            "after-school"
+                          ],
+                          "example": "after-school"
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "The status of this exercise trail",
+                          "enum": [
+                            "open",
+                            "closed"
+                          ]
                         },
                         "dateLastPreparation": {
                           "type": "string",
@@ -1411,7 +1623,8 @@
                   "managedby",
                   "owner",
                   "publicaccess",
-                  "source"
+                  "source",
+                  "seealso"
                 ]
               }
             },
@@ -2422,6 +2635,209 @@
         }
       }
     },
+    "/waterqualities": {
+      "get": {
+        "operationId": "getWaterQuality",
+        "description": "Get information about water quality.",
+        "security": [
+          {}
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "maxDistance",
+            "explode": false,
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "description": "Filter the returned properties per entry"
+          },
+          {
+            "in": "query",
+            "name": "coordinates",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "required": false,
+            "description": "Filter the returned properties per entry"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "The ID of this water quality",
+                            "example": "urn:ngsi-ld:WaterQuality:temperature:se:test"
+                          },
+                          "location": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "Point"
+                                ]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "description": "WGS84 longitude and latitude",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number"
+                                },
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
+                              }
+                            }
+                          },
+                          "temperature": {
+                            "type": "number",
+                            "example": 11.7
+                          },
+                          "source": {
+                            "type": "string",
+                            "format": "uri",
+                            "example": "https://badplatsen.havochvatten.se/"
+                          },
+                          "dateObserved": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/waterqualities/{id}": {
+      "get": {
+        "operationId": "getWaterQualityByID",
+        "description": "Get information about water quality readings",
+        "security": [
+          {}
+        ],
+        "parameters": [
+          {
+            "name": "timeAt",
+            "in": "query",
+            "description": "Select water qualities from time",
+            "example": "2021-06-01T00:00:00Z",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endTimeAt",
+            "in": "query",
+            "description": "Select water qualities up to time",
+            "example": "2021-07-01T00:00:00Z",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "The ID of this water quality",
+                            "example": "urn:ngsi-ld:WaterQuality:temperature:se:test"
+                          },
+                          "location": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "Point"
+                                ]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "description": "WGS84 longitude and latitude",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number"
+                                },
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
+                              }
+                            }
+                          },
+                          "temperature": {
+                            "type": "array",
+                            "description": "list of historical readings of temperatures",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": "number",
+                                  "format": "float",
+                                  "example": 11.7
+                                },
+                                "observedAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              }
+                            }
+                          },
+                          "source": {
+                            "type": "string",
+                            "format": "uri",
+                            "example": "https://badplatsen.havochvatten.se/"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/weather": {
       "get": {
         "operationId": "getWeather",
@@ -2650,223 +3066,6 @@
                                 "example": "2021-06-01T00:00:00Z"
                               }
                             }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/trafficflow": {
-      "get": {
-        "operationId": "getTrafficFlow",
-        "description": "Get traffic flow information.",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
-    "/waterqualities": {
-      "get": {
-        "operationId": "getWaterQuality",
-        "description": "Get information about water quality.",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "maxDistance",
-            "explode": false,
-            "schema": {
-              "type": "string"
-            },
-            "required": false,
-            "description": "Filter the returned properties per entry"
-          },
-          {
-            "in": "query",
-            "name": "coordinates",
-            "explode": false,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "required": false,
-            "description": "Filter the returned properties per entry"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "description": "The ID of this water quality",
-                            "example": "urn:ngsi-ld:WaterQuality:temperature:se:test"
-                          },
-                          "location": {
-                            "type": "object",
-                            "properties": {
-                              "type": {
-                                "type": "string",
-                                "enum": [
-                                  "Point"
-                                ]
-                              },
-                              "coordinates": {
-                                "type": "array",
-                                "description": "WGS84 longitude and latitude",
-                                "minItems": 2,
-                                "maxItems": 3,
-                                "items": {
-                                  "type": "number"
-                                },
-                                "example": [
-                                  17.454723,
-                                  62.266598
-                                ]
-                              }
-                            }
-                          },
-                          "temperature": {
-                            "type": "number",
-                            "example": 11.7
-                          },
-                          "source": {
-                            "type": "string",
-                            "format": "uri",
-                            "example": "https://badplatsen.havochvatten.se/"
-                          },
-                          "dateObserved": {
-                            "type": "string",
-                            "format": "date-time"
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/waterqualities/{id}": {
-      "get": {
-        "operationId": "getWaterQualityByID",
-        "description": "Get information about water quality readings",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "ID of the water quality to be retrieved",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "timeAt",
-            "in": "query",
-            "description": "Select water qualities from time",
-            "example": "2021-06-01T00:00:00Z",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "endTimeAt",
-            "in": "query",
-            "description": "Select water qualities up to time",
-            "example": "2021-07-01T00:00:00Z",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "description": "The ID of this water quality",
-                            "example": "urn:ngsi-ld:WaterQuality:temperature:se:test"
-                          },
-                          "location": {
-                            "type": "object",
-                            "properties": {
-                              "type": {
-                                "type": "string",
-                                "enum": [
-                                  "Point"
-                                ]
-                              },
-                              "coordinates": {
-                                "type": "array",
-                                "description": "WGS84 longitude and latitude",
-                                "minItems": 2,
-                                "maxItems": 3,
-                                "items": {
-                                  "type": "number"
-                                },
-                                "example": [
-                                  17.454723,
-                                  62.266598
-                                ]
-                              }
-                            }
-                          },
-                          "temperature": {
-                            "type": "array",
-                            "description": "list of historical readings of temperatures",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "value": {
-                                  "type": "number",
-                                  "format": "float",
-                                  "example": 11.7
-                                },
-                                "observedAt": {
-                                  "type": "string",
-                                  "format": "date-time"
-                                }
-                              }
-                            }
-                          },
-                          "source": {
-                            "type": "string",
-                            "format": "uri",
-                            "example": "https://badplatsen.havochvatten.se/"
                           }
                         }
                       }
