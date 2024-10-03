@@ -8,7 +8,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/matryer/is v1.4.1
 	github.com/riandyrn/otelchi v0.6.0
-	github.com/rs/cors v1.10.1
+	github.com/rs/cors v1.11.1
 	go.opentelemetry.io/otel v1.25.0
 	gopkg.in/yaml.v2 v2.4.0
 )
