@@ -121,6 +121,26 @@ func TestGetExerciseTrailsWithCertainCategories(t *testing.T) {
 	is.Equal(len(svc.GetAllCalls()), 1) // Get should have been called once
 }
 
+func TestGetExerciseTrailAsGeoJSON(t *testing.T) {
+	is, r, ts := setupTest(t)
+
+	svc := defaultTrailsMock()
+	oldfunc := svc.GetByIDFunc
+	svc.GetByIDFunc = func(id string) (*domain.ExerciseTrail, error) {
+		is.Equal(id, "expected-id")
+		return oldfunc(id)
+	}
+
+	r.Get("/{id}", NewRetrieveExerciseTrailByIDHandler(context.Background(), svc))
+	response, responseBody := newGetRequest(is, ts, "application/geo+json", "/expected-id", nil)
+
+	is.Equal(response.StatusCode, http.StatusOK) // response status should be 200 OK
+	is.Equal(len(svc.GetByIDCalls()), 1)         // Get should have been called once
+
+	const expected string = `{"type":"Feature","id":"trail0","geometry":{"type":"LineString","coordinates":[[17.313069,62.368439,32.1],[17.313284,62.368418,42.5],[17.313413,62.368416,38.7]]},"properties":{"categories":["bike-track"],"length":7,"name":"test0","type":"ExerciseTrail"}}`
+	is.Equal(responseBody, expected)
+}
+
 const expectedGPXOutput string = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx creator="diwise cip" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd" version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
   <trk>
@@ -160,7 +180,7 @@ func TestGetExerciseTrailAsGPX(t *testing.T) {
 
 const expectedGeoJSONOutput string = `{"type":"FeatureCollection", "features": [{"type":"Feature","id":"trail0","geometry":{"type":"LineString","coordinates":[[17.313069,62.368439,32.1],[17.313284,62.368418,42.5],[17.313413,62.368416,38.7]]},"properties":{"categories":["bike-track"],"length":7,"name":"test0","type":"ExerciseTrail"}}]}`
 
-func TestGetExerciseTrailAsGeoJSON(t *testing.T) {
+func TestGetAllExerciseTrailsAsGeoJSON(t *testing.T) {
 	is, r, ts := setupTest(t)
 
 	svc := defaultTrailsMock()

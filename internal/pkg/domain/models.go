@@ -87,10 +87,13 @@ type ExerciseTrail struct {
 	ID                  string        `json:"id"`
 	Name                string        `json:"name"`
 	Description         string        `json:"description"`
+	Annotations         string        `json:"annotations"`
 	Location            LineString    `json:"location"`
 	Categories          []string      `json:"categories"`
 	PublicAccess        string        `json:"publicAccess"`
 	Length              float64       `json:"length"`
+	Width               float64       `json:"width"`
+	ElevationGain       float64       `json:"elevationGain"`
 	Difficulty          float64       `json:"difficulty"`
 	PaymentRequired     bool          `json:"paymentRequired"`
 	Status              string        `json:"status"`
@@ -120,6 +123,7 @@ type SportsField struct {
 	Source              string        `json:"source"`
 	ManagedBy           *Organisation `json:"managedBy,omitempty"`
 	Owner               *Organisation `json:"owner,omitempty"`
+	SeeAlso             []string      `json:"seeAlso,omitempty"`
 	Status              string        `json:"status,omitempty"`
 }
 

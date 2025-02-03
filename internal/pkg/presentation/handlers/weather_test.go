@@ -64,7 +64,7 @@ func TestThatBadStartTimeFails(t *testing.T) {
 	url := fmt.Sprintf("/{id}?timeAt=%s&endTimeAt=%s", "gurka", "2010-01-01T22:23:24Z")
 	req, _ := http.NewRequest("GET", url, nil)
 
-	NewRetrieveWeatherHandler(context.Background(), svc).ServeHTTP(rw, req)
+	NewRetrieveWeatherByIDHandler(context.Background(), svc).ServeHTTP(rw, req)
 
 	is.Equal(rw.Code, http.StatusBadRequest) // response status should be 400 bad request
 }
