@@ -218,49 +218,49 @@ func (svc *aqsvc) refresh(ctx context.Context) (count int, err error) {
 		t, _ := c.RetrieveTemporalEvolutionOfEntity(ctx, a.ID, headers, contextbroker.Between(time.Now().Add(-24*time.Hour), time.Now()))
 
 		if a.AtmosphericPressure != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("AtmosphericPressure", *a.AtmosphericPressure, dateObserved, t.Property("atmosphericpressure")))
+			details.Pollutants = append(details.Pollutants, addPollutant("AtmosphericPressure", *a.AtmosphericPressure, dateObserved, t.Found.Property("atmosphericpressure")))
 		}
 		if a.Temperature != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("Temperature", *a.Temperature, dateObserved, t.Property("temperature")))
+			details.Pollutants = append(details.Pollutants, addPollutant("Temperature", *a.Temperature, dateObserved, t.Found.Property("temperature")))
 		}
 		if a.RelativeHumidity != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("RelativeHumidity", *a.RelativeHumidity, dateObserved, t.Property("relativehumidity")))
+			details.Pollutants = append(details.Pollutants, addPollutant("RelativeHumidity", *a.RelativeHumidity, dateObserved, t.Found.Property("relativehumidity")))
 		}
 		if a.ParticleCount != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("ParticleCount", *a.ParticleCount, dateObserved, t.Property("particlecount")))
+			details.Pollutants = append(details.Pollutants, addPollutant("ParticleCount", *a.ParticleCount, dateObserved, t.Found.Property("particlecount")))
 		}
 		if a.PM1 != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("PM1", *a.PM1, dateObserved, t.Property("pm1")))
+			details.Pollutants = append(details.Pollutants, addPollutant("PM1", *a.PM1, dateObserved, t.Found.Property("pm1")))
 		}
 		if a.PM4 != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("PM4", *a.PM4, dateObserved, t.Property("pm4")))
+			details.Pollutants = append(details.Pollutants, addPollutant("PM4", *a.PM4, dateObserved, t.Found.Property("pm4")))
 		}
 		if a.PM10 != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("PM10", *a.PM10, dateObserved, t.Property("pm10")))
+			details.Pollutants = append(details.Pollutants, addPollutant("PM10", *a.PM10, dateObserved, t.Found.Property("pm10")))
 		}
 		if a.PM25 != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("PM25", *a.PM25, dateObserved, t.Property("pm25")))
+			details.Pollutants = append(details.Pollutants, addPollutant("PM25", *a.PM25, dateObserved, t.Found.Property("pm25")))
 		}
 		if a.TotalSuspendedParticulate != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("TotalSuspendedParticulate", *a.TotalSuspendedParticulate, dateObserved, t.Property("totalsuspendedparticulate")))
+			details.Pollutants = append(details.Pollutants, addPollutant("TotalSuspendedParticulate", *a.TotalSuspendedParticulate, dateObserved, t.Found.Property("totalsuspendedparticulate")))
 		}
 		if a.CO2 != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("CO2", *a.CO2, dateObserved, t.Property("co2")))
+			details.Pollutants = append(details.Pollutants, addPollutant("CO2", *a.CO2, dateObserved, t.Found.Property("co2")))
 		}
 		if a.NO != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("NO", *a.NO, dateObserved, t.Property("no")))
+			details.Pollutants = append(details.Pollutants, addPollutant("NO", *a.NO, dateObserved, t.Found.Property("no")))
 		}
 		if a.NO2 != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("NO2", *a.NO2, dateObserved, t.Property("no2")))
+			details.Pollutants = append(details.Pollutants, addPollutant("NO2", *a.NO2, dateObserved, t.Found.Property("no2")))
 		}
 		if a.NOx != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("NOx", *a.NOx, dateObserved, t.Property("nox")))
+			details.Pollutants = append(details.Pollutants, addPollutant("NOx", *a.NOx, dateObserved, t.Found.Property("nox")))
 		}
 		if a.WindDirection != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("WindDirection", *a.WindDirection, dateObserved, t.Property("winddirection")))
+			details.Pollutants = append(details.Pollutants, addPollutant("WindDirection", *a.WindDirection, dateObserved, t.Found.Property("winddirection")))
 		}
 		if a.WindSpeed != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("WindSpeed", *a.WindSpeed, dateObserved, t.Property("windspeed")))
+			details.Pollutants = append(details.Pollutants, addPollutant("WindSpeed", *a.WindSpeed, dateObserved, t.Found.Property("windspeed")))
 		}
 
 		svc.airQualityByID[details.ID] = details
