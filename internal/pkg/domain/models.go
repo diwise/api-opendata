@@ -182,6 +182,10 @@ type DateTime struct {
 	Value string `json:"@value"`
 }
 
+func NewDateTime(timestamp string) *DateTime {
+	return &DateTime{"DateTime", timestamp}
+}
+
 type Point struct {
 	Type        string    `json:"type"`
 	Coordinates []float64 `json:"coordinates"`

@@ -10,8 +10,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/diwise/api-opendata/internal/pkg/application/services/airquality"
 	"log/slog"
+
+	"github.com/diwise/api-opendata/internal/pkg/application/services/airquality"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
 	"github.com/diwise/api-opendata/internal/pkg/application/services/citywork"
@@ -24,6 +25,7 @@ import (
 	"github.com/diwise/api-opendata/internal/pkg/application/services/weather"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers"
 	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/stratsys"
+	"github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -99,7 +101,9 @@ func (o *opendataAPI) addDiwiseHandlers(ctx context.Context, r chi.Router, orgfi
 		logger.Error("failed to create organisations registry", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
-	airQualitySvc := airquality.NewAirQualityService(context.Background(), contextBrokerURL, contextBrokerTenant)
+
+	cbClient := client.NewContextBrokerClient(contextBrokerURL, client.Tenant("default"))
+	airQualitySvc := airquality.NewAirQualityService(ctx, cbClient, "default")
 	airQualitySvc.Start(ctx)
 
 	waterqualitySvc := waterquality.NewWaterQualityService(ctx, contextBrokerURL, contextBrokerTenant)

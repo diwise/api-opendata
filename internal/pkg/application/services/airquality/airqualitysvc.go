@@ -3,14 +3,18 @@ package airquality
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
-	contextbroker "github.com/diwise/context-broker/pkg/ngsild/client"
+	"github.com/diwise/context-broker/pkg/ngsild/client"
+	"github.com/diwise/context-broker/pkg/ngsild/geojson"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
+	"github.com/diwise/context-broker/pkg/ngsild/types/properties"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
@@ -28,7 +32,7 @@ type AirQualityService interface {
 	Shutdown(ctx context.Context)
 	Start(ctx context.Context)
 
-	Broker() string
+	//Broker() string
 	Tenant() string
 
 	GetAll(ctx context.Context) []domain.AirQuality
@@ -37,10 +41,10 @@ type AirQualityService interface {
 
 var ErrNoSuchAirQuality error = errors.New("no such air quality")
 
-func NewAirQualityService(ctx context.Context, ctxBrokerURL, ctxBrokerTenant string) AirQualityService {
+func NewAirQualityService(ctx context.Context, cbClient client.ContextBrokerClient, ctxBrokerTenant string) AirQualityService {
 	return &aqsvc{
-		contextBrokerURL: ctxBrokerURL,
-		tenant:           ctxBrokerTenant,
+		cbClient: cbClient,
+		tenant:   ctxBrokerTenant,
 
 		airQualities:   []domain.AirQuality{},
 		airQualityByID: map[string]domain.AirQualityDetails{},
@@ -51,8 +55,8 @@ func NewAirQualityService(ctx context.Context, ctxBrokerURL, ctxBrokerTenant str
 }
 
 type aqsvc struct {
-	contextBrokerURL string
-	tenant           string
+	cbClient client.ContextBrokerClient
+	tenant   string
 
 	airQualities   []domain.AirQuality
 	airQualityByID map[string]domain.AirQualityDetails
@@ -63,9 +67,9 @@ type aqsvc struct {
 	wg          sync.WaitGroup
 }
 
-func (svc *aqsvc) Broker() string {
-	return svc.contextBrokerURL
-}
+/*func (svc *aqsvc) Broker() string {
+	return svc.cbClient
+}*/
 
 func (svc *aqsvc) Tenant() string {
 	return svc.tenant
@@ -190,125 +194,157 @@ func (svc *aqsvc) refresh(ctx context.Context) (count int, err error) {
 
 	logger.Info("refreshing air quality info")
 
-	airqualities := []domain.AirQuality{}
-
-	c := contextbroker.NewContextBrokerClient(svc.contextBrokerURL, contextbroker.Tenant(svc.tenant))
-
 	headers := map[string][]string{
 		"Accept": {"application/ld+json"},
 		"Link":   {entities.LinkHeader},
 	}
 
-	_, err = contextbroker.QueryEntities(ctx, svc.contextBrokerURL, svc.tenant, "AirQualityObserved", nil, func(a airqualityDTO) {
-		details := domain.AirQualityDetails{
-			ID:         a.ID,
-			Pollutants: make([]domain.Pollutant, 0),
-		}
+	params := url.Values{}
+	params.Add("type", "AirQualityObserved")
+	params.Add("count", "true")
 
-		dateObserved := time.Now().UTC().Format(time.RFC3339)
+	reqUrl := fmt.Sprintf("/ngsi-ld/v1/entities?%s", params.Encode())
 
-		if a.Location != nil {
-			details.Location = *a.Location
-		}
-		if a.DateObserved != nil {
-			details.DateObserved = *a.DateObserved
-			dateObserved = details.DateObserved.Value
-		}
-
-		t, _ := c.RetrieveTemporalEvolutionOfEntity(ctx, a.ID, headers, contextbroker.Between(time.Now().Add(-24*time.Hour), time.Now()))
-
-		if a.AtmosphericPressure != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("AtmosphericPressure", *a.AtmosphericPressure, dateObserved, t.Found.Property("atmosphericpressure")))
-		}
-		if a.Temperature != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("Temperature", *a.Temperature, dateObserved, t.Found.Property("temperature")))
-		}
-		if a.RelativeHumidity != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("RelativeHumidity", *a.RelativeHumidity, dateObserved, t.Found.Property("relativehumidity")))
-		}
-		if a.ParticleCount != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("ParticleCount", *a.ParticleCount, dateObserved, t.Found.Property("particlecount")))
-		}
-		if a.PM1 != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("PM1", *a.PM1, dateObserved, t.Found.Property("pm1")))
-		}
-		if a.PM4 != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("PM4", *a.PM4, dateObserved, t.Found.Property("pm4")))
-		}
-		if a.PM10 != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("PM10", *a.PM10, dateObserved, t.Found.Property("pm10")))
-		}
-		if a.PM25 != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("PM25", *a.PM25, dateObserved, t.Found.Property("pm25")))
-		}
-		if a.TotalSuspendedParticulate != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("TotalSuspendedParticulate", *a.TotalSuspendedParticulate, dateObserved, t.Found.Property("totalsuspendedparticulate")))
-		}
-		if a.CO2 != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("CO2", *a.CO2, dateObserved, t.Found.Property("co2")))
-		}
-		if a.NO != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("NO", *a.NO, dateObserved, t.Found.Property("no")))
-		}
-		if a.NO2 != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("NO2", *a.NO2, dateObserved, t.Found.Property("no2")))
-		}
-		if a.NOx != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("NOx", *a.NOx, dateObserved, t.Found.Property("nox")))
-		}
-		if a.WindDirection != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("WindDirection", *a.WindDirection, dateObserved, t.Found.Property("winddirection")))
-		}
-		if a.WindSpeed != nil {
-			details.Pollutants = append(details.Pollutants, addPollutant("WindSpeed", *a.WindSpeed, dateObserved, t.Found.Property("windspeed")))
-		}
-
-		svc.airQualityByID[details.ID] = details
-
-		aq := domain.AirQuality{
-			ID:           a.ID,
-			Location:     details.Location,
-			DateObserved: details.DateObserved,
-		}
-
-		airqualities = append(airqualities, aq)
-	})
-
+	airqualities := []domain.AirQuality{}
+	res, err := svc.cbClient.QueryEntities(ctx, nil, nil, reqUrl, headers)
 	if err != nil {
 		logger.Error("failed to retrieve air qualities from context broker", "err", err.Error())
 		return
 	}
 
+	for {
+		airquality := <-res.Found
+		if airquality == nil {
+			break
+		}
+
+		airqualities = append(airqualities, toAirQuality(airquality))
+	}
+
 	svc.airQualities = airqualities
+
+	svc.getDetails(ctx, svc.cbClient, headers)
 
 	return len(svc.airQualities), nil
 }
 
-type airqualityDTO struct {
-	ID                        string           `json:"id"`
-	Location                  *domain.Point    `json:"location"`
-	DateObserved              *domain.DateTime `json:"dateObserved"`
-	AtmosphericPressure       *float64         `json:"atmosphericPressure,omitempty"`
-	Temperature               *float64         `json:"temperature,omitempty"`
-	RelativeHumidity          *float64         `json:"relativeHumidity,omitempty"`
-	ParticleCount             *float64         `json:"particleCount,omitempty"`
-	PM1                       *float64         `json:"PM1,omitempty"`
-	PM4                       *float64         `json:"PM4,omitempty"`
-	PM10                      *float64         `json:"PM10,omitempty"`
-	PM25                      *float64         `json:"PM25,omitempty"`
-	TotalSuspendedParticulate *float64         `json:"totalSuspendedParticulate,omitempty"`
-	CO2                       *float64         `json:"CO2,omitempty"`
-	NO                        *float64         `json:"NO,omitempty"`
-	NO2                       *float64         `json:"NO2,omitempty"`
-	NOx                       *float64         `json:"NOx,omitempty"`
-	Voltage                   *float64         `json:"voltage,omitempty"`
-	WindDirection             *float64         `json:"windDirection"`
-	WindSpeed                 *float64         `json:"windSpeed"`
+type Result struct {
+	Found      []domain.AirQuality
+	TotalCount int64
+	Count      int
+	Offset     int
+	Limit      int
+	Partial    bool
 }
 
-func addPollutant(n string, v float64, t string, temporal []types.TemporalProperty) domain.Pollutant {
+const (
+	LocationPropertyName                  string = "location"
+	AtmosphericPressurePropertyName       string = "atmosphericPressure"
+	TemperaturePropertyName               string = "temperature"
+	RelativeHumidityPropertyName          string = "relativeHumidity"
+	ParticleCountPropertyName             string = "particleCount"
+	PM1PropertyName                       string = "PM1"
+	PM4PropertyName                       string = "PM4"
+	PM10PropertyName                      string = "PM10"
+	PM25PropertyName                      string = "PM25"
+	TotalSuspendedParticulatePropertyName string = "totalSuspendedParticulate"
+	CO2PropertyName                       string = "CO2"
+	NOPropertyName                        string = "NO"
+	NO2PropertyName                       string = "NO2"
+	NOxPropertyName                       string = "NOx"
+	VoltagePropertyName                   string = "voltage"
+	WindDirectionPropertyName             string = "windDirection"
+	WindSpeedPropertyName                 string = "windSpeed"
+	DateObservedPropertyName              string = "dateObserved"
+)
+
+func toAirQuality(n types.Entity) domain.AirQuality {
+	airquality := domain.AirQuality{}
+	airquality.ID = n.ID()
+
+	n.ForEachAttribute(func(attributeType, attributeName string, contents any) {
+		switch attributeName {
+		case DateObservedPropertyName:
+			p := contents.(*properties.DateTimeProperty)
+			timestamp, _ := time.Parse(time.RFC3339, p.Val.Value)
+			airquality.DateObserved = *domain.NewDateTime(timestamp.UTC().Format(time.RFC3339))
+		case LocationPropertyName:
+			p := contents.(*geojson.GeoJSONProperty)
+			point := p.GetAsPoint()
+			airquality.Location.Coordinates = point.Coordinates[:]
+			airquality.Location.Type = p.GeoPropertyType()
+		}
+	})
+
+	return airquality
+}
+
+func (svc *aqsvc) getDetails(ctx context.Context, c client.ContextBrokerClient, headers map[string][]string) {
+	for _, aqo := range svc.airQualities {
+		details := domain.AirQualityDetails{}
+		pollutants := []domain.Pollutant{}
+
+		details.ID = aqo.ID
+		details.DateObserved = aqo.DateObserved
+		details.Location = aqo.Location
+
+		t, _ := c.RetrieveTemporalEvolutionOfEntity(ctx, aqo.ID, headers, client.Between(time.Now().Add(-24*time.Hour), time.Now()))
+
+		if t.Found.Property(AtmosphericPressurePropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("AtmosphericPressure", t.Found.Property(AtmosphericPressurePropertyName)))
+		}
+		if t.Found.Property(TemperaturePropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("Temperature", t.Found.Property(TemperaturePropertyName)))
+		}
+		if t.Found.Property(RelativeHumidityPropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("RelativeHumidity", t.Found.Property(RelativeHumidityPropertyName)))
+		}
+		if t.Found.Property(ParticleCountPropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("ParticleCount", t.Found.Property(ParticleCountPropertyName)))
+		}
+		if t.Found.Property(PM1PropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("PM1", t.Found.Property(PM1PropertyName)))
+		}
+		if t.Found.Property(PM4PropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("PM4", t.Found.Property(PM4PropertyName)))
+		}
+		if t.Found.Property(PM10PropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("PM10", t.Found.Property(PM10PropertyName)))
+		}
+		if t.Found.Property(PM25PropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("PM25", t.Found.Property(PM25PropertyName)))
+		}
+		if t.Found.Property(TotalSuspendedParticulatePropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("TotalSuspendedParticulate", t.Found.Property(TotalSuspendedParticulatePropertyName)))
+		}
+		if t.Found.Property(CO2PropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("CO2", t.Found.Property(CO2PropertyName)))
+		}
+		if t.Found.Property(NOPropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("NO", t.Found.Property(NOPropertyName)))
+		}
+		if t.Found.Property(NO2PropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("NO2", t.Found.Property(NO2PropertyName)))
+		}
+		if t.Found.Property(NOxPropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("NOx", t.Found.Property(NOxPropertyName)))
+		}
+		if t.Found.Property(WindDirectionPropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("WindDirection", t.Found.Property(WindDirectionPropertyName)))
+		}
+		if t.Found.Property(WindSpeedPropertyName) != nil {
+			pollutants = append(pollutants, addPollutant("WindSpeed", t.Found.Property(WindSpeedPropertyName)))
+		}
+
+		details.Pollutants = pollutants
+
+		svc.airQualityByID[aqo.ID] = details
+	}
+}
+
+func addPollutant(name string, temporal []types.TemporalProperty) domain.Pollutant {
 	aqi := domain.Pollutant{
-		Name: n,
+		Name: name,
 	}
 
 	if len(temporal) > 0 {
@@ -320,11 +356,6 @@ func addPollutant(n string, v float64, t string, temporal []types.TemporalProper
 		}
 		return aqi
 	}
-
-	aqi.Values = append(aqi.Values, domain.Value{
-		Value:      v,
-		ObservedAt: t,
-	})
 
 	return aqi
 }
