@@ -48,6 +48,57 @@ type Organisation struct {
 	Name string `json:"name"`
 }
 
+type Organization struct {
+	About    string
+	Fn       string
+	HasEmail string
+}
+
+type AirQuality struct {
+	ID                        string   `json:"id"`
+	Location                  Point    `json:"location"`
+	DateObserved              DateTime `json:"dateObserved"`
+	AtmosphericPressure       *float64 `json:"atmosphericPressure,omitempty"`
+	Temperature               *float64 `json:"temperature,omitempty"`
+	RelativeHumidity          *float64 `json:"relativeHumidity,omitempty"`
+	ParticleCount             *float64 `json:"particleCount,omitempty"`
+	PM1                       *float64 `json:"PM1,omitempty"`
+	PM4                       *float64 `json:"PM4,omitempty"`
+	PM10                      *float64 `json:"PM10,omitempty"`
+	PM25                      *float64 `json:"PM25,omitempty"`
+	TotalSuspendedParticulate *float64 `json:"totalSuspendedParticulate,omitempty"`
+	CO2                       *float64 `json:"CO2,omitempty"`
+	NO                        *float64 `json:"NO,omitempty"`
+	NO2                       *float64 `json:"NO2,omitempty"`
+	NOx                       *float64 `json:"NOx,omitempty"`
+	Voltage                   *float64 `json:"voltage,omitempty"`
+	WindDirection             *float64 `json:"windDirection,omitempty"`
+	WindSpeed                 *float64 `json:"windSpeed,omitempty"`
+}
+
+type AirQualityDetails struct {
+	ID           string      `json:"id"`
+	Location     Point       `json:"location"`
+	DateObserved DateTime    `json:"dateObserved"`
+	Pollutants   []Pollutant `json:"pollutants,omitempty"`
+}
+
+type Beach struct {
+	ID           string        `json:"id"`
+	Name         string        `json:"name"`
+	Location     Point         `json:"location"`
+	WaterQuality *WaterQuality `json:"waterquality,omitempty"`
+}
+
+type BeachDetails struct {
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Description  *string         `json:"description,omitempty"`
+	Location     Point           `json:"location"`
+	WaterQuality *[]WaterQuality `json:"waterquality,omitempty"`
+	SeeAlso      *[]string       `json:"seeAlso,omitempty"`
+}
+
 type ExerciseTrail struct {
 	ID                  string        `json:"id"`
 	Name                string        `json:"name"`
@@ -147,6 +198,10 @@ type DateTime struct {
 	Value string `json:"@value"`
 }
 
+func NewDateTime(timestamp string) *DateTime {
+	return &DateTime{"DateTime", timestamp}
+}
+
 type Point struct {
 	Type        string    `json:"type"`
 	Coordinates []float64 `json:"coordinates"`
@@ -194,6 +249,11 @@ type WaterQualityTemporal struct {
 	Temperature []Value `json:"temperature"`
 	Source      string  `json:"source,omitempty"`
 	Location    *Point  `json:"location,omitempty"`
+}
+
+type Pollutant struct {
+	Name   string  `json:"name,omitempty"`
+	Values []Value `json:"values"`
 }
 
 type Value struct {
