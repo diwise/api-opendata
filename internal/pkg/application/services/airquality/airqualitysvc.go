@@ -273,6 +273,54 @@ func toAirQuality(n types.Entity) domain.AirQuality {
 			point := p.GetAsPoint()
 			airquality.Location.Coordinates = point.Coordinates[:]
 			airquality.Location.Type = p.GeoPropertyType()
+		case AtmosphericPressurePropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.AtmosphericPressure = &p.Val
+		case TemperaturePropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.Temperature = &p.Val
+		case RelativeHumidityPropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.RelativeHumidity = &p.Val
+		case ParticleCountPropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.ParticleCount = &p.Val
+		case PM1PropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.PM1 = &p.Val
+		case PM4PropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.PM4 = &p.Val
+		case PM10PropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.PM10 = &p.Val
+		case PM25PropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.PM25 = &p.Val
+		case TotalSuspendedParticulatePropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.TotalSuspendedParticulate = &p.Val
+		case CO2PropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.CO2 = &p.Val
+		case NOPropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.NO = &p.Val
+		case NO2PropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.NO2 = &p.Val
+		case NOxPropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.NOx = &p.Val
+		case VoltagePropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.Voltage = &p.Val
+		case WindDirectionPropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.WindDirection = &p.Val
+		case WindSpeedPropertyName:
+			p := contents.(*properties.NumberProperty)
+			airquality.WindSpeed = &p.Val
 		}
 	})
 

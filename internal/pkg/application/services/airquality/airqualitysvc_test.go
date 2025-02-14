@@ -49,7 +49,7 @@ func TestGetAll(t *testing.T) {
 
 	aqosBytes, _ := json.Marshal(aqos)
 
-	is.Equal(string(aqosBytes), `[{"id":"urn:ngsi-ld:AirQualityObserved:test3","location":{"type":"Point","coordinates":[-3.712247,40.423853]},"dateObserved":{"@type":"DateTime","@value":"2025-02-12T19:23:09Z"}}]`)
+	is.Equal(string(aqosBytes), `[{"id":"urn:ngsi-ld:AirQualityObserved:test3","location":{"type":"Point","coordinates":[-3.712247,40.423853]},"dateObserved":{"@type":"DateTime","@value":"2025-02-12T19:23:09Z"},"temperature":12.2,"relativeHumidity":0.54,"CO2":500,"NO":45,"NO2":69,"NOx":139}]`)
 }
 
 func testSetup(t *testing.T) (*is.I, *cbtest.ContextBrokerClientMock) {
