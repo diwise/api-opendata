@@ -174,7 +174,7 @@ func (q wsq) GetByID(ctx context.Context) (domain.Weather, error) {
 	}
 
 	dto := weatherObservedToWeatherDto(entity)
-	dto.Temperatures = temporalPropertiesToTemperatureDto(temporal.Property("temperature"))
+	dto.Temperatures = temporalPropertiesToTemperatureDto(temporal.Found.Property("temperature"))
 
 	if q.aggr != "" && q.aggr == "hour" || q.aggr == "day" || q.aggr == "month" || q.aggr == "year" {
 		dto.Temperatures = groupByTime(dto.Temperatures, q.aggr)

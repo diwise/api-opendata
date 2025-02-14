@@ -42,6 +42,382 @@
         }
       }
     },
+    "/airqualities": {
+      "get": {
+        "summary": "Retrieve air quality data",
+        "description": "Fetch a list of latest air quality measurements with location and various environmental metrics.",
+        "responses": {
+          "200": {
+            "description": "A list of air quality data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Unique identifier for the air quality measurement."
+                          },
+                          "location": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "Point"
+                                ]
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "description": "WGS84 longitude and latitude",
+                                "minItems": 2,
+                                "maxItems": 3,
+                                "items": {
+                                  "type": "number"
+                                },
+                                "example": [
+                                  17.454723,
+                                  62.266598
+                                ]
+                              }
+                            }
+                          },
+                          "dateObserved": {
+                            "type": "object",
+                            "properties": {
+                              "@type": {
+                                "type": "string",
+                                "enum": ["DateTime"]
+                              },
+                              "@value": {
+                                "type": "string",
+                                "format": "date-time",
+                                "description": "Date and time of observation in ISO 8601 format."
+                              }
+                            }
+                          },
+                          "atmosphericPressure": {
+                            "type": "number",
+                            "description": "Atmospheric pressure in hPa."
+                          },
+                          "temperature": {
+                            "type": "number",
+                            "description": "Temperature in degrees Celsius."
+                          },
+                          "relativeHumidity": {
+                            "type": "number",
+                            "description": "Relative humidity as a percentage."
+                          },
+                          "particleCount": {
+                            "type": "number",
+                            "description": "Number of particles in the air."
+                          },
+                          "PM1": {
+                            "type": "number",
+                            "description": "PM1 particulate matter concentration."
+                          },
+                          "PM4": {
+                            "type": "number",
+                            "description": "PM4 particulate matter concentration."
+                          },
+                          "PM10": {
+                            "type": "number",
+                            "description": "PM10 particulate matter concentration."
+                          },
+                          "PM25": {
+                            "type": "number",
+                            "description": "PM2.5 particulate matter concentration."
+                          },
+                          "totalSuspendedParticulate": {
+                            "type": "number",
+                            "description": "Total suspended particulate matter."
+                          },
+                          "CO2": {
+                            "type": "number",
+                            "description": "Carbon dioxide concentration in ppm."
+                          },
+                          "NO": {
+                            "type": "number",
+                            "description": "Nitric oxide concentration."
+                          },
+                          "NO2": {
+                            "type": "number",
+                            "description": "Nitrogen dioxide concentration."
+                          },
+                          "NOx": {
+                            "type": "number",
+                            "description": "Total nitrogen oxides concentration."
+                          },
+                          "voltage": {
+                            "type": "number",
+                            "description": "Voltage reading from the sensor."
+                          },
+                          "windDirection": {
+                            "type": "number",
+                            "description": "Wind direction in degrees."
+                          },
+                          "windSpeed": {
+                            "type": "number",
+                            "description": "Wind speed in meters per second."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/airqualities/{id}": {
+      "get": {
+        "summary": "Retrieve air quality data by ID",
+        "description": "Fetch detailed air quality data for a specific observation by its unique ID.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Unique identifier of the air quality observation.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detailed air quality data for the specified ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Unique identifier for the air quality observation."
+                        },
+                        "location": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["Point"]
+                            },
+                            "coordinates": {
+                              "type": "array",
+                              "items": {
+                                "type": "number"
+                              },
+                              "description": "[longitude, latitude]."
+                            }
+                          }
+                        },
+                        "dateObserved": {
+                          "type": "object",
+                          "properties": {
+                            "@type": {
+                              "type": "string",
+                              "enum": ["DateTime"]
+                            },
+                            "@value": {
+                              "type": "string",
+                              "format": "date-time",
+                              "description": "Date and time of observation in ISO 8601 format."
+                            }
+                          }
+                        },
+                        "pollutants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "description": "The name of the pollutant."
+                              },
+                              "values": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "value": {
+                                      "type": "number",
+                                      "description": "The observed value of the pollutant."
+                                    },
+                                    "observedAt": {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "description": "The timestamp when the value was observed."
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "example": {
+                    "data": {
+                      "id": "urn:ngsi-ld:AirQualityObserved:test3",
+                      "location": {
+                        "type": "Point",
+                        "coordinates": [-3.712247, 40.423853]
+                      },
+                      "dateObserved": {
+                        "@type": "DateTime",
+                        "@value": "2025-02-12T19:23:09Z"
+                      },
+                      "pollutants": [
+                        {
+                          "name": "AtmosphericPressure",
+                          "values": [
+                            { "value": 12.2, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 12.2, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 12.2, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "Temperature",
+                          "values": [
+                            { "value": 12.2, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 12.2, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 12.2, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "RelativeHumidity",
+                          "values": [
+                            { "value": 0.54, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 0.54, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 0.54, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "ParticleCount",
+                          "values": [
+                            { "value": 12.2, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 12.2, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 12.2, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "CO2",
+                          "values": [
+                            { "value": 500, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 500, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 500, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "NO",
+                          "values": [
+                            { "value": 45, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 45, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 45, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "NO2",
+                          "values": [
+                            { "value": 69, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 69, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 69, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "NOx",
+                          "values": [
+                            { "value": 139, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 139, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 139, "observedAt": "2025-02-19T16:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "PM1",
+                          "values": [
+                            { "value": 12.6, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "PM4",
+                          "values": [
+                            { "value": 12.6, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "PM10",
+                          "values": [
+                            { "value": 12.6, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "PM25",
+                          "values": [
+                            { "value": 12.6, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "totalSuspendedParticulate",
+                          "values": [
+                            { "value": 12.6, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "Voltage",
+                          "values": [
+                            { "value": 12.2, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 12.2, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 12.2, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "windDirection",
+                          "values": [
+                            { "value": 12.6, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        },
+                        {
+                          "name": "windSpeed",
+                          "values": [
+                            { "value": 12.6, "observedAt": "2025-02-12T06:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T16:23:09Z" },
+                            { "value": 12.6, "observedAt": "2025-02-12T19:23:09Z" }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },    
     "/beaches": {
       "get": {
         "operationId": "getBeaches",
