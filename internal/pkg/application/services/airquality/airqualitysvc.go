@@ -225,7 +225,8 @@ func (svc *aqsvc) refresh(ctx context.Context) (count int, err error) {
 
 	err = svc.getDetails(ctx, svc.cbClient, headers)
 	if err != nil {
-		return len(svc.airQualities), err
+		logger.Error("failed to populate some or all air quality details", "err", err.Error())
+		return len(svc.airQualities), nil
 	}
 
 	return len(svc.airQualities), nil
@@ -343,7 +344,7 @@ func (svc *aqsvc) getDetails(ctx context.Context, c client.ContextBrokerClient, 
 
 		t, err := c.RetrieveTemporalEvolutionOfEntity(ctx, aqo.ID, headers, client.Between(time.Now().Add(-24*time.Hour), time.Now()))
 		if err != nil || t.Found == nil {
-			logger.Error("failed to retrieve temporal evolution of air qualities", "err", err.Error())
+			logger.Error(fmt.Sprintf("failed to retrieve temporal evolution of air quality with id: %s", aqo.ID), "err", err.Error())
 			return err
 		}
 
