@@ -338,49 +338,49 @@ func (svc *aqsvc) getDetails(ctx context.Context, c client.ContextBrokerClient, 
 
 		t, _ := c.RetrieveTemporalEvolutionOfEntity(ctx, aqo.ID, headers, client.Between(time.Now().Add(-24*time.Hour), time.Now()))
 
-		if t.Found.Property(AtmosphericPressurePropertyName) != nil {
+		if len(t.Found.Property(AtmosphericPressurePropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("AtmosphericPressure", t.Found.Property(AtmosphericPressurePropertyName)))
 		}
-		if t.Found.Property(TemperaturePropertyName) != nil {
+		if len(t.Found.Property(TemperaturePropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("Temperature", t.Found.Property(TemperaturePropertyName)))
 		}
-		if t.Found.Property(RelativeHumidityPropertyName) != nil {
+		if len(t.Found.Property(RelativeHumidityPropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("RelativeHumidity", t.Found.Property(RelativeHumidityPropertyName)))
 		}
-		if t.Found.Property(ParticleCountPropertyName) != nil {
+		if len(t.Found.Property(ParticleCountPropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("ParticleCount", t.Found.Property(ParticleCountPropertyName)))
 		}
-		if t.Found.Property(PM1PropertyName) != nil {
+		if len(t.Found.Property(PM1PropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("PM1", t.Found.Property(PM1PropertyName)))
 		}
-		if t.Found.Property(PM4PropertyName) != nil {
+		if len(t.Found.Property(PM4PropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("PM4", t.Found.Property(PM4PropertyName)))
 		}
-		if t.Found.Property(PM10PropertyName) != nil {
+		if len(t.Found.Property(PM10PropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("PM10", t.Found.Property(PM10PropertyName)))
 		}
-		if t.Found.Property(PM25PropertyName) != nil {
+		if len(t.Found.Property(PM25PropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("PM25", t.Found.Property(PM25PropertyName)))
 		}
-		if t.Found.Property(TotalSuspendedParticulatePropertyName) != nil {
+		if len(t.Found.Property(TotalSuspendedParticulatePropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("TotalSuspendedParticulate", t.Found.Property(TotalSuspendedParticulatePropertyName)))
 		}
-		if t.Found.Property(CO2PropertyName) != nil {
+		if len(t.Found.Property(CO2PropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("CO2", t.Found.Property(CO2PropertyName)))
 		}
-		if t.Found.Property(NOPropertyName) != nil {
+		if len(t.Found.Property(NOPropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("NO", t.Found.Property(NOPropertyName)))
 		}
-		if t.Found.Property(NO2PropertyName) != nil {
+		if len(t.Found.Property(NO2PropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("NO2", t.Found.Property(NO2PropertyName)))
 		}
-		if t.Found.Property(NOxPropertyName) != nil {
+		if len(t.Found.Property(NOxPropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("NOx", t.Found.Property(NOxPropertyName)))
 		}
-		if t.Found.Property(WindDirectionPropertyName) != nil {
+		if len(t.Found.Property(WindDirectionPropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("WindDirection", t.Found.Property(WindDirectionPropertyName)))
 		}
-		if t.Found.Property(WindSpeedPropertyName) != nil {
+		if len(t.Found.Property(WindSpeedPropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("WindSpeed", t.Found.Property(WindSpeedPropertyName)))
 		}
 
