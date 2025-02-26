@@ -223,7 +223,10 @@ func (svc *aqsvc) refresh(ctx context.Context) (count int, err error) {
 
 	svc.airQualities = airqualities
 
-	svc.getDetails(ctx, svc.cbClient, headers)
+	err = svc.getDetails(ctx, svc.cbClient, headers)
+	if err != nil {
+		return len(svc.airQualities), err
+	}
 
 	return len(svc.airQualities), nil
 }
@@ -327,7 +330,9 @@ func toAirQuality(n types.Entity) domain.AirQuality {
 	return airquality
 }
 
-func (svc *aqsvc) getDetails(ctx context.Context, c client.ContextBrokerClient, headers map[string][]string) {
+func (svc *aqsvc) getDetails(ctx context.Context, c client.ContextBrokerClient, headers map[string][]string) error {
+	logger := logging.GetFromContext(ctx)
+
 	for _, aqo := range svc.airQualities {
 		details := domain.AirQualityDetails{}
 		pollutants := []domain.Pollutant{}
@@ -336,7 +341,11 @@ func (svc *aqsvc) getDetails(ctx context.Context, c client.ContextBrokerClient, 
 		details.DateObserved = aqo.DateObserved
 		details.Location = aqo.Location
 
-		t, _ := c.RetrieveTemporalEvolutionOfEntity(ctx, aqo.ID, headers, client.Between(time.Now().Add(-24*time.Hour), time.Now()))
+		t, err := c.RetrieveTemporalEvolutionOfEntity(ctx, aqo.ID, headers, client.Between(time.Now().Add(-24*time.Hour), time.Now()))
+		if err != nil || t.Found == nil {
+			logger.Error("failed to retrieve temporal evolution of air qualities", "err", err.Error())
+			return err
+		}
 
 		if len(t.Found.Property(AtmosphericPressurePropertyName)) > 0 {
 			pollutants = append(pollutants, addPollutant("AtmosphericPressure", t.Found.Property(AtmosphericPressurePropertyName)))
@@ -388,6 +397,8 @@ func (svc *aqsvc) getDetails(ctx context.Context, c client.ContextBrokerClient, 
 
 		svc.airQualityByID[aqo.ID] = details
 	}
+
+	return nil
 }
 
 func addPollutant(name string, temporal []types.TemporalProperty) domain.Pollutant {
