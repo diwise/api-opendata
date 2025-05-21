@@ -332,7 +332,7 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 
 		dto := WaterQualityTemporalDTO{}
 
-		b, err := svc.requestTemporalDataForSingleEntity(ctx, svc.contextBrokerURL, w.ID, time.Time{}, time.Time{})
+		b, err := svc.requestTemporalDataForSingleEntity(ctx, svc.Broker(), w.ID, svc.Tenant(), time.Time{}, time.Time{})
 		if err != nil {
 			logger.Error("no temporal data found for water quality", "id", wq.ID, "err", err.Error())
 			return
@@ -362,7 +362,7 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 	return len(svc.waterQualityByID), nil
 }
 
-func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBrokerURL, id string, from, to time.Time) ([]byte, error) {
+func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBrokerURL, id, tenant string, from, to time.Time) ([]byte, error) {
 	var err error
 
 	httpClient := http.Client{
@@ -379,6 +379,7 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 	params.Add("timerel", "between")
 	params.Add("timeAt", from.Format(time.RFC3339))
 	params.Add("endTimeAt", to.Format(time.RFC3339))
+	params.Add("lastN", "50")
 
 	requestURL := fmt.Sprintf(
 		"%s/ngsi-ld/v1/temporal/entities/%s?%s",
@@ -393,16 +394,20 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 	req.Header.Add("Accept", "application/ld+json")
 	req.Header.Add("Link", entities.LinkHeader)
 
+	if tenant != entities.DefaultNGSITenant {
+		req.Header.Add("NGSILD-Tenant", tenant)
+	}
+
 	response, err := httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %s", err.Error())
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusPartialContent {
 		rb, _ := httputil.DumpResponse(response, true)
 		logging.GetFromContext(ctx).Debug("bad response", "response", string(rb))
-		return nil, fmt.Errorf("request failed, status code %d not ok", response.StatusCode)
+		return nil, fmt.Errorf("request failed, status code %d not ok (or partial)", response.StatusCode)
 	}
 
 	b, err := io.ReadAll(response.Body)
