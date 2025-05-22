@@ -308,6 +308,23 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 
 	logger.Info("refreshing water quality info")
 
+	after := func(d1, d2 string) bool {
+		dt1, err := time.Parse(d1, time.RFC3339)
+		if err != nil {
+			return false
+		}
+		dt2, err := time.Parse(d2, time.RFC3339)
+		if err != nil {
+			return false
+		}
+
+		return dt1.After(dt2)
+	}
+
+	round := func(f float64) float64 {
+		return math.Round(f*10) / 10
+	}
+
 	_, err = contextbroker.QueryEntities(ctx, svc.Broker(), svc.Tenant(), "WaterQualityObserved", nil, func(w WaterQualityDTO) {
 		wq := WaterQuality{
 			ID: w.ID,
@@ -315,7 +332,7 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 
 		latest := domain.WaterQuality{
 			ID:           wq.ID,
-			Temperature:  w.Temperature,
+			Temperature:  round(w.Temperature),
 			DateObserved: w.DateObserved.Value,
 		}
 
@@ -328,7 +345,9 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 			latest.Location = wq.Location
 		}
 
-		wq.Latest = latest
+		if after(latest.DateObserved, wq.Latest.DateObserved) {
+			wq.Latest = latest
+		}
 
 		dto := WaterQualityTemporalDTO{}
 
@@ -343,6 +362,10 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 		temps := []domain.Value{}
 
 		if len(dto.Temperature) != 0 {
+			for i, t := range dto.Temperature {
+				dto.Temperature[i].Value = round(t.Value)
+			}
+
 			temps = append(temps, dto.Temperature...)
 		} else {
 			logger.Info("no temporal data found for water quality", "id", wq.ID)
