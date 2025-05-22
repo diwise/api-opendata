@@ -309,11 +309,16 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 	logger.Info("refreshing water quality info")
 
 	after := func(d1, d2 string) bool {
-		dt1, err := time.Parse(d1, time.RFC3339)
+		dt1, err := time.Parse(time.RFC3339, d1)
 		if err != nil {
 			return false
 		}
-		dt2, err := time.Parse(d2, time.RFC3339)
+
+		if d2 == "" {
+			return true
+		}
+
+		dt2, err := time.Parse(time.RFC3339, d2)
 		if err != nil {
 			return false
 		}
