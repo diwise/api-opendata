@@ -7,6 +7,7 @@ import (
 	"context"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"sync"
+	"time"
 )
 
 // Ensure, that AirQualityServiceMock does implement AirQualityService.
@@ -15,46 +16,46 @@ var _ AirQualityService = &AirQualityServiceMock{}
 
 // AirQualityServiceMock is a mock implementation of AirQualityService.
 //
-//	func TestSomethingThatUsesAirQualityService(t *testing.T) {
+// 	func TestSomethingThatUsesAirQualityService(t *testing.T) {
 //
-//		// make and configure a mocked AirQualityService
-//		mockedAirQualityService := &AirQualityServiceMock{
-//			BrokerFunc: func() string {
-//				panic("mock out the Broker method")
-//			},
-//			GetAllFunc: func(ctx context.Context) []domain.AirQuality {
-//				panic("mock out the GetAll method")
-//			},
-//			GetByIDFunc: func(ctx context.Context, id string) (*domain.AirQualityDetails, error) {
-//				panic("mock out the GetByID method")
-//			},
-//			RefreshFunc: func(ctx context.Context) (int, error) {
-//				panic("mock out the Refresh method")
-//			},
-//			ShutdownFunc: func(ctx context.Context)  {
-//				panic("mock out the Shutdown method")
-//			},
-//			StartFunc: func(ctx context.Context)  {
-//				panic("mock out the Start method")
-//			},
-//			TenantFunc: func() string {
-//				panic("mock out the Tenant method")
-//			},
-//		}
+// 		// make and configure a mocked AirQualityService
+// 		mockedAirQualityService := &AirQualityServiceMock{
+// 			GetAllFunc: func(ctx context.Context) []domain.AirQuality {
+// 				panic("mock out the GetAll method")
+// 			},
+// 			GetByIDFunc: func(ctx context.Context, id string) (*domain.AirQualityDetails, error) {
+// 				panic("mock out the GetByID method")
+// 			},
+// 			GetByIDWithTimespanFunc: func(ctx context.Context, id string, from time.Time, to time.Time) (*domain.AirQualityDetails, error) {
+// 				panic("mock out the GetByIDWithTimespan method")
+// 			},
+// 			RefreshFunc: func(ctx context.Context) (int, error) {
+// 				panic("mock out the Refresh method")
+// 			},
+// 			ShutdownFunc: func(ctx context.Context)  {
+// 				panic("mock out the Shutdown method")
+// 			},
+// 			StartFunc: func(ctx context.Context)  {
+// 				panic("mock out the Start method")
+// 			},
+// 			TenantFunc: func() string {
+// 				panic("mock out the Tenant method")
+// 			},
+// 		}
 //
-//		// use mockedAirQualityService in code that requires AirQualityService
-//		// and then make assertions.
+// 		// use mockedAirQualityService in code that requires AirQualityService
+// 		// and then make assertions.
 //
-//	}
+// 	}
 type AirQualityServiceMock struct {
-	// BrokerFunc mocks the Broker method.
-	BrokerFunc func() string
-
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) []domain.AirQuality
 
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(ctx context.Context, id string) (*domain.AirQualityDetails, error)
+
+	// GetByIDWithTimespanFunc mocks the GetByIDWithTimespan method.
+	GetByIDWithTimespanFunc func(ctx context.Context, id string, from time.Time, to time.Time) (*domain.AirQualityDetails, error)
 
 	// RefreshFunc mocks the Refresh method.
 	RefreshFunc func(ctx context.Context) (int, error)
@@ -70,9 +71,6 @@ type AirQualityServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// Broker holds details about calls to the Broker method.
-		Broker []struct {
-		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
 			// Ctx is the ctx argument value.
@@ -84,6 +82,17 @@ type AirQualityServiceMock struct {
 			Ctx context.Context
 			// ID is the id argument value.
 			ID string
+		}
+		// GetByIDWithTimespan holds details about calls to the GetByIDWithTimespan method.
+		GetByIDWithTimespan []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID string
+			// From is the from argument value.
+			From time.Time
+			// To is the to argument value.
+			To time.Time
 		}
 		// Refresh holds details about calls to the Refresh method.
 		Refresh []struct {
@@ -104,40 +113,13 @@ type AirQualityServiceMock struct {
 		Tenant []struct {
 		}
 	}
-	lockBroker   sync.RWMutex
-	lockGetAll   sync.RWMutex
-	lockGetByID  sync.RWMutex
-	lockRefresh  sync.RWMutex
-	lockShutdown sync.RWMutex
-	lockStart    sync.RWMutex
-	lockTenant   sync.RWMutex
-}
-
-// Broker calls BrokerFunc.
-func (mock *AirQualityServiceMock) Broker() string {
-	if mock.BrokerFunc == nil {
-		panic("AirQualityServiceMock.BrokerFunc: method is nil but AirQualityService.Broker was just called")
-	}
-	callInfo := struct {
-	}{}
-	mock.lockBroker.Lock()
-	mock.calls.Broker = append(mock.calls.Broker, callInfo)
-	mock.lockBroker.Unlock()
-	return mock.BrokerFunc()
-}
-
-// BrokerCalls gets all the calls that were made to Broker.
-// Check the length with:
-//
-//	len(mockedAirQualityService.BrokerCalls())
-func (mock *AirQualityServiceMock) BrokerCalls() []struct {
-} {
-	var calls []struct {
-	}
-	mock.lockBroker.RLock()
-	calls = mock.calls.Broker
-	mock.lockBroker.RUnlock()
-	return calls
+	lockGetAll              sync.RWMutex
+	lockGetByID             sync.RWMutex
+	lockGetByIDWithTimespan sync.RWMutex
+	lockRefresh             sync.RWMutex
+	lockShutdown            sync.RWMutex
+	lockStart               sync.RWMutex
+	lockTenant              sync.RWMutex
 }
 
 // GetAll calls GetAllFunc.
@@ -158,8 +140,7 @@ func (mock *AirQualityServiceMock) GetAll(ctx context.Context) []domain.AirQuali
 
 // GetAllCalls gets all the calls that were made to GetAll.
 // Check the length with:
-//
-//	len(mockedAirQualityService.GetAllCalls())
+//     len(mockedAirQualityService.GetAllCalls())
 func (mock *AirQualityServiceMock) GetAllCalls() []struct {
 	Ctx context.Context
 } {
@@ -192,8 +173,7 @@ func (mock *AirQualityServiceMock) GetByID(ctx context.Context, id string) (*dom
 
 // GetByIDCalls gets all the calls that were made to GetByID.
 // Check the length with:
-//
-//	len(mockedAirQualityService.GetByIDCalls())
+//     len(mockedAirQualityService.GetByIDCalls())
 func (mock *AirQualityServiceMock) GetByIDCalls() []struct {
 	Ctx context.Context
 	ID  string
@@ -205,6 +185,49 @@ func (mock *AirQualityServiceMock) GetByIDCalls() []struct {
 	mock.lockGetByID.RLock()
 	calls = mock.calls.GetByID
 	mock.lockGetByID.RUnlock()
+	return calls
+}
+
+// GetByIDWithTimespan calls GetByIDWithTimespanFunc.
+func (mock *AirQualityServiceMock) GetByIDWithTimespan(ctx context.Context, id string, from time.Time, to time.Time) (*domain.AirQualityDetails, error) {
+	if mock.GetByIDWithTimespanFunc == nil {
+		panic("AirQualityServiceMock.GetByIDWithTimespanFunc: method is nil but AirQualityService.GetByIDWithTimespan was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		ID   string
+		From time.Time
+		To   time.Time
+	}{
+		Ctx:  ctx,
+		ID:   id,
+		From: from,
+		To:   to,
+	}
+	mock.lockGetByIDWithTimespan.Lock()
+	mock.calls.GetByIDWithTimespan = append(mock.calls.GetByIDWithTimespan, callInfo)
+	mock.lockGetByIDWithTimespan.Unlock()
+	return mock.GetByIDWithTimespanFunc(ctx, id, from, to)
+}
+
+// GetByIDWithTimespanCalls gets all the calls that were made to GetByIDWithTimespan.
+// Check the length with:
+//     len(mockedAirQualityService.GetByIDWithTimespanCalls())
+func (mock *AirQualityServiceMock) GetByIDWithTimespanCalls() []struct {
+	Ctx  context.Context
+	ID   string
+	From time.Time
+	To   time.Time
+} {
+	var calls []struct {
+		Ctx  context.Context
+		ID   string
+		From time.Time
+		To   time.Time
+	}
+	mock.lockGetByIDWithTimespan.RLock()
+	calls = mock.calls.GetByIDWithTimespan
+	mock.lockGetByIDWithTimespan.RUnlock()
 	return calls
 }
 
@@ -226,8 +249,7 @@ func (mock *AirQualityServiceMock) Refresh(ctx context.Context) (int, error) {
 
 // RefreshCalls gets all the calls that were made to Refresh.
 // Check the length with:
-//
-//	len(mockedAirQualityService.RefreshCalls())
+//     len(mockedAirQualityService.RefreshCalls())
 func (mock *AirQualityServiceMock) RefreshCalls() []struct {
 	Ctx context.Context
 } {
@@ -258,8 +280,7 @@ func (mock *AirQualityServiceMock) Shutdown(ctx context.Context) {
 
 // ShutdownCalls gets all the calls that were made to Shutdown.
 // Check the length with:
-//
-//	len(mockedAirQualityService.ShutdownCalls())
+//     len(mockedAirQualityService.ShutdownCalls())
 func (mock *AirQualityServiceMock) ShutdownCalls() []struct {
 	Ctx context.Context
 } {
@@ -290,8 +311,7 @@ func (mock *AirQualityServiceMock) Start(ctx context.Context) {
 
 // StartCalls gets all the calls that were made to Start.
 // Check the length with:
-//
-//	len(mockedAirQualityService.StartCalls())
+//     len(mockedAirQualityService.StartCalls())
 func (mock *AirQualityServiceMock) StartCalls() []struct {
 	Ctx context.Context
 } {
@@ -319,8 +339,7 @@ func (mock *AirQualityServiceMock) Tenant() string {
 
 // TenantCalls gets all the calls that were made to Tenant.
 // Check the length with:
-//
-//	len(mockedAirQualityService.TenantCalls())
+//     len(mockedAirQualityService.TenantCalls())
 func (mock *AirQualityServiceMock) TenantCalls() []struct {
 } {
 	var calls []struct {
