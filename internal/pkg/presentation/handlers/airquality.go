@@ -99,6 +99,9 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 		aq := &domain.AirQualityDetails{}
 
 		from, to, err := getTimeParametersFromQuery(r)
+		if err != nil {
+			return
+		}
 		if from.IsZero() && to.IsZero() {
 			aq, err = aqsvc.GetByID(ctx, airQualityID)
 			if err != nil {
@@ -124,9 +127,9 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 }
 
 func getTimeParametersFromQuery(r *http.Request) (from, to time.Time, err error) {
-	f, err := url.QueryUnescape(chi.URLParam(r, "from"))
-	if err != nil {
-		return from, to, fmt.Errorf("query does not contain \"from\" parameter: %s", err.Error())
+	f := r.URL.Query().Get("from")
+	if f == "" {
+		return from, to, err
 	}
 
 	from, err = time.Parse(time.RFC3339, f)
@@ -134,9 +137,9 @@ func getTimeParametersFromQuery(r *http.Request) (from, to time.Time, err error)
 		return from, to, fmt.Errorf("could not parse a valid time from \"from\" parameter: %s", err.Error())
 	}
 
-	t, err := url.QueryUnescape(chi.URLParam(r, "to"))
-	if err != nil {
-		return from, to, fmt.Errorf("query does not valid \"to\" parameter: %s", err.Error())
+	t := r.URL.Query().Get("to")
+	if t == "" {
+		return from, to, err
 	}
 
 	to, err = time.Parse(time.RFC3339, t)
@@ -144,7 +147,7 @@ func getTimeParametersFromQuery(r *http.Request) (from, to time.Time, err error)
 		return from, to, fmt.Errorf("could not parse a valid time from \"to\" parameter: %s", err.Error())
 	}
 
-	return from, to, err
+	return from, to, nil
 }
 
 type AirQualityMapperFunc func(*domain.AirQuality) ([]byte, error)
