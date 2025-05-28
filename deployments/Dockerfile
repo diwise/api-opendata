@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM docker.io/golang:1.22 AS builder
+FROM --platform=$BUILDPLATFORM docker.io/golang:1.24 AS builder
 
 # Set the Current Working Directory inside the container
 WORKDIR /app
@@ -21,7 +21,7 @@ RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 WORKDIR /opt/diwise
 
-LABEL "org.opencontainers.image.source" = "https://github.com/diwise/api-opendata"
+LABEL org.opencontainers.image.source=https://github.com/diwise/api-opendata
 
 COPY --from=builder --chown=1001 /app/cmd/api-opendata/api-opendata /opt/diwise
 COPY --chown=1001 api/openapi-spec/openapi.json /opt/diwise/openapi.json

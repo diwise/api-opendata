@@ -1,6 +1,6 @@
 module github.com/diwise/api-opendata
 
-go 1.22
+go 1.24
 
 require (
 	github.com/diwise/context-broker v0.0.0-20240625130226-602165a8df81
