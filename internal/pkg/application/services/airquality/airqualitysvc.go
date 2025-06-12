@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/domain"
+	"github.com/diwise/context-broker/pkg/ngsild"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/diwise/context-broker/pkg/ngsild/geojson"
 	"github.com/diwise/context-broker/pkg/ngsild/types"
@@ -37,6 +38,7 @@ type AirQualityService interface {
 
 	GetAll(ctx context.Context) []domain.AirQuality
 	GetByID(ctx context.Context, id string) (*domain.AirQualityDetails, error)
+	GetByIDWithTimespan(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, error)
 }
 
 var ErrNoSuchAirQuality error = errors.New("no such air quality")
@@ -104,6 +106,29 @@ func (svc *aqsvc) GetByID(ctx context.Context, id string) (*domain.AirQualityDet
 	case e := <-err:
 		return nil, e
 	}
+}
+
+func (svc *aqsvc) GetByIDWithTimespan(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, error) {
+	logger := logging.GetFromContext(ctx)
+
+	headers := map[string][]string{
+		"Accept": {"application/ld+json"},
+		"Link":   {entities.LinkHeader},
+	}
+
+	aq := &domain.AirQualityDetails{}
+	aq.ID = id
+	aq.Location = svc.airQualityByID[id].Location
+
+	t, err := svc.cbClient.RetrieveTemporalEvolutionOfEntity(ctx, id, headers, client.Between(from, to))
+	if err != nil || t.Found == nil {
+		logger.Error(fmt.Sprintf("failed to retrieve temporal evolution of air quality with id %s and within timespan %s-%s", id, from.Format(time.RFC3339), to.Format(time.RFC3339)), "err", err.Error())
+		return nil, err
+	}
+
+	aq.Pollutants = getPollutantsFromFoundProperties(t)
+
+	return aq, nil
 }
 
 func (svc *aqsvc) Refresh(ctx context.Context) (int, error) {
@@ -336,7 +361,6 @@ func (svc *aqsvc) getDetails(ctx context.Context, c client.ContextBrokerClient, 
 
 	for _, aqo := range svc.airQualities {
 		details := domain.AirQualityDetails{}
-		pollutants := []domain.Pollutant{}
 
 		details.ID = aqo.ID
 		details.DateObserved = aqo.DateObserved
@@ -348,58 +372,62 @@ func (svc *aqsvc) getDetails(ctx context.Context, c client.ContextBrokerClient, 
 			return err
 		}
 
-		if len(t.Found.Property(AtmosphericPressurePropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("AtmosphericPressure", t.Found.Property(AtmosphericPressurePropertyName)))
-		}
-		if len(t.Found.Property(TemperaturePropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("Temperature", t.Found.Property(TemperaturePropertyName)))
-		}
-		if len(t.Found.Property(RelativeHumidityPropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("RelativeHumidity", t.Found.Property(RelativeHumidityPropertyName)))
-		}
-		if len(t.Found.Property(ParticleCountPropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("ParticleCount", t.Found.Property(ParticleCountPropertyName)))
-		}
-		if len(t.Found.Property(PM1PropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("PM1", t.Found.Property(PM1PropertyName)))
-		}
-		if len(t.Found.Property(PM4PropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("PM4", t.Found.Property(PM4PropertyName)))
-		}
-		if len(t.Found.Property(PM10PropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("PM10", t.Found.Property(PM10PropertyName)))
-		}
-		if len(t.Found.Property(PM25PropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("PM25", t.Found.Property(PM25PropertyName)))
-		}
-		if len(t.Found.Property(TotalSuspendedParticulatePropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("TotalSuspendedParticulate", t.Found.Property(TotalSuspendedParticulatePropertyName)))
-		}
-		if len(t.Found.Property(CO2PropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("CO2", t.Found.Property(CO2PropertyName)))
-		}
-		if len(t.Found.Property(NOPropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("NO", t.Found.Property(NOPropertyName)))
-		}
-		if len(t.Found.Property(NO2PropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("NO2", t.Found.Property(NO2PropertyName)))
-		}
-		if len(t.Found.Property(NOxPropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("NOx", t.Found.Property(NOxPropertyName)))
-		}
-		if len(t.Found.Property(WindDirectionPropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("WindDirection", t.Found.Property(WindDirectionPropertyName)))
-		}
-		if len(t.Found.Property(WindSpeedPropertyName)) > 0 {
-			pollutants = append(pollutants, addPollutant("WindSpeed", t.Found.Property(WindSpeedPropertyName)))
-		}
-
-		details.Pollutants = pollutants
+		details.Pollutants = getPollutantsFromFoundProperties(t)
 
 		svc.airQualityByID[aqo.ID] = details
 	}
 
 	return nil
+}
+
+func getPollutantsFromFoundProperties(t *ngsild.RetrieveTemporalEvolutionOfEntityResult) (pollutants []domain.Pollutant) {
+	if len(t.Found.Property(AtmosphericPressurePropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("AtmosphericPressure", t.Found.Property(AtmosphericPressurePropertyName)))
+	}
+	if len(t.Found.Property(TemperaturePropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("Temperature", t.Found.Property(TemperaturePropertyName)))
+	}
+	if len(t.Found.Property(RelativeHumidityPropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("RelativeHumidity", t.Found.Property(RelativeHumidityPropertyName)))
+	}
+	if len(t.Found.Property(ParticleCountPropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("ParticleCount", t.Found.Property(ParticleCountPropertyName)))
+	}
+	if len(t.Found.Property(PM1PropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("PM1", t.Found.Property(PM1PropertyName)))
+	}
+	if len(t.Found.Property(PM4PropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("PM4", t.Found.Property(PM4PropertyName)))
+	}
+	if len(t.Found.Property(PM10PropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("PM10", t.Found.Property(PM10PropertyName)))
+	}
+	if len(t.Found.Property(PM25PropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("PM25", t.Found.Property(PM25PropertyName)))
+	}
+	if len(t.Found.Property(TotalSuspendedParticulatePropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("TotalSuspendedParticulate", t.Found.Property(TotalSuspendedParticulatePropertyName)))
+	}
+	if len(t.Found.Property(CO2PropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("CO2", t.Found.Property(CO2PropertyName)))
+	}
+	if len(t.Found.Property(NOPropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("NO", t.Found.Property(NOPropertyName)))
+	}
+	if len(t.Found.Property(NO2PropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("NO2", t.Found.Property(NO2PropertyName)))
+	}
+	if len(t.Found.Property(NOxPropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("NOx", t.Found.Property(NOxPropertyName)))
+	}
+	if len(t.Found.Property(WindDirectionPropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("WindDirection", t.Found.Property(WindDirectionPropertyName)))
+	}
+	if len(t.Found.Property(WindSpeedPropertyName)) > 0 {
+		pollutants = append(pollutants, addPollutant("WindSpeed", t.Found.Property(WindSpeedPropertyName)))
+	}
+
+	return
 }
 
 func addPollutant(name string, temporal []types.TemporalProperty) domain.Pollutant {

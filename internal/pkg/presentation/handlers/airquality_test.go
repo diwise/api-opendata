@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	services "github.com/diwise/api-opendata/internal/pkg/application/services/airquality"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
@@ -38,6 +39,17 @@ func TestRetrieveAirQualityByID(t *testing.T) {
 	is.Equal(responseBody, expectedAirQualityByIDOutput)
 }
 
+func TestRetrieveAirQualityByIDParsesTimeParamsCorrectly(t *testing.T) {
+	is, r, ts := setupTest(t)
+	svc := defaultAirQualityMock()
+
+	r.Get("/{id}", NewRetrieveAirQualityByIDHandler(context.Background(), svc))
+	response, _ := newGetRequest(is, ts, "application/ld+json", "/aq1?from=2022-10-21T13:10:00Z&to=2022-10-21T13:10:00Z", nil)
+
+	is.Equal(response.StatusCode, http.StatusOK)
+	is.Equal(len(svc.GetByIDWithTimespanCalls()), 1)
+}
+
 const expectedAirQualityByIDOutput string = `{"data": {"id":"aq1","location":{"type":"Point","coordinates":[17.1,62.1]},"dateObserved":{"@type":"DateTime","@value":"2022-10-21T13:10:00Z"},"pollutants":[{"name":"Temperature","values":[{"value":12.6,"observedAt":"2022-10-20T13:10:00Z"}]}]}}`
 
 func defaultAirQualityMock() *services.AirQualityServiceMock {
@@ -52,6 +64,9 @@ func defaultAirQualityMock() *services.AirQualityServiceMock {
 			} else {
 				return nil, fmt.Errorf("no such air quality")
 			}
+		},
+		GetByIDWithTimespanFunc: func(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, error) {
+			return nil, nil
 		},
 	}
 

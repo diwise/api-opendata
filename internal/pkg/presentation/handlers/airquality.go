@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/airquality"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
@@ -95,11 +96,24 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 			return
 		}
 
-		aq, err := aqsvc.GetByID(ctx, airQualityID)
+		aq := &domain.AirQualityDetails{}
 
+		from, to, err := getTimeParametersFromQuery(r)
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
 			return
+		}
+		if from.IsZero() && to.IsZero() {
+			aq, err = aqsvc.GetByID(ctx, airQualityID)
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+		} else {
+			aq, err = aqsvc.GetByIDWithTimespan(ctx, airQualityID, from, to)
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
 		}
 
 		bodyBytes, _ := json.Marshal(aq)
@@ -110,6 +124,30 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 		w.Header().Add("Cache-Control", "max-age=600")
 		w.Write(body)
 	})
+}
+
+func getTimeParametersFromQuery(r *http.Request) (from, to time.Time, err error) {
+	f := r.URL.Query().Get("from")
+	if f == "" {
+		return from, to, err
+	}
+
+	from, err = time.Parse(time.RFC3339, f)
+	if err != nil {
+		return from, to, fmt.Errorf("could not parse a valid time from \"from\" parameter: %s", err.Error())
+	}
+
+	t := r.URL.Query().Get("to")
+	if t == "" {
+		return from, to, err
+	}
+
+	to, err = time.Parse(time.RFC3339, t)
+	if err != nil {
+		return from, to, fmt.Errorf("could not parse a valid time from \"to\" parameter: %s", err.Error())
+	}
+
+	return from, to, nil
 }
 
 type AirQualityMapperFunc func(*domain.AirQuality) ([]byte, error)

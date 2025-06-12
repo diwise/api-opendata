@@ -27,7 +27,7 @@ func NewRetrieveStratsysReportsHandler(ctx context.Context, companyCode, clientI
 	logger := logging.GetFromContext(ctx)
 
 	if companyCode == "" || clientID == "" || scope == "" || loginUrl == "" || defaultUrl == "" {
-		logger.Error("all environment variables need to be set")
+		logger.Error("all STRATSYS environment variables need to be set")
 		os.Exit(1)
 	}
 
