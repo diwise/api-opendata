@@ -1,12 +1,15 @@
 package beaches
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"log/slog"
 	"math"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -236,25 +239,15 @@ func (svc *beachSvc) refresh(ctx context.Context) (count int, err error) {
 		if err_ != nil {
 			logger.Error("failed to get water qualities", slog.String("name", b.Name), slog.String("id", b.ID), slog.String("error", err_.Error()))
 		} else {
-			wq := []WaterQuality{}
+			// Use iterator to filter and map water quality observations
+			wq := slices.Collect(filterValidWaterQualities(wqots))
 
-			for _, t := range wqots {
-				newWQ := WaterQuality{}
-
-				if t.Temperature > 0 {
-					newWQ.Temperature = t.Temperature
-				}
-
-				if t.Source != nil {
-					newWQ.Source = t.Source
-				}
-
-				if t.DateObserved != "" {
-					newWQ.DateObserved = t.DateObserved
-				}
-
-				wq = append(wq, newWQ)
-			}
+			// Sort by DateObserved descending (newest first) using Go 1.25 slices package
+			slices.SortFunc(wq, func(a, b WaterQuality) int {
+				// Compare DateObserved strings (RFC3339 format sorts lexicographically)
+				// Negate the result for descending order (newest first)
+				return cmp.Compare(b.DateObserved, a.DateObserved)
+			})
 
 			beach.WaterQuality = &wq
 		}
@@ -347,4 +340,24 @@ type Beach struct {
 	Description  *string             `json:"description,omitempty"`
 	SeeAlso      *[]string           `json:"seeAlso,omitempty"`
 	Source       *string             `json:"source,omitempty"`
+}
+
+// filterValidWaterQualities returns an iterator over water quality observations
+// with valid temperatures (>= 0), mapped to the local WaterQuality type.
+func filterValidWaterQualities(wqots []domain.WaterQuality) iter.Seq[WaterQuality] {
+	return func(yield func(WaterQuality) bool) {
+		for _, t := range wqots {
+			if t.Temperature < 0 {
+				continue
+			}
+			wq := WaterQuality{
+				Temperature:  t.Temperature,
+				DateObserved: t.DateObserved,
+				Source:       t.Source,
+			}
+			if !yield(wq) {
+				return
+			}
+		}
+	}
 }
