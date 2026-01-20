@@ -141,6 +141,22 @@ func (svc *wqsvc) GetAllNearPointWithinTimespan(ctx context.Context, pt Point, m
 	result := make(chan []domain.WaterQuality)
 	failure := make(chan error)
 
+	between := func(t, from, to time.Time) bool {
+		if from.IsZero() && to.IsZero() {
+			return true
+		}
+
+		if !from.IsZero() && t.Before(from) {
+			return false
+		}
+
+		if !to.IsZero() && t.After(to) {
+			return false
+		}
+
+		return true
+	}
+
 	svc.queue <- func() {
 		waterQualitiesWithinDistance := make([]domain.WaterQuality, 0, len(svc.waterQualityByID))
 
@@ -148,14 +164,38 @@ func (svc *wqsvc) GetAllNearPointWithinTimespan(ctx context.Context, pt Point, m
 			wqPoint := NewPoint(storedWQ.Location.Coordinates[1], storedWQ.Location.Coordinates[0])
 			distanceBetweenPoints := distance(wqPoint, pt)
 
-			storedDate, err := time.Parse(time.RFC3339, storedWQ.Latest.DateObserved)
+			storedDate, err := time.ParseInLocation(time.RFC3339, storedWQ.Latest.DateObserved, time.UTC)
 			if err != nil {
 				failure <- fmt.Errorf("failed to parse time from stored water quality observed: %s", err.Error())
 				return
 			}
 
-			if distanceBetweenPoints < maxDistance && !storedDate.Before(from) && !storedDate.After(to) {
-				waterQualitiesWithinDistance = append(waterQualitiesWithinDistance, storedWQ.Latest)
+			if distanceBetweenPoints < maxDistance {
+				// check if latest observation is within time range
+				if between(storedDate, from, to) {
+					waterQualitiesWithinDistance = append(waterQualitiesWithinDistance, storedWQ.Latest)
+					continue
+				}
+
+				// check historical observations if latest is not within time range. Stop at first match.
+				for _, temp := range *storedWQ.History {
+					tempDate, err := time.ParseInLocation(time.RFC3339, temp.ObservedAt, time.UTC)
+					if err != nil {
+						failure <- fmt.Errorf("failed to parse time from stored water quality history: %s", err.Error())
+						return
+					}
+
+					if between(tempDate, from, to) {
+						waterQualitiesWithinDistance = append(waterQualitiesWithinDistance, domain.WaterQuality{
+							ID:           storedWQ.ID,
+							Temperature:  temp.Value,
+							DateObserved: temp.ObservedAt,
+							Source:       storedWQ.Latest.Source,
+							Location:     storedWQ.Location,
+						})
+						break
+					}
+				}
 			}
 
 		}
@@ -237,25 +277,29 @@ func degreesToRadians(d float64) float64 {
 }
 
 func distance(point1, point2 Point) int {
-	earthRadiusKm := 6371
+	const earthRadiusM = 6371000.0
 
 	lat1 := degreesToRadians(point1.Latitude)
 	lon1 := degreesToRadians(point1.Longitude)
 	lat2 := degreesToRadians(point2.Latitude)
 	lon2 := degreesToRadians(point2.Longitude)
 
-	diffLat := lat2 - lat1
-	diffLon := lon2 - lon1
+	dLat := lat2 - lat1
+	dLon := lon2 - lon1
 
-	a := math.Pow(math.Sin(diffLat/2), 2) + math.Cos(lat1)*math.Cos(lat2)*
-		math.Pow(math.Sin(diffLon/2), 2)
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(lat1)*math.Cos(lat2)*
+			math.Sin(dLon/2)*math.Sin(dLon/2)
+
+	// Clamp pga flyttalsavrundning
+	if a < 0 {
+		a = 0
+	} else if a > 1 {
+		a = 1
+	}
 
 	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
-
-	distanceInKm := c * float64(earthRadiusKm)
-	distanceInM := distanceInKm * 1000
-
-	return int(distanceInM)
+	return int(math.Round(earthRadiusM * c))
 }
 
 func (svc *wqsvc) run(ctx context.Context) {
