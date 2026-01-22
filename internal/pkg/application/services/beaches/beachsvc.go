@@ -230,7 +230,7 @@ func (svc *beachSvc) refresh(ctx context.Context) (count int, err error) {
 			beach.Source = &src
 		}
 
-		from := time.Now().UTC().Add(-24 * time.Hour)
+		from := time.Now().UTC().Add(-24 * 7 * time.Hour)
 		to := time.Now().UTC().Add(1 * time.Hour)
 
 		latitude, longitude := b.LatLon()
