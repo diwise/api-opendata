@@ -165,7 +165,8 @@ func TestGetTemporalWithEmptyTempResult(t *testing.T) {
 
 	wqoJson, err := json.Marshal(wqo)
 	is.NoErr(err)
-	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:testID","temperature":null,"location":{"type":"Point","coordinates":[17.57263982458684,62.53515242132986]}}`
+
+	expectation := `{"id":"urn:ngsi-ld:WaterQualityObserved:testID","temperature":[{"value":10.8,"observedAt":"2021-05-18T19:23:09Z"}],"location":{"type":"Point","coordinates":[17.57263982458684,62.53515242132986]}}`
 	is.Equal(string(wqoJson), expectation)
 }
 

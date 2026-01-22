@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -426,10 +427,28 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 			logger.Info("no temporal data found for water quality", "id", wq.ID)
 		}
 
-		temps = append(temps, domain.Value{
-			Value:      latest.Temperature,
-			ObservedAt: latest.DateObserved,
+		if len(temps) == 0 {
+			temps = append(temps, domain.Value{
+				Value:      latest.Temperature,
+				ObservedAt: latest.DateObserved,
+			})
+		}
+
+		slices.SortFunc(temps, func(a, b domain.Value) int {
+			if a.ObservedAt < b.ObservedAt {
+				return 1
+			} else if a.ObservedAt > b.ObservedAt {
+				return -1
+			}
+			return 0
 		})
+
+		if temps[0].ObservedAt != latest.DateObserved && after(latest.DateObserved, temps[0].ObservedAt) {
+			temps = append([]domain.Value{{
+				Value:      latest.Temperature,
+				ObservedAt: latest.DateObserved,
+			}}, temps...)
+		}
 
 		wq.History = &temps
 
