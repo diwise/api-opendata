@@ -426,6 +426,11 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 			logger.Info("no temporal data found for water quality", "id", wq.ID)
 		}
 
+		temps = append(temps, domain.Value{
+			Value:      latest.Temperature,
+			ObservedAt: latest.DateObserved,
+		})
+
 		wq.History = &temps
 
 		svc.waterQualityByID[w.ID] = wq
@@ -471,7 +476,7 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 		return nil, fmt.Errorf("failed to create http request: %s", err.Error())
 	}
 
-	log.Debug("fetch temporal data for waterquality", "url", requestURL)
+	log.Debug("request temporal data for waterquality", "url", requestURL)
 
 	req.Header.Add("Accept", "application/ld+json")
 	req.Header.Add("Link", entities.LinkHeader)

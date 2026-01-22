@@ -231,7 +231,7 @@ func (svc *beachSvc) refresh(ctx context.Context) (count int, err error) {
 		}
 
 		from := time.Now().UTC().Add(-24 * time.Hour)
-		to := time.Now().UTC()
+		to := time.Now().UTC().Add(1 * time.Hour)
 
 		latitude, longitude := b.LatLon()
 		pt := waterquality.NewPoint(latitude, longitude)
