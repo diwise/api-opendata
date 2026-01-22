@@ -495,8 +495,6 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 		return nil, fmt.Errorf("failed to create http request: %s", err.Error())
 	}
 
-	log.Debug("request temporal data for waterquality", "url", requestURL)
-
 	req.Header.Add("Accept", "application/ld+json")
 	req.Header.Add("Link", entities.LinkHeader)
 
@@ -520,6 +518,8 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %s", err.Error())
 	}
+
+	log.Debug("response from temporal endpoint", "id", id, "tenant", tenant, "body", string(b), "url", requestURL)
 
 	return b, nil
 }
