@@ -437,6 +437,8 @@ func (svc *wqsvc) refresh(ctx context.Context) (count int, err error) {
 func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBrokerURL, id, tenant string, from, to time.Time) ([]byte, error) {
 	var err error
 
+	log := logging.GetFromContext(ctx)
+
 	httpClient := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
@@ -462,6 +464,8 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http request: %s", err.Error())
 	}
+
+	log.Debug("fetch temporal data for waterquality", "url", requestURL)
 
 	req.Header.Add("Accept", "application/ld+json")
 	req.Header.Add("Link", entities.LinkHeader)
