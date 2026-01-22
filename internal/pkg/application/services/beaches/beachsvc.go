@@ -239,6 +239,7 @@ func (svc *beachSvc) refresh(ctx context.Context) (count int, err error) {
 		if err_ != nil {
 			logger.Error("failed to get water qualities", slog.String("name", b.Name), slog.String("id", b.ID), slog.String("error", err_.Error()))
 		} else {
+			log.Debug("fetched water qualities for beach", "name", b.Name, "id", b.ID, "maxDistance", svc.beachMaxWQODistance, "from", from, "to", to, "count", len(wqots))
 			// Use iterator to filter and map water quality observations
 			wq := slices.Collect(filterValidWaterQualities(wqots))
 

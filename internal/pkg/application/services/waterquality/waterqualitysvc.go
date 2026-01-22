@@ -141,6 +141,8 @@ func (svc *wqsvc) GetAllNearPointWithinTimespan(ctx context.Context, pt Point, m
 	result := make(chan []domain.WaterQuality)
 	failure := make(chan error)
 
+	log := logging.GetFromContext(ctx)
+
 	between := func(t, from, to time.Time) bool {
 		if from.IsZero() && to.IsZero() {
 			return true
@@ -170,12 +172,16 @@ func (svc *wqsvc) GetAllNearPointWithinTimespan(ctx context.Context, pt Point, m
 				return
 			}
 
+			log.Debug("get all near point", "distance", distanceBetweenPoints, "maxdistance", maxDistance, "id", storedWQ.ID)
+
 			if distanceBetweenPoints < maxDistance {
 				// check if latest observation is within time range
 				if between(storedDate, from, to) {
 					waterQualitiesWithinDistance = append(waterQualitiesWithinDistance, storedWQ.Latest)
 					continue
 				}
+
+				log.Debug("compare dates", "lastest", storedDate, "from", from, "to", to)
 
 				// check historical observations if latest is not within time range. Stop at first match.
 				for _, temp := range *storedWQ.History {
