@@ -20,6 +20,6 @@ In order to start specific services, add the appropriate service names to a comm
     - waterqualities
     - weather
 
-**example**
+### example
  ```bash
  export ENABLED_SERVICES="airqualities,cityworks,traffic"
