@@ -52,7 +52,7 @@ var organisationRegistryFile string
 func main() {
 	serviceVersion := buildinfo.SourceVersion()
 
-	ctx, log, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
+	ctx, log, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion, "json")
 	defer cleanup()
 
 	flag.StringVar(&openApiSpecFileName, "oas", "/opt/diwise/openapi.json", "An OpenAPI specification to be served on /api/openapi")

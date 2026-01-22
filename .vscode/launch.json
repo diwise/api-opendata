@@ -11,8 +11,9 @@
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/api-opendata/main.go",
             "env": {
-                "DIWISE_CONTEXT_BROKER_URL": "http://localhost:8050",
-                "STRATSYS_ENABLED": "false"
+                "DIWISE_CONTEXT_BROKER_URL": "https://context-broker-002ip-smartastader-smf-prod.apps.k8sp.gbgpaas.se",
+                "STRATSYS_ENABLED": "false",
+                "ENABLED_SERVICES":"beaches,waterqualities"
             },
             "args": [
                 "-oas=${workspaceFolder}/api/openapi.json",

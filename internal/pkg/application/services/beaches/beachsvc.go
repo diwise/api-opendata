@@ -229,7 +229,7 @@ func (svc *beachSvc) refresh(ctx context.Context) (count int, err error) {
 			src := b.Source
 			beach.Source = &src
 		}
-		
+
 		from := time.Now().UTC().Add(-24 * time.Hour)
 		to := time.Now().UTC()
 

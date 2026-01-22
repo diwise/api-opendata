@@ -444,7 +444,7 @@ func (q *wqsvc) requestTemporalDataForSingleEntity(ctx context.Context, ctxBroke
 	params := url.Values{}
 
 	if from.IsZero() && to.IsZero() {
-		from = time.Now().UTC().Add(-24 * time.Hour)
+		from = time.Now().UTC().Add(-24 * 7 * time.Hour)
 		to = time.Now().UTC()
 	}
 
