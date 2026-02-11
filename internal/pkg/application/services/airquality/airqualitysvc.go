@@ -38,7 +38,7 @@ type AirQualityService interface {
 
 	GetAll(ctx context.Context) []domain.AirQuality
 	GetByID(ctx context.Context, id string) (*domain.AirQualityDetails, error)
-	GetByIDWithTimespan(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, *NextTimespan, error)
+	GetByIDWithTimespan(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, *Timespan, error)
 }
 
 var ErrNoSuchAirQuality error = errors.New("no such air quality")
@@ -108,12 +108,12 @@ func (svc *aqsvc) GetByID(ctx context.Context, id string) (*domain.AirQualityDet
 	}
 }
 
-type NextTimespan struct {
-	From *time.Time
-	To   *time.Time
+type Timespan struct {
+	From time.Time
+	To   time.Time
 }
 
-func (svc *aqsvc) GetByIDWithTimespan(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, *NextTimespan, error) {
+func (svc *aqsvc) GetByIDWithTimespan(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, *Timespan, error) {
 	logger := logging.GetFromContext(ctx)
 
 	headers := map[string][]string{
@@ -127,28 +127,25 @@ func (svc *aqsvc) GetByIDWithTimespan(ctx context.Context, id string, from, to t
 
 	pollutantMap := make(map[string]*domain.Pollutant)
 
-	var t *ngsild.RetrieveTemporalEvolutionOfEntityResult
-	var err error
+	var timeSpan *Timespan = &Timespan{From: from, To: to}
 
-	var requestLimit = 3
-	var nextTimespan2 *NextTimespan = &NextTimespan{From: &from, To: &to}
+	for range 3 {
 
-	for range requestLimit {
-
-		t, err = svc.cbClient.RetrieveTemporalEvolutionOfEntity(ctx, id, headers, client.Between(*nextTimespan2.From, *nextTimespan2.To))
+		t, err := svc.cbClient.RetrieveTemporalEvolutionOfEntity(ctx, id, headers, client.Between(timeSpan.From, timeSpan.To))
 		if err != nil || t.Found == nil {
-			logger.Error(fmt.Sprintf("failed to retrieve temporal evolution of air quality with id %s and within timespan %s-%s", id, nextTimespan2.From.Format(time.RFC3339), nextTimespan2.To.Format(time.RFC3339)), "err", err.Error())
+			logger.Error(fmt.Sprintf("failed to retrieve temporal evolution of air quality with id %s and within timespan %s-%s", id, timeSpan.From.Format(time.RFC3339), timeSpan.To.Format(time.RFC3339)), "err", err.Error())
 			return nil, nil, err
 		}
 
 		mergePollutants(pollutantMap, getPollutantsFromFoundProperties(t))
 
 		if !t.PartialResult {
-			nextTimespan2 = nil
+			timeSpan = nil
 			break
 		}
 
-		nextTimespan2 = &NextTimespan{From: t.ContentRange.EndTime, To: &to}
+		timeSpan.From = *t.ContentRange.EndTime
+		timeSpan.To = to
 	}
 
 	// Convert map to slice
@@ -156,7 +153,7 @@ func (svc *aqsvc) GetByIDWithTimespan(ctx context.Context, id string, from, to t
 		aq.Pollutants = append(aq.Pollutants, *p)
 	}
 
-	return aq, nextTimespan2, nil
+	return aq, timeSpan, nil
 }
 
 func mergePollutants(pollutantMap map[string]*domain.Pollutant, newPollutants []domain.Pollutant) {

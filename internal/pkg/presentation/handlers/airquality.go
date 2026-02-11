@@ -98,7 +98,7 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 		}
 
 		aq := &domain.AirQualityDetails{}
-		next := &airquality.NextTimespan{}
+		next := &airquality.Timespan{}
 
 		from, to, err := getTimeParametersFromQuery(r)
 		if err != nil {
@@ -125,7 +125,7 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 		links := domain.JSONAPILinks{
 			Self: selfLink,
 		}
-		if next != nil && next.From != nil && next.To != nil {
+		if next != nil {
 			nu, _ := url.Parse(selfLink)
 			nq := nu.Query()
 			nq.Set("from", next.From.Format(time.RFC3339))

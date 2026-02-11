@@ -56,7 +56,7 @@ type AirQualityServiceMock struct {
 	GetByIDFunc func(ctx context.Context, id string) (*domain.AirQualityDetails, error)
 
 	// GetByIDWithTimespanFunc mocks the GetByIDWithTimespan method.
-	GetByIDWithTimespanFunc func(ctx context.Context, id string, from time.Time, to time.Time) (*domain.AirQualityDetails, *NextTimespan, error)
+	GetByIDWithTimespanFunc func(ctx context.Context, id string, from time.Time, to time.Time) (*domain.AirQualityDetails, *Timespan, error)
 
 	// RefreshFunc mocks the Refresh method.
 	RefreshFunc func(ctx context.Context) (int, error)
@@ -192,7 +192,7 @@ func (mock *AirQualityServiceMock) GetByIDCalls() []struct {
 }
 
 // GetByIDWithTimespan calls GetByIDWithTimespanFunc.
-func (mock *AirQualityServiceMock) GetByIDWithTimespan(ctx context.Context, id string, from time.Time, to time.Time) (*domain.AirQualityDetails, *NextTimespan, error) {
+func (mock *AirQualityServiceMock) GetByIDWithTimespan(ctx context.Context, id string, from time.Time, to time.Time) (*domain.AirQualityDetails, *Timespan, error) {
 	if mock.GetByIDWithTimespanFunc == nil {
 		panic("AirQualityServiceMock.GetByIDWithTimespanFunc: method is nil but AirQualityService.GetByIDWithTimespan was just called")
 	}

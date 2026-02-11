@@ -85,11 +85,11 @@ func defaultAirQualityMock() *services.AirQualityServiceMock {
 				return nil, fmt.Errorf("no such air quality")
 			}
 		},
-		GetByIDWithTimespanFunc: func(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, *services.NextTimespan, error) {
+		GetByIDWithTimespanFunc: func(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, *services.Timespan, error) {
 			aq, ok := aqDetails[id]
 			nextFrom := from.Add(time.Hour * 24)
 			if ok {
-				return &aq, &services.NextTimespan{From: &nextFrom, To: &to}, nil
+				return &aq, &services.Timespan{From: nextFrom, To: to}, nil
 			}
 
 			return nil, nil, fmt.Errorf("no such air quality")
