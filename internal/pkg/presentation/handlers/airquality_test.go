@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"testing"
 	"time"
 
@@ -36,7 +37,9 @@ func TestRetrieveAirQualityByID(t *testing.T) {
 	is.Equal(response.StatusCode, http.StatusOK)
 	is.Equal(len(svc.GetByIDCalls()), 1)
 
-	is.Equal(responseBody, expectedAirQualityByIDOutput)
+	re := regexp.MustCompile(`https?://[^/]+`)
+	cleanedBody := re.ReplaceAllString(responseBody, "")
+	is.Equal(cleanedBody, expectedAirQualityByIDOutput)
 }
 
 func TestRetrieveAirQualityByIDParsesTimeParamsCorrectly(t *testing.T) {
@@ -50,7 +53,24 @@ func TestRetrieveAirQualityByIDParsesTimeParamsCorrectly(t *testing.T) {
 	is.Equal(len(svc.GetByIDWithTimespanCalls()), 1)
 }
 
-const expectedAirQualityByIDOutput string = `{"data": {"id":"aq1","location":{"type":"Point","coordinates":[17.1,62.1]},"dateObserved":{"@type":"DateTime","@value":"2022-10-21T13:10:00Z"},"pollutants":[{"name":"Temperature","values":[{"value":12.6,"observedAt":"2022-10-20T13:10:00Z"}]}]}}`
+func TestRetrieveAirQualityByIDCorrectLinks(t *testing.T) {
+	is, r, ts := setupTest(t)
+	svc := defaultAirQualityMock()
+
+	r.Get("/{id}", NewRetrieveAirQualityByIDHandler(context.Background(), svc))
+	response, responseBody := newGetRequest(is, ts, "application/ld+json", "/aq1?from=2022-10-19T13:10:00Z&to=2022-10-22T13:10:00Z", nil)
+
+	is.Equal(response.StatusCode, http.StatusOK)
+	is.Equal(len(svc.GetByIDWithTimespanCalls()), 1)
+
+	re := regexp.MustCompile(`https?://[^/]+`)
+	cleanedBody := re.ReplaceAllString(responseBody, "")
+	is.Equal(cleanedBody, expectedAirQualityByIDLinksOutput)
+}
+
+const expectedAirQualityByIDOutput string = `{"data":{"id":"aq1","location":{"type":"Point","coordinates":[17.1,62.1]},"dateObserved":{"@type":"DateTime","@value":"2022-10-21T13:10:00Z"},"pollutants":[{"name":"Temperature","values":[{"value":12.6,"observedAt":"2022-10-20T13:10:00Z"}]}]},"links":{"self":"/aq1"}}`
+
+const expectedAirQualityByIDLinksOutput string = `{"data":{"id":"aq1","location":{"type":"Point","coordinates":[17.1,62.1]},"dateObserved":{"@type":"DateTime","@value":"2022-10-21T13:10:00Z"},"pollutants":[{"name":"Temperature","values":[{"value":12.6,"observedAt":"2022-10-20T13:10:00Z"}]}]},"links":{"next":"/aq1?from=2022-10-20T13%3A10%3A00Z&to=2022-10-22T13%3A10%3A00Z","self":"/aq1?from=2022-10-19T13%3A10%3A00Z&to=2022-10-22T13%3A10%3A00Z"}}`
 
 func defaultAirQualityMock() *services.AirQualityServiceMock {
 	mock := &services.AirQualityServiceMock{
@@ -65,8 +85,14 @@ func defaultAirQualityMock() *services.AirQualityServiceMock {
 				return nil, fmt.Errorf("no such air quality")
 			}
 		},
-		GetByIDWithTimespanFunc: func(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, error) {
-			return nil, nil
+		GetByIDWithTimespanFunc: func(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, *services.NextTimespan, error) {
+			aq, ok := aqDetails[id]
+			nextFrom := from.Add(time.Hour * 24)
+			if ok {
+				return &aq, &services.NextTimespan{From: &nextFrom, To: &to}, nil
+			}
+
+			return nil, nil, fmt.Errorf("no such air quality")
 		},
 	}
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/airquality"
 	"github.com/diwise/api-opendata/internal/pkg/domain"
+	"github.com/diwise/api-opendata/internal/pkg/presentation/handlers/webutil"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
@@ -97,6 +98,7 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 		}
 
 		aq := &domain.AirQualityDetails{}
+		next := &airquality.NextTimespan{}
 
 		from, to, err := getTimeParametersFromQuery(r)
 		if err != nil {
@@ -109,20 +111,47 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 				return
 			}
 		} else {
-			aq, err = aqsvc.GetByIDWithTimespan(ctx, airQualityID, from, to)
+			aq, next, err = aqsvc.GetByIDWithTimespan(ctx, airQualityID, from, to)
 			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 		}
 
-		bodyBytes, _ := json.Marshal(aq)
+		u := webutil.BuildPublicURL(r)
+		u.RawQuery = r.URL.Query().Encode()
+		selfLink := u.String()
 
-		body := []byte("{\"data\": " + string(bodyBytes) + "}")
+		links := domain.JSONAPILinks{
+			Self: selfLink,
+		}
+		if next != nil && next.From != nil && next.To != nil {
+			nu, _ := url.Parse(selfLink)
+			nq := nu.Query()
+			nq.Set("from", next.From.Format(time.RFC3339))
+			nq.Set("to", next.To.Format(time.RFC3339))
+			nu.RawQuery = nq.Encode()
+			nextLink := nu.String()
+			links.Next = nextLink
+		}
 
+		dataBytes, _ := json.Marshal(aq)
+		var linksBuffer bytes.Buffer
+		linksEnc := json.NewEncoder(&linksBuffer)
+		linksEnc.SetEscapeHTML(false)
+		_ = linksEnc.Encode(links)
+		linksBytes := bytes.TrimRight(linksBuffer.Bytes(), "\n")
+
+		responseBytes := make([]byte, 0, len(dataBytes)+len(linksBytes)+20)
+		responseBuffer := bytes.NewBuffer(responseBytes)
+		responseBuffer.WriteString("{\"data\":")
+		responseBuffer.Write(dataBytes)
+		responseBuffer.WriteString(",\"links\":")
+		responseBuffer.Write(linksBytes)
+		responseBuffer.WriteString("}")
 		w.Header().Add("Content-Type", "application/json")
 		w.Header().Add("Cache-Control", "max-age=600")
-		w.Write(body)
+		w.Write(responseBuffer.Bytes())
 	})
 }
 
