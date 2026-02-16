@@ -38,7 +38,7 @@ type AirQualityService interface {
 
 	GetAll(ctx context.Context) []domain.AirQuality
 	GetByID(ctx context.Context, id string) (*domain.AirQualityDetails, error)
-	GetByIDWithTimespan(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, *Timespan, error)
+	GetByIDWithTimespan(ctx context.Context, id string, timeAt, endTimeAt time.Time) (*domain.AirQualityDetails, *Timespan, error)
 }
 
 var ErrNoSuchAirQuality error = errors.New("no such air quality")
@@ -113,7 +113,7 @@ type Timespan struct {
 	To   time.Time
 }
 
-func (svc *aqsvc) GetByIDWithTimespan(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, *Timespan, error) {
+func (svc *aqsvc) GetByIDWithTimespan(ctx context.Context, id string, timeAt, endTimeAt time.Time) (*domain.AirQualityDetails, *Timespan, error) {
 	logger := logging.GetFromContext(ctx)
 
 	headers := map[string][]string{
@@ -127,10 +127,9 @@ func (svc *aqsvc) GetByIDWithTimespan(ctx context.Context, id string, from, to t
 
 	pollutantMap := make(map[string]*domain.Pollutant)
 
-	var timeSpan *Timespan = &Timespan{From: from, To: to}
+	var timeSpan *Timespan = &Timespan{From: timeAt, To: endTimeAt}
 
-	for range 3 {
-
+	for range 3 { // Limit to 3 iterations per page, which is a reasonable payload size with max 300 datapoints per pollutant.
 		t, err := svc.cbClient.RetrieveTemporalEvolutionOfEntity(ctx, id, headers, client.Between(timeSpan.From, timeSpan.To))
 		if err != nil || t.Found == nil {
 			logger.Error(fmt.Sprintf("failed to retrieve temporal evolution of air quality with id %s and within timespan %s-%s", id, timeSpan.From.Format(time.RFC3339), timeSpan.To.Format(time.RFC3339)), "err", err.Error())
@@ -145,7 +144,7 @@ func (svc *aqsvc) GetByIDWithTimespan(ctx context.Context, id string, from, to t
 		}
 
 		timeSpan.From = *t.ContentRange.EndTime
-		timeSpan.To = to
+		timeSpan.To = endTimeAt
 	}
 
 	// Convert map to slice

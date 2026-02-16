@@ -97,21 +97,23 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 			return
 		}
 
-		aq := &domain.AirQualityDetails{}
-		next := &airquality.Timespan{}
+		var aq *domain.AirQualityDetails
+		var next *airquality.Timespan
 
-		from, to, err := getTimeParametersFromQuery(r)
+		timeAt, endTimeAt, hasTimeSpan, err := resolveTimeSpanFromQuery(r)
 		if err != nil {
+			problem := errors.NewProblemReport(http.StatusBadRequest, "badrequest", errors.Detail(err.Error()), errors.TraceID(traceID))
+			problem.WriteResponse(w)
 			return
 		}
-		if from.IsZero() && to.IsZero() {
+		if !hasTimeSpan {
 			aq, err = aqsvc.GetByID(ctx, airQualityID)
 			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 		} else {
-			aq, next, err = aqsvc.GetByIDWithTimespan(ctx, airQualityID, from, to)
+			aq, next, err = aqsvc.GetByIDWithTimespan(ctx, airQualityID, timeAt, endTimeAt)
 			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -128,8 +130,11 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 		if next != nil {
 			nu, _ := url.Parse(selfLink)
 			nq := nu.Query()
-			nq.Set("from", next.From.Format(time.RFC3339))
-			nq.Set("to", next.To.Format(time.RFC3339))
+			// Remove legacy params if present
+			nq.Del("from")
+			nq.Del("to")
+			nq.Set("timeAt", next.From.Format(time.RFC3339))
+			nq.Set("endTimeAt", next.To.Format(time.RFC3339))
 			nu.RawQuery = nq.Encode()
 			nextLink := nu.String()
 			links.Next = nextLink
@@ -155,7 +160,44 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 	})
 }
 
-func getTimeParametersFromQuery(r *http.Request) (from, to time.Time, err error) {
+func resolveTimeSpanFromQuery(r *http.Request) (timeAt, endTimeAt time.Time, hasTimeSpan bool, err error) {
+
+	timeAt, endTimeAt, err = get_TimeAt_EndTimeAt_FromQuery(r)
+	if err != nil {
+		return
+	}
+
+	from, to, err := get_From_To_ParametersFromQuery(r)
+	if err != nil {
+		return
+	}
+
+	// Check for conflicting parameter sets
+	hasNewParams := !timeAt.IsZero() && !endTimeAt.IsZero()
+	hasLegacyParams := !from.IsZero() && !to.IsZero()
+
+	if hasNewParams && hasLegacyParams {
+		err = fmt.Errorf("cannot use both from/to and timeAt/endTimeAt parameters at the same time.")
+		return
+	}
+
+	// Use legacy params if new ones not provided
+	if !hasNewParams && hasLegacyParams {
+		timeAt = from
+		endTimeAt = to
+	}
+
+	// Validate time ordering
+	if !timeAt.IsZero() && !endTimeAt.IsZero() && endTimeAt.Before(timeAt) {
+		err = fmt.Errorf("endTimeAt time cannot be before timeAt")
+		return
+	}
+
+	hasTimeSpan = !timeAt.IsZero() && !endTimeAt.IsZero()
+	return
+}
+
+func get_From_To_ParametersFromQuery(r *http.Request) (from, to time.Time, err error) {
 	f := r.URL.Query().Get("from")
 	if f == "" {
 		return from, to, err
@@ -177,6 +219,30 @@ func getTimeParametersFromQuery(r *http.Request) (from, to time.Time, err error)
 	}
 
 	return from, to, nil
+}
+
+func get_TimeAt_EndTimeAt_FromQuery(r *http.Request) (timeAt, endTimeAt time.Time, err error) {
+	ta := r.URL.Query().Get("timeAt")
+	if ta == "" {
+		return timeAt, endTimeAt, err
+	}
+
+	timeAt, err = time.Parse(time.RFC3339, ta)
+	if err != nil {
+		return timeAt, endTimeAt, fmt.Errorf("could not parse a valid time from \"timeAt\" parameter: %s", err.Error())
+	}
+
+	eta := r.URL.Query().Get("endTimeAt")
+	if eta == "" {
+		return timeAt, endTimeAt, err
+	}
+
+	endTimeAt, err = time.Parse(time.RFC3339, eta)
+	if err != nil {
+		return timeAt, endTimeAt, fmt.Errorf("could not parse a valid time from \"endTimeAt\" parameter: %s", err.Error())
+	}
+
+	return timeAt, endTimeAt, nil
 }
 
 type AirQualityMapperFunc func(*domain.AirQuality) ([]byte, error)
