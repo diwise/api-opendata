@@ -131,8 +131,13 @@ func (svc *aqsvc) GetByIDWithTimespan(ctx context.Context, id string, timeAt, en
 
 	for range 3 { // Limit to 3 iterations per page, which is a reasonable payload size with max 300 datapoints per pollutant.
 		t, err := svc.cbClient.RetrieveTemporalEvolutionOfEntity(ctx, id, headers, client.Between(timeSpan.From, timeSpan.To))
+
 		if err != nil || t.Found == nil {
-			logger.Error(fmt.Sprintf("failed to retrieve temporal evolution of air quality with id %s and within timespan %s-%s", id, timeSpan.From.Format(time.RFC3339), timeSpan.To.Format(time.RFC3339)), "err", err.Error())
+			errMsg := ""
+			if err != nil {
+				errMsg = err.Error()
+			}
+			logger.Error(fmt.Sprintf("failed to retrieve temporal evolution of air quality with id %s and within timespan %s-%s", id, timeSpan.From.Format(time.RFC3339), timeSpan.To.Format(time.RFC3339)), "err", errMsg)
 			return nil, nil, err
 		}
 

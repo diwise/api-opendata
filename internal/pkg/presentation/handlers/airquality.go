@@ -97,15 +97,16 @@ func NewRetrieveAirQualityByIDHandler(ctx context.Context, aqsvc airquality.AirQ
 			return
 		}
 
-		var aq *domain.AirQualityDetails
-		var next *airquality.Timespan
-
 		timeAt, endTimeAt, hasTimeSpan, err := resolveTimeSpanFromQuery(r)
 		if err != nil {
 			problem := errors.NewProblemReport(http.StatusBadRequest, "badrequest", errors.Detail(err.Error()), errors.TraceID(traceID))
 			problem.WriteResponse(w)
 			return
 		}
+
+		var aq *domain.AirQualityDetails
+		var next *airquality.Timespan
+
 		if !hasTimeSpan {
 			aq, err = aqsvc.GetByID(ctx, airQualityID)
 			if err != nil {
@@ -200,7 +201,7 @@ func resolveTimeSpanFromQuery(r *http.Request) (timeAt, endTimeAt time.Time, has
 func get_From_To_ParametersFromQuery(r *http.Request) (from, to time.Time, err error) {
 	f := r.URL.Query().Get("from")
 	if f == "" {
-		return from, to, err
+		return
 	}
 
 	from, err = time.Parse(time.RFC3339, f)
@@ -224,7 +225,7 @@ func get_From_To_ParametersFromQuery(r *http.Request) (from, to time.Time, err e
 func get_TimeAt_EndTimeAt_FromQuery(r *http.Request) (timeAt, endTimeAt time.Time, err error) {
 	ta := r.URL.Query().Get("timeAt")
 	if ta == "" {
-		return timeAt, endTimeAt, err
+		return
 	}
 
 	timeAt, err = time.Parse(time.RFC3339, ta)
