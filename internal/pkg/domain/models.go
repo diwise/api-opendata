@@ -222,7 +222,34 @@ func NewLineString(coordinates [][]float64) *LineString {
 }
 
 type Geometry struct {
-	raw json.RawMessage
+	Type        string `json:"type"`
+	Coordinates any    `json:"coordinates"`
+	raw         json.RawMessage
+}
+
+func (g Geometry) MarshalJSON() ([]byte, error) {
+	type orderedGeoJSON struct {
+		Type        string      `json:"type"`
+		Coordinates interface{} `json:"coordinates"`
+	}
+
+	if len(g.raw) > 0 {
+		var temp struct {
+			Type        string      `json:"type"`
+			Coordinates interface{} `json:"coordinates"`
+		}
+		if err := json.Unmarshal(g.raw, &temp); err == nil {
+			return json.Marshal(orderedGeoJSON{
+				Type:        temp.Type,
+				Coordinates: temp.Coordinates,
+			})
+		}
+	}
+
+	return json.Marshal(orderedGeoJSON{
+		Type:        g.Type,
+		Coordinates: g.Coordinates,
+	})
 }
 
 func (g *Geometry) UnmarshalJSON(data []byte) error {
@@ -233,19 +260,31 @@ func (g *Geometry) UnmarshalJSON(data []byte) error {
 func (g *Geometry) ToPoint() (*Point, error) {
 	var p Point
 	err := json.Unmarshal(g.raw, &p)
-	return &p, err
+	if err != nil {
+		return nil, err
+	}
+	//	p.Type = "Point"
+	return &p, nil
 }
 
 func (g *Geometry) ToMultiPolygon() (*MultiPolygon, error) {
 	var mp MultiPolygon
 	err := json.Unmarshal(g.raw, &mp)
-	return &mp, err
+	if err != nil {
+		return nil, err
+	}
+	//	mp.Type = "MultiPolygon"
+	return &mp, nil
 }
 
 func (g *Geometry) ToLineString() (*LineString, error) {
 	var ls LineString
 	err := json.Unmarshal(g.raw, &ls)
-	return &ls, err
+	if err != nil {
+		return nil, err
+	}
+	//	ls.Type = "LineString"
+	return &ls, nil
 }
 
 type RoadAccident struct {
