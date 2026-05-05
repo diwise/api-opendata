@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -218,6 +219,33 @@ type LineString struct {
 
 func NewLineString(coordinates [][]float64) *LineString {
 	return &LineString{"LineString", coordinates}
+}
+
+type Geometry struct {
+	raw json.RawMessage
+}
+
+func (g *Geometry) UnmarshalJSON(data []byte) error {
+	g.raw = data
+	return nil
+}
+
+func (g *Geometry) ToPoint() (*Point, error) {
+	var p Point
+	err := json.Unmarshal(g.raw, &p)
+	return &p, err
+}
+
+func (g *Geometry) ToMultiPolygon() (*MultiPolygon, error) {
+	var mp MultiPolygon
+	err := json.Unmarshal(g.raw, &mp)
+	return &mp, err
+}
+
+func (g *Geometry) ToLineString() (*LineString, error) {
+	var ls LineString
+	err := json.Unmarshal(g.raw, &ls)
+	return &ls, err
 }
 
 type RoadAccident struct {

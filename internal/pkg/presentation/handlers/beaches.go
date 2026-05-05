@@ -12,7 +12,6 @@ import (
 	"log/slog"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
-	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
@@ -117,7 +116,12 @@ func NewRetrieveBeachesHandler(ctx context.Context, beachService beaches.BeachSe
 
 		} else {
 			locationMapper := func(b *beaches.Beach) any {
-				return domain.NewPoint(b.Location.Coordinates[0][0][0][1], b.Location.Coordinates[0][0][0][0])
+				point, err := b.Location.ToPoint()
+				if err != nil {
+					logger.Error("failed to convert beach location to point", slog.String("beachID", b.ID), slog.String("err", err.Error()))
+					return nil
+				}
+				return point
 			}
 
 			fields := append([]string{"id", "name", "location"}, fields...)

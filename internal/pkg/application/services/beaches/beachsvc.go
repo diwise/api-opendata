@@ -268,13 +268,10 @@ func (svc *beachSvc) refresh(ctx context.Context) (count int, err error) {
 }
 
 type beachDTO struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Location    struct {
-		Type        string          `json:"type"`
-		Coordinates [][][][]float64 `json:"coordinates"`
-	} `json:"location"`
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description"`
+	Location     domain.Geometry `json:"location"`
 	See          json.RawMessage `json:"seeAlso"`
 	Source       string          `json:"source"`
 	DateModified json.RawMessage `json:"dateModified"`
@@ -285,18 +282,30 @@ func round(v float64) float64 {
 }
 
 func (b *beachDTO) LatLon() (float64, float64) {
-	latSum := 0.0
-	lonSum := 0.0
-
-	for idx, pair := range b.Location.Coordinates[0][0] {
-		if idx > 0 {
-			lonSum = lonSum + pair[0]
-			latSum = latSum + pair[1]
-		}
+	// Try to unmarshal as Point first
+	if point, err := b.Location.ToPoint(); err == nil {
+		// Point coordinates: [longitude, latitude]
+		return point.Coordinates[1], point.Coordinates[0]
 	}
 
-	numPairs := len(b.Location.Coordinates[0][0])
-	return round(latSum / (float64(numPairs - 1))), round(lonSum / (float64(numPairs - 1)))
+	// If not Point, try MultiPolygon
+	if mp, err := b.Location.ToMultiPolygon(); err == nil {
+		latSum := 0.0
+		lonSum := 0.0
+
+		for idx, pair := range mp.Coordinates[0][0] {
+			if idx > 0 {
+				lonSum = lonSum + pair[0]
+				latSum = latSum + pair[1]
+			}
+		}
+
+		numPairs := len(mp.Coordinates[0][0])
+		return round(latSum / (float64(numPairs - 1))), round(lonSum / (float64(numPairs - 1)))
+	}
+
+	// If neither, return 0,0 or handle error
+	return 0.0, 0.0
 }
 
 func (b *beachDTO) SeeAlso() []string {
@@ -334,13 +343,13 @@ func (w WaterQuality) Age() time.Duration {
 }
 
 type Beach struct {
-	ID           string              `json:"id"`
-	Name         string              `json:"name"`
-	Location     domain.MultiPolygon `json:"location"`
-	WaterQuality *[]WaterQuality     `json:"waterquality,omitempty"`
-	Description  *string             `json:"description,omitempty"`
-	SeeAlso      *[]string           `json:"seeAlso,omitempty"`
-	Source       *string             `json:"source,omitempty"`
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Location     domain.Geometry `json:"location"`
+	WaterQuality *[]WaterQuality `json:"waterquality,omitempty"`
+	Description  *string         `json:"description,omitempty"`
+	SeeAlso      *[]string       `json:"seeAlso,omitempty"`
+	Source       *string         `json:"source,omitempty"`
 }
 
 // filterValidWaterQualities returns an iterator over water quality observations
