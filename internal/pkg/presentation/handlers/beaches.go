@@ -12,6 +12,7 @@ import (
 	"log/slog"
 
 	"github.com/diwise/api-opendata/internal/pkg/application/services/beaches"
+	"github.com/diwise/api-opendata/internal/pkg/domain"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
@@ -51,6 +52,12 @@ func NewRetrieveBeachByIDHandler(ctx context.Context, beachService beaches.Beach
 		}
 
 		beachJSON, err := json.Marshal(beach)
+		if err != nil {
+			log.Error("failed to marshal beach", slog.String("err", err.Error()))
+			problem := errors.NewProblemReport(http.StatusInternalServerError, "internalerror", errors.Detail(err.Error()), errors.TraceID(traceID))
+			problem.WriteResponse(w)
+			return
+		}
 
 		body := []byte("{\"data\":" + string(beachJSON) + "}")
 
@@ -92,7 +99,14 @@ func NewRetrieveBeachesHandler(ctx context.Context, beachService beaches.BeachSe
 		}
 
 		if acceptedContentType == geoJSONContentType {
-			locationMapper := func(b *beaches.Beach) any { return b.Location }
+			locationMapper := func(b *beaches.Beach) any {
+				mp, err := b.Location.ToMultiPolygon()
+				if err != nil {
+					logger.Error("failed to convert beach location to multipolygon", slog.String("beachID", b.ID), slog.String("err", err.Error()))
+					return nil
+				}
+				return mp
+			}
 
 			fields = append([]string{"type", "name", "location"}, fields...)
 			beachGeoJSON, err := marshalBeachToJSON(
@@ -116,12 +130,16 @@ func NewRetrieveBeachesHandler(ctx context.Context, beachService beaches.BeachSe
 
 		} else {
 			locationMapper := func(b *beaches.Beach) any {
-				point, err := b.Location.ToPoint()
-				if err != nil {
-					logger.Error("failed to convert beach location to point", slog.String("beachID", b.ID), slog.String("err", err.Error()))
-					return nil
+				if point, err := b.Location.ToPoint(); err == nil {
+					return point
 				}
-				return point
+
+				if mp, err := b.Location.ToMultiPolygon(); err == nil {
+					return domain.NewPoint(mp.Coordinates[0][0][0][1], mp.Coordinates[0][0][0][0])
+				}
+
+				logger.Error("failed to convert beach location", slog.String("beachID", b.ID))
+				return nil
 			}
 
 			fields := append([]string{"id", "name", "location"}, fields...)
@@ -158,12 +176,25 @@ func newBeachGeoJSONMapper(baseMapper BeachMapperFunc) BeachMapperFunc {
 		var props any
 		json.Unmarshal(body, &props)
 
+		var geometry any
+		mp, err := b.Location.ToMultiPolygon()
+		if err != nil {
+			point, pointErr := b.Location.ToPoint()
+			if pointErr != nil {
+				geometry = nil
+			} else {
+				geometry = point
+			}
+		} else {
+			geometry = mp
+		}
+
 		feature := struct {
 			Type       string `json:"type"`
 			ID         string `json:"id"`
 			Geometry   any    `json:"geometry"`
 			Properties any    `json:"properties"`
-		}{"Feature", b.ID, b.Location, props}
+		}{"Feature", b.ID, geometry, props}
 
 		return json.Marshal(&feature)
 	}
@@ -246,4 +277,28 @@ func newBeachMapper(fields []string, location, wq func(*beaches.Beach) any) Beac
 		return json.Marshal(&result)
 	}
 
+}
+
+func calculateCentroid(mp *domain.MultiPolygon) (float64, float64) {
+	totalLat := 0.0
+	totalLon := 0.0
+	pointCount := 0
+
+	for _, polygon := range mp.Coordinates {
+		for _, ring := range polygon {
+			for _, point := range ring {
+				if len(point) >= 2 {
+					totalLon += point[0]
+					totalLat += point[1]
+					pointCount++
+				}
+			}
+		}
+	}
+
+	if pointCount > 0 {
+		return totalLon / float64(pointCount), totalLat / float64(pointCount)
+	}
+
+	return 0, 0
 }
