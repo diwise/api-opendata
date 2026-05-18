@@ -5,6 +5,17 @@ import (
 	"time"
 )
 
+type JSONAPIResponse struct {
+	Data  any          `json:"data"`
+	Links JSONAPILinks `json:"links,omitempty"`
+}
+
+type JSONAPILinks struct {
+	Next string `json:"next,omitempty"`
+	Prev string `json:"prev,omitempty"`
+	Self string `json:"self,omitempty"`
+}
+
 // Catalog ..
 type Catalog struct {
 	About       string

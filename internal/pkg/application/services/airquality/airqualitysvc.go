@@ -38,7 +38,7 @@ type AirQualityService interface {
 
 	GetAll(ctx context.Context) []domain.AirQuality
 	GetByID(ctx context.Context, id string) (*domain.AirQualityDetails, error)
-	GetByIDWithTimespan(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, error)
+	GetByIDWithTimespan(ctx context.Context, id string, timeAt, endTimeAt time.Time) (*domain.AirQualityDetails, *Timespan, error)
 }
 
 var ErrNoSuchAirQuality error = errors.New("no such air quality")
@@ -108,7 +108,12 @@ func (svc *aqsvc) GetByID(ctx context.Context, id string) (*domain.AirQualityDet
 	}
 }
 
-func (svc *aqsvc) GetByIDWithTimespan(ctx context.Context, id string, from, to time.Time) (*domain.AirQualityDetails, error) {
+type Timespan struct {
+	From time.Time
+	To   time.Time
+}
+
+func (svc *aqsvc) GetByIDWithTimespan(ctx context.Context, id string, timeAt, endTimeAt time.Time) (*domain.AirQualityDetails, *Timespan, error) {
 	logger := logging.GetFromContext(ctx)
 
 	headers := map[string][]string{
@@ -120,15 +125,50 @@ func (svc *aqsvc) GetByIDWithTimespan(ctx context.Context, id string, from, to t
 	aq.ID = id
 	aq.Location = svc.airQualityByID[id].Location
 
-	t, err := svc.cbClient.RetrieveTemporalEvolutionOfEntity(ctx, id, headers, client.Between(from, to))
-	if err != nil || t.Found == nil {
-		logger.Error(fmt.Sprintf("failed to retrieve temporal evolution of air quality with id %s and within timespan %s-%s", id, from.Format(time.RFC3339), to.Format(time.RFC3339)), "err", err.Error())
-		return nil, err
+	pollutantMap := make(map[string]*domain.Pollutant)
+
+	var timeSpan *Timespan = &Timespan{From: timeAt, To: endTimeAt}
+
+	for range 3 { // Limit to 3 iterations per page, which is a reasonable payload size with max 300 datapoints per pollutant.
+		t, err := svc.cbClient.RetrieveTemporalEvolutionOfEntity(ctx, id, headers, client.Between(timeSpan.From, timeSpan.To))
+
+		if err != nil || t.Found == nil {
+			errMsg := ""
+			if err != nil {
+				errMsg = err.Error()
+			}
+			logger.Error(fmt.Sprintf("failed to retrieve temporal evolution of air quality with id %s and within timespan %s-%s", id, timeSpan.From.Format(time.RFC3339), timeSpan.To.Format(time.RFC3339)), "err", errMsg)
+			return nil, nil, err
+		}
+
+		mergePollutants(pollutantMap, getPollutantsFromFoundProperties(t))
+
+		if !t.PartialResult {
+			timeSpan = nil
+			break
+		}
+
+		timeSpan.From = *t.ContentRange.EndTime
+		timeSpan.To = endTimeAt
 	}
 
-	aq.Pollutants = getPollutantsFromFoundProperties(t)
+	// Convert map to slice
+	for _, p := range pollutantMap {
+		aq.Pollutants = append(aq.Pollutants, *p)
+	}
 
-	return aq, nil
+	return aq, timeSpan, nil
+}
+
+func mergePollutants(pollutantMap map[string]*domain.Pollutant, newPollutants []domain.Pollutant) {
+	for _, p := range newPollutants {
+		if existing, ok := pollutantMap[p.Name]; ok {
+			existing.Values = append(existing.Values, p.Values...)
+		} else {
+			cp := p
+			pollutantMap[p.Name] = &cp
+		}
+	}
 }
 
 func (svc *aqsvc) Refresh(ctx context.Context) (int, error) {

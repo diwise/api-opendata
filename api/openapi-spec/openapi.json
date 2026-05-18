@@ -189,6 +189,52 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "deprecated": true,
+            "description": "**Deprecated:** Use `timeAt` instead. Select air quality observations from time. Must be used together with `to`.",
+            "example": "2021-06-01T00:00:00Z",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "deprecated": true,
+            "description": "**Deprecated:** Use `endTimeAt` instead. Select air quality observations up to time. Must be used together with `from`.",
+            "example": "2021-07-01T00:00:00Z",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "timeAt",
+            "in": "query",
+            "required": false,
+            "description": "Select air quality observations from time. Must be used together with `endTimeAt`.",
+            "example": "2021-06-01T00:00:00Z",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endTimeAt",
+            "in": "query",
+            "required": false,
+            "description": "Select air quality observations up to time. Must be used together with `timeAt`.",
+            "example": "2021-07-01T00:00:00Z",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
           }
         ],
         "responses": {
@@ -264,6 +310,24 @@
                               }
                             }
                           }
+                        }
+                      }
+                    },
+                    "links": {
+                      "type": "object",
+                      "description": "Pagination links for retrieving additional temporal data when results are partial.",
+                      "properties": {
+                        "self": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "URL of the current request.",
+                          "example": "/airqualities/urn:ngsi-ld:AirQualityObserved:test3?timeAt=2025-01-13T00:00:00Z&endTimeAt=2025-04-20T00:00:00Z"
+                        },
+                        "next": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "URL to retrieve the next set of temporal data. Only present when there is more data available.",
+                          "example": "/airqualities/urn:ngsi-ld:AirQualityObserved:test3?timeAt=2025-02-13T00:00:00Z&endTimeAt=2025-04-14T00:00:00Z"
                         }
                       }
                     }
